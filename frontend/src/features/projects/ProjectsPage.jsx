@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { Plus, Pencil, Trash2, X, Users, UserPlus, UserMinus, Info } from 'lucide-react'
 import api from '../../lib/api'
 import toast from 'react-hot-toast'
@@ -9,6 +10,8 @@ import ProjectDetailsModal from './ProjectDetailsModal'
 
 export default function ProjectsPage() {
     const { user, hasPermission, hasRole } = useAuth()
+    const navigate = useNavigate()
+    const location = useLocation()
     const [projects, setProjects] = useState([])
     const [allUsers, setAllUsers] = useState([])
     const [loading, setLoading] = useState(true)
@@ -42,6 +45,13 @@ export default function ProjectsPage() {
         }
     }
     useEffect(() => { load() }, [])
+
+    useEffect(() => {
+        if (location.state?.openCreateModal) {
+            openCreate();
+            window.history.replaceState({}, document.title);
+        }
+    }, [location.state])
 
     const openCreate = () => { setForm({ name: '', description: '' }); setModal('create') }
     const openEdit = (p) => { setSelected(p); setForm({ name: p.name, description: p.description || '' }); setModal('edit') }

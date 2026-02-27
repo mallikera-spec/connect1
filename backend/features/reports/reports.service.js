@@ -26,11 +26,16 @@ export const getProjectReport = async (projectId) => {
     };
 };
 
-export const getUserReport = async (userId) => {
-    const { data: tasks, error } = await supabaseAdmin
+export const getUserReport = async (userId, { startDate, endDate } = {}) => {
+    let taskQuery = supabaseAdmin
         .from('tasks')
-        .select('id, title, status, actual_hours, estimated_hours, project:projects(id, name)')
+        .select('id, title, status, actual_hours, estimated_hours, created_at, project:projects(id, name)')
         .eq('assigned_to', userId);
+
+    if (startDate) taskQuery = taskQuery.gte('created_at', startDate);
+    if (endDate) taskQuery = taskQuery.lte('created_at', endDate);
+
+    const { data: tasks, error } = await taskQuery;
     if (error) throw error;
 
     // Fetch projects where user is a member
@@ -42,6 +47,15 @@ export const getUserReport = async (userId) => {
 
     const totalActualHours = tasks.reduce((sum, t) => sum + (t.actual_hours || 0), 0);
 
+    // Fetch timesheet tasks by status for this user
+    const { data: tsEntries } = await supabaseAdmin
+        .from('timesheet_entries')
+        .select('status, timesheet!inner(user_id)')
+        .eq('timesheet.user_id', userId);
+
+    const tsStats = { todo: 0, in_progress: 0, done: 0, blocked: 0 };
+    (tsEntries || []).forEach(e => { if (tsStats[e.status] !== undefined) tsStats[e.status]++; });
+
     return {
         user_id: userId,
         total_tasks: tasks.length,
@@ -51,15 +65,21 @@ export const getUserReport = async (userId) => {
             in_progress: tasks.filter((t) => t.status === 'in_progress').length,
             done: tasks.filter((t) => t.status === 'done').length,
         },
+        timesheet_tasks_by_status: tsStats,
         total_hours_logged: parseFloat(totalActualHours.toFixed(2)),
         tasks,
     };
 };
 
-export const getOverallReport = async () => {
-    const { data: tasks, error: taskError } = await supabaseAdmin
+export const getOverallReport = async ({ startDate, endDate } = {}) => {
+    let taskQuery = supabaseAdmin
         .from('tasks')
-        .select('id, status, actual_hours, estimated_hours');
+        .select('id, status, actual_hours, estimated_hours, created_at');
+
+    if (startDate) taskQuery = taskQuery.gte('created_at', startDate);
+    if (endDate) taskQuery = taskQuery.lte('created_at', endDate);
+
+    const { data: tasks, error: taskError } = await taskQuery;
     if (taskError) throw taskError;
 
     const { count: userCount } = await supabaseAdmin
@@ -72,6 +92,13 @@ export const getOverallReport = async () => {
 
     const totalActualHours = tasks.reduce((sum, t) => sum + (t.actual_hours || 0), 0);
 
+    // Overall timesheet status aggregation
+    const { data: tsEntries } = await supabaseAdmin
+        .from('timesheet_entries')
+        .select('status');
+    const tsStats = { todo: 0, in_progress: 0, done: 0, blocked: 0 };
+    (tsEntries || []).forEach(e => { if (tsStats[e.status] !== undefined) tsStats[e.status]++; });
+
     return {
         total_users: userCount,
         total_projects: projectCount,
@@ -81,6 +108,7 @@ export const getOverallReport = async () => {
             in_progress: tasks.filter((t) => t.status === 'in_progress').length,
             done: tasks.filter((t) => t.status === 'done').length,
         },
+        timesheet_tasks_by_status: tsStats,
         total_hours_logged: parseFloat(totalActualHours.toFixed(2)),
     };
 };
@@ -158,4 +186,127 @@ export const getDeveloperCalendarSummary = async ({ startDate, endDate, projectI
     });
 
     return result;
+};
+
+export const getEmployeeOverview = async ({ startDate, endDate } = {}) => {
+    // Fetch all profiles with roles
+    const { data: profiles, error: profileError } = await supabaseAdmin
+        .from('profiles')
+        .select(`
+            id, full_name, email, department, designation, avatar_url,
+            user_roles(role:roles(name))
+        `);
+    if (profileError) throw profileError;
+
+    // Filter out Super Admins and Management department
+    const filteredProfiles = profiles.filter(p => {
+        const roles = p.user_roles?.map(ur => ur.role?.name) || [];
+        const isSuperAdmin = roles.includes('Super Admin') || roles.includes('super_admin');
+        const isManagement = p.department?.toLowerCase() === 'management';
+        return !isSuperAdmin && !isManagement;
+    });
+
+    // Fetch tasks
+    let taskQuery = supabaseAdmin
+        .from('tasks')
+        .select('assigned_to, status, actual_hours, created_at');
+
+    if (startDate) taskQuery = taskQuery.gte('created_at', startDate);
+    if (endDate) taskQuery = taskQuery.lte('created_at', endDate);
+
+    const { data: tasks, error: taskError } = await taskQuery;
+    if (taskError) throw taskError;
+
+    // Fetch timesheet entries for the period
+    let tsQuery = supabaseAdmin
+        .from('timesheet_entries')
+        .select(`
+            id, hours_spent, title,
+            timesheet:timesheets (
+                work_date,
+                user_id
+            ),
+            task:tasks (
+                id,
+                title,
+                project:projects (id, name)
+            )
+        `);
+
+    if (startDate) tsQuery = tsQuery.gte('timesheet.work_date', startDate);
+    if (endDate) tsQuery = tsQuery.lte('timesheet.work_date', endDate);
+
+    const { data: tsEntries, error: tsError } = await tsQuery;
+
+    // Aggregate metrics by user
+    const userMetrics = {};
+    filteredProfiles.forEach(p => {
+        userMetrics[p.id] = {
+            id: p.id,
+            full_name: p.full_name,
+            email: p.email,
+            department: p.department,
+            designation: p.designation,
+            avatar_url: p.avatar_url,
+            total_tasks: 0,
+            pending_tasks: 0,
+            done_tasks: 0,
+            total_hours: 0,
+            timesheet_items: []
+        };
+    });
+
+    tasks.forEach(t => {
+        if (t.assigned_to && userMetrics[t.assigned_to]) {
+            const m = userMetrics[t.assigned_to];
+            m.total_tasks++;
+            if (t.status === 'done') m.done_tasks++;
+            else m.pending_tasks++;
+        }
+    });
+
+    if (tsEntries) {
+        tsEntries.forEach(entry => {
+            const userId = entry.timesheet?.user_id;
+            const workDate = entry.timesheet?.work_date;
+
+            // Manual date check if query filter was broad
+            if (startDate && workDate < startDate) return;
+            if (endDate && workDate > endDate) return;
+
+            if (userId && userMetrics[userId]) {
+                const m = userMetrics[userId];
+
+                // Helper to parse HH:MM to decimal hours for summing
+                const parseTime = (timeStr) => {
+                    if (!timeStr || !timeStr.includes(':')) return 0;
+                    const [h, m] = timeStr.split(':').map(Number);
+                    return h + (m / 60);
+                };
+
+                const hours = parseTime(entry.hours_spent);
+                m.total_hours += hours;
+                m.timesheet_items.push({
+                    id: entry.id,
+                    title: entry.title,
+                    hours: entry.hours_spent,
+                    date: workDate,
+                    project: entry.task?.project?.name || 'No Project'
+                });
+            }
+        });
+    }
+
+    // Group by department
+    const grouped = {};
+    Object.values(userMetrics).forEach(m => {
+        const dept = m.department || 'Other';
+        if (!grouped[dept]) grouped[dept] = [];
+        grouped[dept].push({
+            ...m,
+            total_hours: parseFloat(m.total_hours.toFixed(2))
+        });
+    });
+
+    return grouped;
 };

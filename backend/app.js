@@ -19,6 +19,8 @@ import profileRoutes from './features/profile/profile.routes.js';
 import timesheetsRoutes from './features/timesheets/timesheets.routes.js';
 import projectFilesRoutes from './features/project-files/project-files.routes.js';
 import projectNotesRoutes from './features/project-notes/project-notes.routes.js';
+import notificationRoutes from './features/notifications/notifications.routes.js';
+import quotationRoutes from './features/quotations/quotation.routes.js';
 
 import { errorMiddleware } from './middleware/error.middleware.js';
 
@@ -52,6 +54,8 @@ app.use('/api/v1/profile', profileRoutes);
 app.use('/api/v1/timesheets', timesheetsRoutes);
 app.use('/api/v1/project-files', projectFilesRoutes);
 app.use('/api/v1/project-notes', projectNotesRoutes);
+app.use('/api/v1/notifications', notificationRoutes);
+app.use('/api/v1/quotations', quotationRoutes);
 
 // 404 handler
 app.use((_req, res) => {

@@ -1,8 +1,10 @@
 import { useEffect, useState, useMemo } from 'react'
-import { Plus, Trash2, Link2, Clock, Calendar, CheckCircle2, Filter, Zap, Target, TrendingUp, History } from 'lucide-react'
+import { Plus, Trash2, Link2, Clock, Calendar, CheckCircle2, Filter, Zap, Target, TrendingUp, History, Edit } from 'lucide-react'
+import { useNavigate, useLocation } from 'react-router-dom'
 import api from '../../lib/api'
 import toast from 'react-hot-toast'
 import { useAuth } from '../../context/AuthContext'
+import EditEntryModal from './EditEntryModal'
 
 const STATUS_OPTS = ['todo', 'in_progress', 'done', 'blocked']
 const STATUS_BADGE = { todo: 'badge-gray', in_progress: 'badge-yellow', done: 'badge-green', blocked: 'badge-red' }
@@ -10,17 +12,21 @@ const STATUS_BADGE = { todo: 'badge-gray', in_progress: 'badge-yellow', done: 'b
 const fmt = (d) => d ? new Date(d).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' }) : ''
 const todayISO = () => new Date().toISOString().slice(0, 10)
 
+import DateRangePicker from '../../components/DateRangePicker'
+
 export default function EmployeeTimesheet() {
     const { user } = useAuth()
+    const location = useLocation()
 
-    const [startDate, setStartDate] = useState(todayISO())
-    const [endDate, setEndDate] = useState(todayISO())
+    const [startDate, setStartDate] = useState(location.state?.startDate || todayISO())
+    const [endDate, setEndDate] = useState(location.state?.endDate || todayISO())
     const [allEntries, setAllEntries] = useState([])
     const [myProjects, setMyProjects] = useState([])
     const [loading, setLoading] = useState(true)
     const [savingId, setSavingId] = useState(null)
     const [report, setReport] = useState(null)
     const [filterProjectId, setFilterProjectId] = useState('')
+    const [statusFilter, setStatusFilter] = useState(location.state?.statusFilter || '')
 
     // Form for new entry
     const [newDate, setNewDate] = useState(todayISO())
@@ -30,6 +36,7 @@ export default function EmployeeTimesheet() {
     const [newTime, setNewTime] = useState('00:00')
     const [newNotes, setNewNotes] = useState('')
     const [adding, setAdding] = useState(false)
+    const [editingEntry, setEditingEntry] = useState(null)
 
     const load = async () => {
         setLoading(true)
@@ -73,8 +80,9 @@ export default function EmployeeTimesheet() {
 
     const handleAddEntry = async (e) => {
         e.preventDefault()
-        if (!newTitle.trim() || !newProjectId || !newNotes.trim()) {
-            return toast.error('Please fill all fields: Project, Activity, and Notes are mandatory.')
+
+        if (!newTitle.trim() || !newProjectId || !newNotes.trim() || !newTime || newTime === '00:00') {
+            return toast.error('Please fill all fields: Project, Activity, Time Commitment, and Notes are mandatory.')
         }
         setAdding(true)
         try {
@@ -189,9 +197,10 @@ export default function EmployeeTimesheet() {
     const filteredEntries = useMemo(() => {
         return allEntries.filter(e => {
             if (filterProjectId && e.project_id !== filterProjectId) return false
+            if (statusFilter && e.status !== statusFilter) return false
             return true
         })
-    }, [allEntries, filterProjectId])
+    }, [allEntries, filterProjectId, statusFilter])
 
     return (
         <div className="dev-dashboard">
@@ -201,26 +210,36 @@ export default function EmployeeTimesheet() {
                     <h1>Activity Hub</h1>
                     <p>Track your flow, conquer your day.</p>
                 </div>
-                <div className="header-stats">
-                    <div className="quick-stat">
-                        <div className="stat-icon purple"><Clock size={20} /></div>
-                        <div>
-                            <div className="stat-val">{stats.totalHours}h</div>
-                            <div className="stat-label">Logged</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 16, alignItems: 'flex-end' }}>
+                    <DateRangePicker
+                        startDate={startDate}
+                        endDate={endDate}
+                        onRangeChange={(range) => {
+                            setStartDate(range.startDate);
+                            setEndDate(range.endDate);
+                        }}
+                    />
+                    <div className="header-stats">
+                        <div className="quick-stat">
+                            <div className="stat-icon purple"><Clock size={20} /></div>
+                            <div>
+                                <div className="stat-val">{stats.totalHours}h</div>
+                                <div className="stat-label">Logged</div>
+                            </div>
                         </div>
-                    </div>
-                    <div className="quick-stat">
-                        <div className="stat-icon yellow"><CheckCircle2 size={20} /></div>
-                        <div>
-                            <div className="stat-val">{stats.pendingTasks}</div>
-                            <div className="stat-label">Pending Tasks</div>
+                        <div className="quick-stat">
+                            <div className="stat-icon yellow"><CheckCircle2 size={20} /></div>
+                            <div>
+                                <div className="stat-val">{stats.pendingTasks}</div>
+                                <div className="stat-label">Pending Tasks</div>
+                            </div>
                         </div>
-                    </div>
-                    <div className="quick-stat">
-                        <div className="stat-icon green"><Target size={20} /></div>
-                        <div>
-                            <div className="stat-val" style={{ fontWeight: 900, fontSize: '24px' }}>{stats.completed}</div>
-                            <div className="stat-label" style={{ fontWeight: 700 }}>Done Today</div>
+                        <div className="quick-stat">
+                            <div className="stat-icon green"><Target size={20} /></div>
+                            <div>
+                                <div className="stat-val" style={{ fontWeight: 900, fontSize: '24px' }}>{stats.completed}</div>
+                                <div className="stat-label" style={{ fontWeight: 700 }}>Done Today</div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -255,7 +274,7 @@ export default function EmployeeTimesheet() {
 
 
                             <div className="form-group-compact">
-                                <label><Clock size={12} required /> Time Commitment (hh:mm)</label>
+                                <label><Clock size={12} /> Time Commitment (hh:mm)</label>
                                 <input type="time" className="glass-input" value={newTime} onChange={e => setNewTime(e.target.value)} required />
                             </div>
 
@@ -271,7 +290,7 @@ export default function EmployeeTimesheet() {
                                 />
                             </div>
 
-                            <button type="submit" className="premium-btn" disabled={adding || !newTitle.trim() || !newProjectId || !newNotes.trim()}>
+                            <button type="submit" className="premium-btn" disabled={adding || !newTitle.trim() || !newProjectId || !newNotes.trim() || !newTime || newTime === '00:00'}>
                                 {adding ? <span className="spinner" /> : <><Plus size={18} /> Plan Activity</>}
                             </button>
                         </form>
@@ -291,14 +310,6 @@ export default function EmployeeTimesheet() {
                                 <option value="">ALL PROJECTS</option>
                                 {myProjects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                             </select>
-                        </div>
-                        <div className="filter-group">
-                            <label style={{ fontSize: 10, fontWeight: 800, textTransform: 'uppercase', color: 'var(--text-dim)', display: 'block', marginBottom: 4 }}>DATE RANGE</label>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                <input type="date" className="glass-input-sm" value={startDate} onChange={e => setStartDate(e.target.value)} />
-                                <span style={{ fontSize: 12, fontWeight: 800 }}>TO</span>
-                                <input type="date" className="glass-input-sm" value={endDate} onChange={e => setEndDate(e.target.value)} />
-                            </div>
                         </div>
                         <div className="export-btns" style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
                             <button className="export-btn csv" onClick={handleExportCSV}>CSV</button>
@@ -325,6 +336,7 @@ export default function EmployeeTimesheet() {
                                             <th>Time</th>
                                             <th>Status</th>
                                             <th>Notes</th>
+                                            <th>Admin Notes</th>
                                             <th>Actions</th>
                                         </tr>
                                     </thead>
@@ -373,8 +385,21 @@ export default function EmployeeTimesheet() {
                                                         onBlur={ev => handleUpdate(e.id, { notes: ev.target.value })}
                                                     />
                                                 </td>
+                                                <td className="col-admin-notes" style={{ color: 'var(--text-dim)', fontSize: '12px' }}>
+                                                    {e.admin_feedback || <span style={{ opacity: 0.3 }}>—</span>}
+                                                </td>
                                                 <td className="col-actions">
-                                                    <button className="delete-btn-minimal" onClick={() => handleDelete(e.id)}><Trash2 size={16} /></button>
+                                                    <div style={{ display: 'flex', gap: 6 }}>
+                                                        <button
+                                                            className="btn-icon-sm"
+                                                            style={{ color: 'var(--accent-light)' }}
+                                                            onClick={() => setEditingEntry(e)}
+                                                            title="Edit"
+                                                        >
+                                                            <Edit size={16} />
+                                                        </button>
+                                                        <button className="delete-btn-minimal" onClick={() => handleDelete(e.id)}><Trash2 size={16} /></button>
+                                                    </div>
                                                 </td>
                                             </tr>
                                         ))}
@@ -388,8 +413,19 @@ export default function EmployeeTimesheet() {
                 </div>
             </div>
 
+            {editingEntry && (
+                <EditEntryModal
+                    entry={editingEntry}
+                    myProjects={myProjects}
+                    onClose={() => setEditingEntry(null)}
+                    onSaved={(updated) => {
+                        setAllEntries(prev => prev.map(e => e.id === updated.id ? { ...e, ...updated } : e))
+                    }}
+                />
+            )}
+
             <style>{`
-                .dev-dashboard { max-width: 1400px; margin: 0 auto; color: var(--text); }
+                .dev-dashboard { max-width: 1600px; margin: 0 auto; color: var(--text); }
                 
                 .dashboard-header {
                     display: flex;
@@ -539,6 +575,23 @@ export default function EmployeeTimesheet() {
 
                 .empty-state-card { padding: 60px 40px; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--text-dim); }
                 .empty-state-card h3 { color: var(--text-muted); margin-bottom: 8px; }
+
+                .btn-icon-sm {
+                    background: transparent;
+                    border: none;
+                    cursor: pointer;
+                    padding: 4px;
+                    border-radius: 4px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    transition: all 0.2s;
+                }
+                .btn-icon-sm:hover {
+                    background: rgba(255, 255, 255, 0.05);
+                }
+                
+                .col-admin-notes { max-width: 150px; }
 
                 @media (max-width: 1100px) {
                     .dashboard-grid { grid-template-columns: 1fr; }

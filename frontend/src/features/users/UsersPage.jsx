@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { Plus, Pencil, Trash2, Search, UserPlus, ShieldPlus, X, Users, FileText, Calendar } from 'lucide-react'
 import api from '../../lib/api'
 import toast from 'react-hot-toast'
@@ -181,6 +181,7 @@ const EMPTY = { full_name: '', email: '', password: '', department: '', designat
 export default function UsersPage() {
     const { hasPermission } = useAuth()
     const navigate = useNavigate()
+    const location = useLocation()
     const [users, setUsers] = useState([])
     const [roles, setRoles] = useState([])
     const [permissions, setPermissions] = useState([])
@@ -214,6 +215,14 @@ export default function UsersPage() {
     }
 
     useEffect(() => { load() }, [])
+
+    useEffect(() => {
+        if (location.state?.openCreateModal) {
+            openCreate();
+            // Clear state to avoid reopening on refresh
+            window.history.replaceState({}, document.title);
+        }
+    }, [location.state])
 
     const openCreate = () => { setForm(EMPTY); setModal('create') }
     const openEdit = (u) => navigate(`/profile/${u.id}`)

@@ -203,9 +203,8 @@ body {
   flex-direction: column;
   gap: 2px;
   margin-top: 4px;
-  padding-left: 14px;
-  border-left: 2px solid var(--border);
-  margin-left: 18px;
+  padding-left: 0;
+  margin-left: 0;
   margin-bottom: 12px;
   transition: all var(--transition);
 }
@@ -249,8 +248,7 @@ body {
 
 .sub-item {
   font-size: 13px;
-  padding: 8px 12px;
-  margin-left: 4px;
+  padding: 8px 12px 8px 44px;
 }
 
 .sidebar-footer {
@@ -1462,4 +1460,215 @@ tbody td {
 .login-card .form-input::placeholder,
 [data-theme="light"] .login-card .form-input::placeholder {
   color: rgba(255, 255, 255, 0.4) !important;
+}
+
+/* ── Notifications ── */
+.notifications-wrapper {
+  position: relative;
+}
+
+.notification-bell {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition);
+  position: relative;
+}
+
+.notification-bell:hover {
+  background: var(--bg-card);
+  color: var(--text);
+}
+
+.notification-bell.has-unread {
+  color: var(--accent-light);
+}
+
+.unread-badge {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  background: var(--danger);
+  color: white;
+  font-size: 10px;
+  font-weight: 700;
+  min-width: 16px;
+  height: 16px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #080810;
+}
+
+.notifications-dropdown {
+  position: absolute;
+  top: calc(100% + 12px);
+  right: 0;
+  width: 340px;
+  max-height: 480px;
+  display: flex;
+  flex-direction: column;
+  z-index: 1000;
+  box-shadow: var(--shadow-xl);
+  border: 1px solid var(--border);
+  animation: slideUp 0.2s ease;
+  background: var(--bg-card);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.dropdown-header {
+  padding: 16px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.dropdown-header h3 {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.mark-all-btn {
+  background: transparent;
+  border: none;
+  color: var(--accent-light);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.notifications-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 0;
+}
+
+.notification-item {
+  padding: 12px 16px;
+  display: flex;
+  gap: 12px;
+  cursor: pointer;
+  transition: all var(--transition);
+  position: relative;
+}
+
+.notification-item:hover {
+  background: var(--bg-card);
+}
+
+.notification-item.unread {
+  background: var(--accent-transparent);
+}
+
+.notification-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--accent);
+  flex-shrink: 0;
+  margin-top: 6px;
+  opacity: 0;
+}
+
+.notification-item.unread .notification-dot {
+  opacity: 1;
+}
+
+.notification-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.notification-title {
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+.notification-msg {
+  font-size: 12px;
+  color: var(--text-dim);
+  margin-bottom: 4px;
+  line-height: 1.4;
+}
+
+.notification-time {
+  font-size: 10px;
+  color: var(--text-dim);
+  opacity: 0.6;
+}
+
+.empty-notifications {
+  padding: 40px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  color: var(--text-dim);
+  font-size: 13px;
+}
+
+/* ── Sticky Date Picker ── */
+.sticky-date-picker-container {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  justify-content: flex-end;
+  pointer-events: none;
+}
+
+.sticky-date-picker {
+  pointer-events: auto;
+  padding: 8px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--bg-card);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transform-origin: top right;
+}
+
+.sticky-date-picker-container.shrunk {
+  top: 10px;
+}
+
+.sticky-date-picker-container.shrunk .sticky-date-picker {
+  transform: scale(0.7);
+  opacity: 0.9;
+  border-color: var(--accent-light);
+  background: rgba(8, 8, 16, 0.9);
+}
+
+.date-input {
+  padding: 4px 8px;
+  font-size: 13px;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font-family: inherit;
+  outline: none;
+  cursor: pointer;
+}
+
+.sticky-date-picker-container.shrunk .date-input {
+  font-size: 11px;
+  padding: 2px 4px;
 }

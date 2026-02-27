@@ -16,7 +16,9 @@ export default function ProjectDetailsModal({ project, allUsers, onClose, onSave
     // Files State
     const [files, setFiles] = useState([])
     const [fileLoading, setFileLoading] = useState(false)
-    const [newFile, setNewFile] = useState({ filename: '', file_url: '', file_type: 'BRD' })
+    const [uploading, setUploading] = useState(false)
+    const [selectedFile, setSelectedFile] = useState(null)
+    const [newFile, setNewFile] = useState({ filename: '', file_type: 'BRD' })
 
     // Notes State
     const [notes, setNotes] = useState([])
@@ -74,13 +76,28 @@ export default function ProjectDetailsModal({ project, allUsers, onClose, onSave
 
     const handleUploadFile = async (e) => {
         e.preventDefault()
-        if (!newFile.filename || !newFile.file_url) return
+        if (!selectedFile) return toast.error('Please select a file')
+
+        setUploading(true)
         try {
-            await api.post(`/project-files/project/${project.id}`, newFile)
-            toast.success('File added')
-            setNewFile({ filename: '', file_url: '', file_type: 'BRD' })
+            const formData = new FormData()
+            formData.append('file', selectedFile)
+            formData.append('filename', newFile.filename || selectedFile.name)
+            formData.append('file_type', newFile.file_type)
+
+            await api.post(`/project-files/project/${project.id}`, formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            })
+
+            toast.success('File uploaded and added')
+            setNewFile({ filename: '', file_type: 'BRD' })
+            setSelectedFile(null)
             loadFiles()
-        } catch (err) { toast.error(err.message) }
+        } catch (err) {
+            toast.error(err.response?.data?.message || err.message)
+        } finally {
+            setUploading(false)
+        }
     }
 
     const handleDeleteFile = async (id) => {
@@ -202,19 +219,29 @@ export default function ProjectDetailsModal({ project, allUsers, onClose, onSave
                             {hasPermission('manage_project_files') && (
                                 <form onSubmit={handleUploadFile} style={{ marginBottom: 24, padding: 16, background: 'var(--bg-card)', borderRadius: 12, border: '1px solid var(--border)' }}>
                                     <p style={{ fontSize: 13, fontWeight: 600, marginBottom: 12 }}>Upload Project Document</p>
-                                    <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr 1fr auto', gap: 10 }}>
-                                        <input className="form-input" placeholder="File Name (e.g. Project BRD)"
-                                            value={newFile.filename} onChange={e => setNewFile(p => ({ ...p, filename: e.target.value }))} required />
-                                        <input className="form-input" placeholder="External URL"
-                                            value={newFile.file_url} onChange={e => setNewFile(p => ({ ...p, file_url: e.target.value }))} required />
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1.2fr 0.8fr auto', gap: 10 }}>
+                                        <input className="form-input" placeholder="Display Name (Optional)"
+                                            value={newFile.filename} onChange={e => setNewFile(p => ({ ...p, filename: e.target.value }))} />
+
+                                        <div className="form-group" style={{ marginBottom: 0 }}>
+                                            <input type="file" id="project-file-upload" hidden onChange={e => setSelectedFile(e.target.files[0])} />
+                                            <label htmlFor="project-file-upload" className="form-input" style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                <CloudUpload size={14} /> {selectedFile ? selectedFile.name : 'Select File (Max 100MB)'}
+                                            </label>
+                                        </div>
+
                                         <select className="form-select" value={newFile.file_type} onChange={e => setNewFile(p => ({ ...p, file_type: e.target.value }))}>
                                             <option value="BRD">BRD</option>
                                             <option value="Quotation">Quotation</option>
                                             <option value="Contract">Contract</option>
                                             <option value="Other">Other</option>
                                         </select>
-                                        <button type="submit" className="btn btn-primary" disabled={!newFile.filename || !newFile.file_url}><CloudUpload size={16} /> Add</button>
+
+                                        <button type="submit" className="btn btn-primary" disabled={uploading || !selectedFile}>
+                                            {uploading ? <><span className="spinner" style={{ width: 14, height: 14 }} /> Uploading...</> : <><CloudUpload size={16} /> Add</>}
+                                        </button>
                                     </div>
+                                    <p style={{ fontSize: 10, color: 'var(--text-dim)', marginTop: 8 }}>Supports all file types up to 100MB.</p>
                                 </form>
                             )}
 
@@ -233,7 +260,11 @@ export default function ProjectDetailsModal({ project, allUsers, onClose, onSave
                                                 </div>
                                             </div>
                                             <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
-                                                <a href={f.file_url} target="_blank" rel="noopener noreferrer" className="btn btn-ghost btn-sm" style={{ flex: 1 }}>
+                                                {/* Use fl_attachment to force download from Cloudinary */}
+                                                <a href={f.file_url.replace('/upload/', '/upload/fl_attachment/')}
+                                                    target="_blank" rel="noopener noreferrer"
+                                                    className="btn btn-ghost btn-sm" style={{ flex: 1 }}
+                                                    download={f.filename}>
                                                     <Download size={14} /> View / Download
                                                 </a>
                                                 {hasPermission('manage_project_files') && (

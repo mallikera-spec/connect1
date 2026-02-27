@@ -11,8 +11,8 @@ const router = Router();
 router.use(authMiddleware);
 
 router.post('/', requirePermission('create_project'), createProject);
-router.get('/', getAllProjects);
-router.get('/:id', getProjectById);
+router.get('/', requirePermission('view_projects'), getAllProjects);
+router.get('/:id', requirePermission('view_projects'), getProjectById);
 router.patch('/:id', requirePermission('edit_project'), updateProject);
 router.delete('/:id', requirePermission('delete_project'), deleteProject);
 

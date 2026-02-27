@@ -1,7 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useAuth } from '../../context/AuthContext'
+import { Calendar } from 'lucide-react'
 import api from '../../lib/api'
 import toast from 'react-hot-toast'
+
+import DateRangePicker from '../../components/DateRangePicker'
 
 export default function ReportsPage() {
     const { hasPermission } = useAuth()
@@ -21,24 +24,41 @@ export default function ReportsPage() {
     const users_allowed = hasPermission('view_user_report')
     const overall_allowed = hasPermission('view_overall_report')
 
+    const [dateRange, setDateRange] = useState({
+        startDate: new Date(new Date().setDate(new Date().getDate() - 30)).toISOString().split('T')[0],
+        endDate: new Date().toISOString().split('T')[0]
+    })
+
+    const loadOverall = useCallback(() => {
+        if (!overall_allowed) return
+        api.get('/reports/overall', { params: dateRange })
+            .then(r => setOverall(r.data.data))
+            .catch(() => { })
+    }, [overall_allowed, dateRange])
+
     useEffect(() => {
         // Default tab selection
         if (overall_allowed) setTab('overall')
         else if (projects_allowed) setTab('project')
         else if (users_allowed) setTab('user')
 
-        if (overall_allowed) {
-            api.get('/reports/overall').then(r => setOverall(r.data.data)).catch(() => { })
-        }
-
         if (projects_allowed) api.get('/projects').then(r => setProjects(r.data.data)).catch(() => { })
         if (users_allowed) api.get('/users').then(r => setUsers(r.data.data)).catch(() => { })
     }, [overall_allowed, projects_allowed, users_allowed])
 
+    useEffect(() => {
+        loadOverall()
+        if (selectedProject) loadProjectReport()
+        if (selectedUser) loadUserReport()
+    }, [dateRange, loadOverall])
+
     const loadProjectReport = async () => {
         if (!selectedProject) return
         setLoading(true)
-        try { const r = await api.get(`/reports/project/${selectedProject}`); setProjectReport(r.data.data) }
+        try {
+            const r = await api.get(`/reports/project/${selectedProject}`, { params: dateRange });
+            setProjectReport(r.data.data)
+        }
         catch (err) { toast.error(err.message) }
         finally { setLoading(false) }
     }
@@ -46,7 +66,10 @@ export default function ReportsPage() {
     const loadUserReport = async () => {
         if (!selectedUser) return
         setLoading(true)
-        try { const r = await api.get(`/reports/user/${selectedUser}`); setUserReport(r.data.data) }
+        try {
+            const r = await api.get(`/reports/user/${selectedUser}`, { params: dateRange });
+            setUserReport(r.data.data)
+        }
         catch (err) { toast.error(err.message) }
         finally { setLoading(false) }
     }
@@ -55,8 +78,17 @@ export default function ReportsPage() {
 
     return (
         <div>
-            <div className="page-header">
-                <div><h1>Reports</h1><p>Hours logged, task completion, and team performance</p></div>
+            <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px', marginBottom: '24px' }}>
+                <div>
+                    <h1>Reports</h1>
+                    <p>Hours logged, task completion, and team performance</p>
+                </div>
+
+                <DateRangePicker
+                    startDate={dateRange.startDate}
+                    endDate={dateRange.endDate}
+                    onRangeChange={setDateRange}
+                />
             </div>
 
             <div style={{ marginBottom: 24 }}>

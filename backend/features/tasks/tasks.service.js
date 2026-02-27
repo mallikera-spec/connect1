@@ -1,8 +1,25 @@
 import { supabaseAdmin } from '../../config/supabase.js';
+import { createNotification } from '../notifications/notifications.service.js';
 
 export const createTask = async (taskData) => {
     const { data, error } = await supabaseAdmin.from('tasks').insert(taskData).select().single();
     if (error) throw error;
+
+    // Notify assignee
+    if (data.assigned_to) {
+        try {
+            await createNotification({
+                userId: data.assigned_to,
+                type: 'TASK_ASSIGNED',
+                title: 'New Task Assigned',
+                message: `You have been assigned to: ${data.title}`,
+                data: { taskId: data.id }
+            });
+        } catch (err) {
+            console.error('Failed to create notification:', err);
+        }
+    }
+
     return data;
 };
 
@@ -15,6 +32,8 @@ export const getAllTasks = async (filters = {}) => {
     if (filters.project_id) query = query.eq('project_id', filters.project_id);
     if (filters.assigned_to) query = query.eq('assigned_to', filters.assigned_to);
     if (filters.status) query = query.eq('status', filters.status);
+    if (filters.startDate) query = query.gte('created_at', filters.startDate);
+    if (filters.endDate) query = query.lte('created_at', filters.endDate);
 
     const { data, error } = await query;
     if (error) throw error;
@@ -32,8 +51,40 @@ export const getTaskById = async (id) => {
 };
 
 export const updateTask = async (id, updates) => {
+    // Get original task to check for assignment change
+    const { data: oldTask } = await supabaseAdmin.from('tasks').select('assigned_to, title').eq('id', id).single();
+
     const { data, error } = await supabaseAdmin.from('tasks').update(updates).eq('id', id).select().single();
     if (error) throw error;
+
+    // Notify if assignment changed or updated
+    if (data.assigned_to && data.assigned_to !== oldTask?.assigned_to) {
+        try {
+            await createNotification({
+                userId: data.assigned_to,
+                type: 'TASK_ASSIGNED',
+                title: 'New Task Assigned',
+                message: `You have been assigned to: ${data.title}`,
+                data: { taskId: data.id }
+            });
+        } catch (err) {
+            console.error('Failed to create notification:', err);
+        }
+    } else if (data.assigned_to) {
+        // Just an update to an existing assignment
+        try {
+            await createNotification({
+                userId: data.assigned_to,
+                type: 'TASK_UPDATED',
+                title: 'Task Updated',
+                message: `Task updated: ${data.title}`,
+                data: { taskId: data.id }
+            });
+        } catch (err) {
+            console.error('Failed to create notification:', err);
+        }
+    }
+
     return data;
 };
 

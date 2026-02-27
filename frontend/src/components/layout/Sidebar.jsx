@@ -6,7 +6,7 @@ import {
     Users, ShieldCheck, Key, Building2, Briefcase,
     FolderKanban, ListTodo, BarChart3,
     ChevronLeft, ChevronRight, LogOut,
-    UserCircle, Clock, Calendar,
+    UserCircle, Clock, Calendar, FileText, Sparkles
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -24,9 +24,9 @@ const NAV = [
         icon: FolderKanban,
         items: [
             { to: '/projects', label: 'All Projects', perm: 'manage_projects', icon: FolderKanban },
-            { to: '/projects', label: 'My Projects', hideIfHas: 'manage_projects', icon: FolderKanban },
+            { to: '/projects', label: 'My Projects', perm: 'view_projects', hideIfHas: 'manage_projects', icon: FolderKanban },
             { to: '/tasks', label: 'Tasks', perm: 'view_tasks', icon: ListTodo },
-            { to: '/timesheet', label: 'Timesheet', icon: Clock },
+            { to: '/timesheet', label: 'Timesheet', perm: 'view_timesheet', icon: Clock },
             { to: '/reports', label: 'Reports', perm: 'view_overall_report', icon: BarChart3 },
             { to: '/developer-calendar', label: 'Dev Calendar', perm: 'view_reports', icon: Calendar },
         ]
@@ -38,6 +38,13 @@ const NAV = [
             { to: '/departments', icon: Building2, label: 'Departments', perm: 'view_departments' },
             { to: '/designations', icon: Briefcase, label: 'Designations', perm: 'manage_designations' },
             { to: '/users', icon: Users, label: 'Employees', perm: 'view_employees' },
+        ]
+    },
+    {
+        section: 'Sales & Proposals',
+        icon: FileText,
+        items: [
+            { to: '/quotations', label: 'Quotation Builder', icon: Sparkles, perm: 'generate_quotations' },
         ]
     },
     {

@@ -25,6 +25,8 @@ export const getAllTasks = async (req, res) => {
         project_id: req.query.project_id,
         assigned_to: isAdmin ? req.query.assigned_to : (req.query.assigned_to || req.user.id),
         status: req.query.status,
+        startDate: req.query.startDate,
+        endDate: req.query.endDate,
     };
     const data = await tasksService.getAllTasks(filters);
     successResponse(res, data, 'Tasks fetched');

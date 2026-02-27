@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react'
-import { Plus, Pencil, Trash2, X } from 'lucide-react'
+import { useEffect, useState, useCallback } from 'react'
+import { useLocation } from 'react-router-dom'
+import { Plus, Pencil, Trash2, X, Calendar } from 'lucide-react'
 import api from '../../lib/api'
 import toast from 'react-hot-toast'
 import { useAuth } from '../../context/AuthContext'
@@ -8,6 +9,8 @@ const PRIORITY_BADGE = { low: 'badge-blue', medium: 'badge-yellow', high: 'badge
 const STATUS_BADGE = { pending: 'badge-gray', in_progress: 'badge-yellow', done: 'badge-green' }
 
 const EMPTY_FORM = { project_id: '', title: '', description: '', assigned_to: '', status: 'pending', priority: 'medium', estimated_hours: '', actual_hours: '' }
+
+import DateRangePicker from '../../components/DateRangePicker'
 
 export default function TasksPage() {
     const { hasPermission, user } = useAuth()
@@ -24,9 +27,16 @@ export default function TasksPage() {
     const [modal, setModal] = useState(null)
     const [selected, setSelected] = useState(null)
     const [form, setForm] = useState(EMPTY_FORM)
-    const [filters, setFilters] = useState({ project_id: '', status: '', assigned_to: '' })
+    const location = useLocation()
+    const [filters, setFilters] = useState({
+        project_id: location.state?.project_id || '',
+        status: location.state?.status || '',
+        assigned_to: location.state?.assigned_to || '',
+        startDate: location.state?.startDate || '',
+        endDate: location.state?.endDate || ''
+    })
 
-    const load = () => {
+    const load = useCallback(() => {
         setLoading(true)
         const params = Object.fromEntries(Object.entries(filters).filter(([, v]) => v))
         Promise.all([
@@ -35,15 +45,32 @@ export default function TasksPage() {
             isManager ? api.get('/users') : Promise.resolve({ data: { data: [] } }),
         ])
             .then(([t, p, u]) => {
-                setTasks(t.data.data)
+                const taskList = t.data.data
+                setTasks(taskList)
                 setProjects(p.data.data)
                 setUsers(u.data.data)
+
+                // Check for taskId in location state to open modal automatically
+                const autoTaskId = location.state?.openTaskId
+                if (autoTaskId) {
+                    const taskToOpen = taskList.find(item => item.id === autoTaskId)
+                    if (taskToOpen) {
+                        openEdit(taskToOpen)
+                    }
+                }
             })
             .catch(err => toast.error(err.message))
             .finally(() => setLoading(false))
-    }
+    }, [filters, isManager, location.state?.openTaskId])
 
     useEffect(() => { load() }, [filters])
+
+    useEffect(() => {
+        if (location.state?.openCreateModal) {
+            openCreate();
+            window.history.replaceState({}, document.title);
+        }
+    }, [location.state])
 
     const openCreate = () => {
         setForm({ ...EMPTY_FORM, assigned_to: isManager ? '' : user?.id })
@@ -167,9 +194,16 @@ export default function TasksPage() {
 
     return (
         <div>
-            <div className="page-header">
+            <div className="page-header" style={{ alignItems: 'flex-start' }}>
                 <div><h1>Tasks</h1><p>Track and manage your project tasks</p></div>
-                {canCreate && <button className="btn btn-primary" onClick={openCreate}><Plus size={16} />New Task</button>}
+                <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                    <DateRangePicker
+                        startDate={filters.startDate}
+                        endDate={filters.endDate}
+                        onRangeChange={(range) => setFilters(prev => ({ ...prev, ...range }))}
+                    />
+                    {canCreate && <button className="btn btn-primary" onClick={openCreate} style={{ height: '42px' }}><Plus size={16} />New Task</button>}
+                </div>
             </div>
 
             <div className="table-wrapper">
@@ -190,6 +224,15 @@ export default function TasksPage() {
                                 <option value="">All Assignees</option>
                                 {(users || []).map(u => <option key={u.id} value={u.id}>{u.full_name}</option>)}
                             </select>
+                        )}
+                        {(filters.startDate || filters.endDate) && (
+                            <button
+                                className="btn btn-ghost btn-sm"
+                                style={{ padding: '8px 12px', height: '38px', marginLeft: 'auto' }}
+                                onClick={() => setFilters(prev => ({ ...prev, startDate: '', endDate: '' }))}
+                            >
+                                <X size={14} style={{ marginRight: '6px' }} /> Clear Dates
+                            </button>
                         )}
                     </div>
                 </div>

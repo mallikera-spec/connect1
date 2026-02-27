@@ -15,6 +15,7 @@ import ProfilePage from './features/profile/ProfilePage'
 import TimesheetPage from './features/timesheets/TimesheetPage'
 import DesignationsPage from './features/designations/DesignationsPage'
 import DeveloperCalendar from './features/reports/DeveloperCalendar'
+import QuotationPage from './features/quotations/QuotationPage'
 
 function AdminLayout({ children }) {
   return (
@@ -34,11 +35,11 @@ export default function App() {
       {/* Always accessible to any logged-in user */}
       <Route path="/dashboard" element={<AdminLayout><DashboardPage /></AdminLayout>} />
       <Route path="/profile/:userId?" element={<AdminLayout><ProfilePage /></AdminLayout>} />
-      <Route path="/timesheet" element={<AdminLayout><TimesheetPage /></AdminLayout>} />
+      <Route path="/timesheet" element={<AdminLayout><PermissionGate perm="view_timesheet"><TimesheetPage /></PermissionGate></AdminLayout>} />
 
       {/* Project Management */}
       <Route path="/projects" element={
-        <AdminLayout><ProjectsPage /></AdminLayout>
+        <AdminLayout><PermissionGate perm="view_projects"><ProjectsPage /></PermissionGate></AdminLayout>
       } />
       <Route path="/tasks" element={
         <AdminLayout><PermissionGate perm="view_tasks"><TasksPage /></PermissionGate></AdminLayout>
@@ -67,6 +68,11 @@ export default function App() {
       } />
       <Route path="/permissions" element={
         <AdminLayout><PermissionGate perm="manage_permissions"><PermissionsPage /></PermissionGate></AdminLayout>
+      } />
+
+      {/* Sales & Proposals */}
+      <Route path="/quotations" element={
+        <AdminLayout><PermissionGate perm="generate_quotations"><QuotationPage /></PermissionGate></AdminLayout>
       } />
 
       {/* Fallback */}

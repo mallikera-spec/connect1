@@ -3,6 +3,8 @@ import { Calendar, Filter, DollarSign, Clock, Users, Briefcase, FileText } from 
 import api from '../../lib/api'
 import toast from 'react-hot-toast'
 
+import DateRangePicker from '../../components/DateRangePicker'
+
 export default function DeveloperCalendar() {
     const [loading, setLoading] = useState(true)
     const [data, setData] = useState([])
@@ -38,11 +40,19 @@ export default function DeveloperCalendar() {
 
     return (
         <div style={{ maxWidth: 1400, margin: '0 auto' }}>
-            <div className="page-header">
+            <div className="page-header" style={{ alignItems: 'flex-start' }}>
                 <div>
                     <h1>Developer Calendar</h1>
                     <p>Track project allocations, working days, and development costs</p>
                 </div>
+                <DateRangePicker
+                    startDate={startDate}
+                    endDate={endDate}
+                    onRangeChange={(range) => {
+                        setStartDate(range.startDate);
+                        setEndDate(range.endDate);
+                    }}
+                />
             </div>
 
             {/* Quick Stats */}
@@ -81,14 +91,6 @@ export default function DeveloperCalendar() {
             {/* Filters */}
             <div className="card shadow-sm" style={{ marginBottom: 24, padding: 20 }}>
                 <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap', alignItems: 'flex-end' }}>
-                    <div className="form-group" style={{ marginBottom: 0 }}>
-                        <label className="form-label"><Calendar size={14} style={{ marginRight: 6 }} /> Range Start</label>
-                        <input type="date" className="form-input" value={startDate} onChange={e => setStartDate(e.target.value)} />
-                    </div>
-                    <div className="form-group" style={{ marginBottom: 0 }}>
-                        <label className="form-label">Range End</label>
-                        <input type="date" className="form-input" value={endDate} onChange={e => setEndDate(e.target.value)} />
-                    </div>
                     <div className="form-group" style={{ flex: 1, minWidth: 200, marginBottom: 0 }}>
                         <label className="form-label"><Briefcase size={14} style={{ marginRight: 6 }} /> Filter Project</label>
                         <select className="form-select" value={selectedProjectId} onChange={e => setSelectedProjectId(e.target.value)}>
