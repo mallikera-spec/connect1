@@ -9,6 +9,7 @@ import RolesPage from './features/roles/RolesPage'
 import PermissionsPage from './features/permissions/PermissionsPage'
 import DepartmentsPage from './features/departments/DepartmentsPage'
 import ProjectsPage from './features/projects/ProjectsPage'
+import ClientsList from './features/projects/ClientsList'
 import TasksPage from './features/tasks/TasksPage'
 import ReportsPage from './features/reports/ReportsPage'
 import ProfilePage from './features/profile/ProfilePage'
@@ -16,6 +17,8 @@ import TimesheetPage from './features/timesheets/TimesheetPage'
 import DesignationsPage from './features/designations/DesignationsPage'
 import DeveloperCalendar from './features/reports/DeveloperCalendar'
 import QuotationPage from './features/quotations/QuotationPage'
+import Leads from './features/sales/Leads'
+import SalesDashboard from './features/sales/SalesDashboard'
 
 function AdminLayout({ children }) {
   return (
@@ -40,6 +43,9 @@ export default function App() {
       {/* Project Management */}
       <Route path="/projects" element={
         <AdminLayout><PermissionGate perm="view_projects"><ProjectsPage /></PermissionGate></AdminLayout>
+      } />
+      <Route path="/clients" element={
+        <AdminLayout><PermissionGate perm="view_clients"><ClientsList /></PermissionGate></AdminLayout>
       } />
       <Route path="/tasks" element={
         <AdminLayout><PermissionGate perm="view_tasks"><TasksPage /></PermissionGate></AdminLayout>
@@ -73,6 +79,12 @@ export default function App() {
       {/* Sales & Proposals */}
       <Route path="/quotations" element={
         <AdminLayout><PermissionGate perm="generate_quotations"><QuotationPage /></PermissionGate></AdminLayout>
+      } />
+      <Route path="/sales-dashboard" element={
+        <AdminLayout><PermissionGate perm="view_leads"><SalesDashboard /></PermissionGate></AdminLayout>
+      } />
+      <Route path="/leads" element={
+        <AdminLayout><PermissionGate perm="view_leads"><Leads /></PermissionGate></AdminLayout>
       } />
 
       {/* Fallback */}

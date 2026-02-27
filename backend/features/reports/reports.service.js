@@ -310,3 +310,26 @@ export const getEmployeeOverview = async ({ startDate, endDate } = {}) => {
 
     return grouped;
 };
+
+export const getHROverview = async ({ startDate, endDate } = {}) => {
+    const { count: employeeCount } = await supabaseAdmin
+        .from('profiles')
+        .select('*', { count: 'exact', head: true });
+
+    const { data: depts } = await supabaseAdmin.from('profiles').select('department');
+    const uniqueDepts = new Set(depts?.filter(d => Boolean(d.department)).map(d => d.department)).size;
+
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+    const { data: recentHires } = await supabaseAdmin
+        .from('profiles')
+        .select('id, full_name, created_at, designation, department, avatar_url')
+        .gte('created_at', thirtyDaysAgo)
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+    return {
+        total_employees: employeeCount || 0,
+        total_departments: uniqueDepts || 0,
+        recent_hires: recentHires || []
+    };
+};

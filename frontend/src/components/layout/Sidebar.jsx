@@ -6,7 +6,7 @@ import {
     Users, ShieldCheck, Key, Building2, Briefcase,
     FolderKanban, ListTodo, BarChart3,
     ChevronLeft, ChevronRight, LogOut,
-    UserCircle, Clock, Calendar, FileText, Sparkles
+    UserCircle, Clock, Calendar, FileText, Sparkles, TrendingUp
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -41,9 +41,12 @@ const NAV = [
         ]
     },
     {
-        section: 'Sales & Proposals',
+        section: 'Marketing',
         icon: FileText,
         items: [
+            { to: '/sales-dashboard', label: 'Dashboard', icon: LayoutDashboard },
+            { to: '/leads', label: 'Leads', icon: TrendingUp },
+            { to: '/clients', label: 'Clients', perm: 'view_clients', icon: Building2 },
             { to: '/quotations', label: 'Quotation Builder', icon: Sparkles, perm: 'generate_quotations' },
         ]
     },

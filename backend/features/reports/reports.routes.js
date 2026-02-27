@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getProjectReport, getUserReport, getOverallReport, getMyReport, getDeveloperCalendar, getEmployeeOverview } from './reports.controller.js';
+import { getProjectReport, getUserReport, getOverallReport, getMyReport, getDeveloperCalendar, getEmployeeOverview, getHROverview } from './reports.controller.js';
 import { authMiddleware } from '../../middleware/auth.middleware.js';
 import { requirePermission } from '../../middleware/permission.middleware.js';
 
@@ -14,6 +14,7 @@ router.get('/project/:id', requirePermission('view_project_report'), getProjectR
 router.get('/user/:id', requirePermission('view_user_report'), getUserReport);
 router.get('/overall', requirePermission('view_overall_report'), getOverallReport);
 router.get('/employee-overview', requirePermission('view_overall_report'), getEmployeeOverview);
+router.get('/hr-overview', requirePermission('view_employees'), getHROverview);
 router.get('/calendar', requirePermission('view_reports'), getDeveloperCalendar);
 
 export default router;

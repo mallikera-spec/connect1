@@ -27,24 +27,32 @@ export const createUser = async (userData) => {
     return data;
 };
 
-export const getAllUsers = async () => {
-    const { data, error } = await supabaseAdmin
+export const getAllUsers = async (filters = {}) => {
+    let query = supabaseAdmin
         .from('profiles')
         .select(`
             id, full_name, email, department, designation, created_at,
             phone, address, date_of_birth, emergency_contact, bio, skills, ctc, avatar_url,
             date_of_joining,
             user_roles(role:roles(id, name))
-        `)
-        .order('created_at', { ascending: false });
+        `);
+
+    const { data, error } = await query.order('created_at', { ascending: false });
     if (error) throw error;
 
-    // Flatten roles array for convenience
-    return data.map(u => ({
+    // Flatten and filter
+    let users = data.map(u => ({
         ...u,
         roles: u.user_roles?.map(ur => ur.role?.name).filter(Boolean) ?? [],
         user_roles: undefined,
     }));
+
+    if (filters.role) {
+        const roles = filters.role.split(',').map(r => r.trim());
+        users = users.filter(u => u.roles.some(r => roles.includes(r)));
+    }
+
+    return users;
 };
 
 export const getUserById = async (id) => {

@@ -36,3 +36,9 @@ export const getEmployeeOverview = async (req, res) => {
     const data = await reportsService.getEmployeeOverview({ startDate, endDate });
     successResponse(res, data, 'Employee overview generated');
 };
+
+export const getHROverview = async (req, res) => {
+    const { startDate, endDate } = req.query;
+    const data = await reportsService.getHROverview({ startDate, endDate });
+    successResponse(res, data, 'HR overview generated');
+};

@@ -10,7 +10,7 @@ export const createUser = async (req, res) => {
 };
 
 export const getAllUsers = async (req, res) => {
-    const data = await usersService.getAllUsers();
+    const data = await usersService.getAllUsers(req.query);
     successResponse(res, data, 'Users fetched');
 };
 

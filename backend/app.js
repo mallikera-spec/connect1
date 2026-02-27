@@ -21,6 +21,8 @@ import projectFilesRoutes from './features/project-files/project-files.routes.js
 import projectNotesRoutes from './features/project-notes/project-notes.routes.js';
 import notificationRoutes from './features/notifications/notifications.routes.js';
 import quotationRoutes from './features/quotations/quotation.routes.js';
+import salesRoutes from './features/sales/sales.routes.js';
+import clientsRoutes from './features/clients/clients.routes.js';
 
 import { errorMiddleware } from './middleware/error.middleware.js';
 
@@ -56,6 +58,8 @@ app.use('/api/v1/project-files', projectFilesRoutes);
 app.use('/api/v1/project-notes', projectNotesRoutes);
 app.use('/api/v1/notifications', notificationRoutes);
 app.use('/api/v1/quotations', quotationRoutes);
+app.use('/api/v1/sales', salesRoutes);
+app.use('/api/v1/clients', clientsRoutes);
 
 // 404 handler
 app.use((_req, res) => {
