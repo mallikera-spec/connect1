@@ -1,9 +1,10 @@
-import { Plus, Search, Calendar, Filter, ChevronDown, ChevronUp, Briefcase, Eye, Edit2, Trash2, X, AlertCircle } from 'lucide-react';
+import { Plus, Search, Calendar, Filter, ChevronDown, ChevronUp, Briefcase, Eye, Edit2, Trash2, X, AlertCircle, UploadCloud, ChevronLeft, ChevronRight } from 'lucide-react';
 import { SalesService } from './SalesService';
 import { useAuth } from '../../context/AuthContext';
 import LeadDetailsModal from './LeadDetailsModal';
 import NewLeadModal from './NewLeadModal';
 import EditLeadModal from './EditLeadModal';
+import BulkUploadModal from './BulkUploadModal';
 import api from '../../lib/api';
 import toast from 'react-hot-toast';
 import { useState, useEffect } from 'react';
@@ -19,6 +20,11 @@ export default function Leads() {
     const [leads, setLeads] = useState([]);
     const [loading, setLoading] = useState(true);
     const [viewMode, setViewMode] = useState('board'); // 'list' or 'board'
+
+    // Pagination State
+    const [page, setPage] = useState(1);
+    const [limit, setLimit] = useState(50);
+    const [totalLeads, setTotalLeads] = useState(0);
 
     // Filters State - initialized from URL search params
     const [search, setSearch] = useState('');
@@ -45,12 +51,17 @@ export default function Leads() {
     const [bulkStatus, setBulkStatus] = useState('');
     const [isBulkAssigning, setIsBulkAssigning] = useState(false);
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+    const [isBulkUploadModalOpen, setIsBulkUploadModalOpen] = useState(false);
     const [allAgents, setAllAgents] = useState([]);
+
+    useEffect(() => {
+        setPage(1); // Reset to page 1 when filters change natively
+    }, [statusFilter, sourceFilter, assigned_agent_id, dateRange, sortBy, sortOrder]);
 
     useEffect(() => {
         fetchData();
         fetchAgents();
-    }, [statusFilter, sourceFilter, assigned_agent_id, dateRange, sortBy, sortOrder]);
+    }, [page, limit, statusFilter, sourceFilter, assigned_agent_id, dateRange, sortBy, sortOrder]);
 
     const fetchAgents = async () => {
         try {
@@ -100,10 +111,13 @@ export default function Leads() {
                 startDate: dateRange.start,
                 endDate: dateRange.end,
                 sortBy,
-                sortOrder
+                sortOrder,
+                page,
+                limit
             };
             const leadsRes = await SalesService.getLeads(params);
-            setLeads(leadsRes.data);
+            setLeads(leadsRes.data || []);
+            setTotalLeads(leadsRes.pagination?.total || 0);
         } catch (err) {
             console.error('Failed to fetch sales data:', err);
         } finally {
@@ -112,7 +126,10 @@ export default function Leads() {
     };
 
     const handleSearchEnter = (e) => {
-        if (e.key === 'Enter') fetchData();
+        if (e.key === 'Enter') {
+            setPage(1);
+            fetchData();
+        }
     };
 
     const handleSort = (field) => {
@@ -223,6 +240,11 @@ export default function Leads() {
                         </button>
                     </div>
 
+                    {isAdmin && (
+                        <button className="btn btn-secondary" onClick={() => setIsBulkUploadModalOpen(true)} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <UploadCloud size={18} /> Bulk Upload
+                        </button>
+                    )}
                     <button className="btn btn-primary" onClick={() => setIsAddModalOpen(true)} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <Plus size={18} /> New Lead
                     </button>
@@ -298,7 +320,7 @@ export default function Leads() {
                         <input type="date" className="filter-input-minimal" style={{ width: '110px' }} value={dateRange.end} onChange={e => setDateRange(p => ({ ...p, end: e.target.value }))} />
                     </div>
 
-                    <button className="btn btn-secondary" onClick={fetchData} style={{ height: '40px' }}>Apply</button>
+                    <button className="btn btn-secondary" onClick={() => { setPage(1); fetchData(); }} style={{ height: '40px' }}>Apply</button>
                 </div>
             </div>
 
@@ -409,6 +431,48 @@ export default function Leads() {
                                 )}
                             </tbody>
                         </table>
+                        
+                        {/* Pagination Footer */}
+                        {totalLeads > 0 && viewMode === 'list' && (
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 20px', borderTop: '1px solid var(--border)' }}>
+                                <div style={{ fontSize: '13px', color: 'var(--text-dim)' }}>
+                                    Showing {((page - 1) * limit) + 1} to {Math.min(page * limit, totalLeads)} of {totalLeads} leads
+                                </div>
+                                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                    <select 
+                                        className="form-select-minimal" 
+                                        style={{ width: '85px', marginRight: '16px' }}
+                                        value={limit} 
+                                        onChange={(e) => { setLimit(Number(e.target.value)); setPage(1); }}
+                                    >
+                                        <option value="10">10 / page</option>
+                                        <option value="50">50 / page</option>
+                                        <option value="100">100 / page</option>
+                                        <option value="500">500 / page</option>
+                                    </select>
+                                    
+                                    <button 
+                                        className="btn-icon" 
+                                        style={{ border: '1px solid var(--border)', background: 'var(--bg-app)' }}
+                                        disabled={page === 1} 
+                                        onClick={() => setPage(p => Math.max(1, p - 1))}
+                                    >
+                                        <ChevronLeft size={16} />
+                                    </button>
+                                    <span style={{ fontSize: '13px', fontWeight: 600, minWidth: '30px', textAlign: 'center' }}>
+                                        {page}
+                                    </span>
+                                    <button 
+                                        className="btn-icon" 
+                                        style={{ border: '1px solid var(--border)', background: 'var(--bg-app)' }}
+                                        disabled={page * limit >= totalLeads} 
+                                        onClick={() => setPage(p => p + 1)}
+                                    >
+                                        <ChevronRight size={16} />
+                                    </button>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
             )}
@@ -457,6 +521,13 @@ export default function Leads() {
                 </div>
             )}
 
+            <BulkUploadModal
+                isOpen={isBulkUploadModalOpen}
+                onClose={() => setIsBulkUploadModalOpen(false)}
+                onSuccess={fetchData}
+                agents={allAgents}
+                currentUser={currentUser}
+            />
             {isAddModalOpen && <NewLeadModal onClose={() => setIsAddModalOpen(false)} onSaved={fetchData} />}
             {editingLeadId && <EditLeadModal leadId={editingLeadId} onClose={() => setEditingLeadId(null)} onSaved={fetchData} />}
             {selectedLeadId && <LeadDetailsModal leadId={selectedLeadId} onClose={() => setSelectedLeadId(null)} onSaved={fetchData} />}

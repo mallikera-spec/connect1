@@ -9,11 +9,14 @@ export const getProjectNotes = async (req, res) => {
 
 export const createNote = async (req, res) => {
     const { projectId } = req.params;
-    const { content } = req.body;
+    const { content, type = 'meeting', title, meta } = req.body;
 
     const note = await projectNotesService.addNote({
         project_id: projectId,
         content,
+        type,
+        title: title || null,
+        meta: meta || null,
         created_by: req.user.id
     });
 
@@ -22,9 +25,12 @@ export const createNote = async (req, res) => {
 
 export const editNote = async (req, res) => {
     const { id } = req.params;
-    const { content } = req.body;
-
-    const note = await projectNotesService.updateNote(id, content);
+    const { content, title, meta } = req.body;
+    const updates = {};
+    if (content !== undefined) updates.content = content;
+    if (title !== undefined) updates.title = title;
+    if (meta !== undefined) updates.meta = meta;
+    const note = await projectNotesService.updateNote(id, updates);
     res.json({ success: true, data: note });
 };
 

@@ -33,7 +33,7 @@ export const getAllUsers = async (filters = {}) => {
         .select(`
             id, full_name, email, department, designation, created_at,
             phone, address, date_of_birth, emergency_contact, bio, skills, ctc, avatar_url,
-            date_of_joining,
+            date_of_joining, joining_date, base_salary,
             user_roles(role:roles(id, name))
         `);
 
@@ -61,7 +61,7 @@ export const getUserById = async (id) => {
         .select(`
             id, full_name, email, department, designation, created_at,
             phone, address, date_of_birth, emergency_contact, bio, skills, ctc, avatar_url,
-            date_of_joining,
+            date_of_joining, joining_date, base_salary,
             user_roles(role:roles(id, name))
         `)
         .eq('id', id)

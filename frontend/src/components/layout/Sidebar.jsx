@@ -28,13 +28,15 @@ const NAV = [
             { to: '/tasks', label: 'Tasks', perm: 'view_tasks', icon: ListTodo },
             { to: '/timesheet', label: 'Timesheet', perm: 'view_timesheet', icon: Clock },
             { to: '/reports', label: 'Reports', perm: 'view_overall_report', icon: BarChart3 },
-            { to: '/developer-calendar', label: 'Dev Calendar', perm: 'view_reports', icon: Calendar },
+            { to: '/admin-dev-calendar', label: 'Developer Calendar', perm: 'view_employees', icon: Calendar },
         ]
     },
     {
         section: 'HR & Operations',
         icon: Users,
         items: [
+            { to: '/hr-dashboard', icon: Clock, label: 'My HR' },
+            { to: '/hr-admin', icon: Briefcase, label: 'HR Admin', perm: 'view_employees' },
             { to: '/departments', icon: Building2, label: 'Departments', perm: 'view_departments' },
             { to: '/designations', icon: Briefcase, label: 'Designations', perm: 'manage_designations' },
             { to: '/users', icon: Users, label: 'Employees', perm: 'view_employees' },
@@ -43,9 +45,10 @@ const NAV = [
     {
         section: 'Marketing',
         icon: FileText,
+        sectionPerm: 'view_leads',
         items: [
-            { to: '/sales-dashboard', label: 'Dashboard', icon: LayoutDashboard },
-            { to: '/leads', label: 'Leads', icon: TrendingUp },
+            { to: '/sales-dashboard', label: 'Dashboard', icon: LayoutDashboard, perm: 'view_leads' },
+            { to: '/leads', label: 'Leads', icon: TrendingUp, perm: 'view_leads' },
             { to: '/clients', label: 'Clients', perm: 'view_clients', icon: Building2 },
             { to: '/quotations', label: 'Quotation Builder', icon: Sparkles, perm: 'generate_quotations' },
         ]

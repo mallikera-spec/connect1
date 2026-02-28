@@ -32,8 +32,17 @@ export const getLeads = async (req, res, next) => {
             filters.assigned_agent_id = req.user.id;
         }
 
-        const leads = await salesService.getAllLeads(filters);
-        res.json({ success: true, data: leads });
+        const result = await salesService.getAllLeads(filters);
+        res.json({ 
+            success: true, 
+            data: result.leads,
+            pagination: {
+                total: result.total,
+                page: result.page,
+                limit: result.limit,
+                totalPages: Math.ceil(result.total / result.limit)
+            }
+        });
     } catch (error) {
         next(error);
     }
@@ -212,6 +221,32 @@ export const bulkDeleteLeads = async (req, res, next) => {
 
         const data = await salesService.bulkDeleteLeads(leadIds);
         res.json({ success: true, data, message: `${data.length} leads deleted successfully` });
+    } catch (error) {
+        next(error);
+    }
+};
+
+/**
+ * Controller to handle bulk upload of leads via CSV parsed data.
+ */
+export const bulkUploadLeads = async (req, res, next) => {
+    try {
+        const { leadsData, assigned_agent_id } = req.body;
+
+        if (!leadsData || !Array.isArray(leadsData) || leadsData.length === 0) {
+            return res.status(400).json({ success: false, message: 'Invalid or empty leads data provided' });
+        }
+
+        const insertedCount = await salesService.bulkUploadLeads(
+            leadsData,
+            req.user.id,
+            assigned_agent_id
+        );
+
+        res.status(201).json({
+            success: true,
+            message: `Successfully uploaded ${insertedCount} leads.`
+        });
     } catch (error) {
         next(error);
     }

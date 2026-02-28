@@ -17,12 +17,15 @@ import tasksRoutes from './features/tasks/tasks.routes.js';
 import reportsRoutes from './features/reports/reports.routes.js';
 import profileRoutes from './features/profile/profile.routes.js';
 import timesheetsRoutes from './features/timesheets/timesheets.routes.js';
+import timeTrackingRoutes from './features/time-tracking/time-tracking.routes.js';
+import hrRoutes from './features/hr/hr.routes.js';
 import projectFilesRoutes from './features/project-files/project-files.routes.js';
 import projectNotesRoutes from './features/project-notes/project-notes.routes.js';
 import notificationRoutes from './features/notifications/notifications.routes.js';
 import quotationRoutes from './features/quotations/quotation.routes.js';
 import salesRoutes from './features/sales/sales.routes.js';
 import clientsRoutes from './features/clients/clients.routes.js';
+import milestonesRoutes from './features/milestones/milestones.routes.js';
 
 import { errorMiddleware } from './middleware/error.middleware.js';
 
@@ -33,7 +36,8 @@ app.use(cors({
     origin: '*',
     credentials: true,
 }));
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(morgan('dev'));
 
 // Health check
@@ -54,12 +58,16 @@ app.use('/api/v1/tasks', tasksRoutes);
 app.use('/api/v1/reports', reportsRoutes);
 app.use('/api/v1/profile', profileRoutes);
 app.use('/api/v1/timesheets', timesheetsRoutes);
+app.use('/api/profile', profileRoutes);
+app.use('/api/tasks/time-tracking', timeTrackingRoutes);
+app.use('/api/hr', hrRoutes);
 app.use('/api/v1/project-files', projectFilesRoutes);
 app.use('/api/v1/project-notes', projectNotesRoutes);
 app.use('/api/v1/notifications', notificationRoutes);
 app.use('/api/v1/quotations', quotationRoutes);
 app.use('/api/v1/sales', salesRoutes);
 app.use('/api/v1/clients', clientsRoutes);
+app.use('/api/v1/milestones', milestonesRoutes);
 
 // 404 handler
 app.use((_req, res) => {

@@ -4,6 +4,7 @@ import { Plus, Pencil, Trash2, Search, UserPlus, ShieldPlus, X, Users, FileText,
 import api from '../../lib/api'
 import toast from 'react-hot-toast'
 import { useAuth } from '../../context/AuthContext'
+import { useSortable, SortableHeader } from '../../hooks/useSortable'
 
 function Modal({ title, onClose, onSubmit, loading, children, saveLabel = 'Save' }) {
     return (
@@ -252,6 +253,8 @@ export default function UsersPage() {
         u.email?.toLowerCase().includes(search.toLowerCase())
     )
 
+    const { sorted: sortedUsers, sortKey, sortDir, toggleSort } = useSortable(filtered, 'full_name', 'asc')
+
     return (
         <div>
             <div className="page-header">
@@ -269,21 +272,21 @@ export default function UsersPage() {
                     </div>
                 </div>
 
-                {loading ? <div className="page-loader"><div className="spinner" /></div> : (
-                    <table>
-                        <thead><tr>
-                            <th>Name</th>
-                            <th>Email</th>
-                            <th>Department</th>
-                            <th>Designation</th>
-                            <th>Roles</th>
-                            <th>Actions</th>
-                        </tr></thead>
-                        <tbody>
-                            {filtered.length === 0 && (
-                                <tr><td colSpan={6}><div className="empty-state"><p>No users found</p></div></td></tr>
-                            )}
-                            {filtered.map(u => (
+                    {loading ? <div className="page-loader"><div className="spinner" /></div> : (
+                        <table>
+                            <thead><tr>
+                                <SortableHeader sortKey="full_name" label="Name" currentSortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+                                <SortableHeader sortKey="email" label="Email" currentSortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+                                <SortableHeader sortKey="department" label="Department" currentSortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+                                <SortableHeader sortKey="designation" label="Designation" currentSortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+                                <th>Roles</th>
+                                <th>Actions</th>
+                            </tr></thead>
+                            <tbody>
+                                {sortedUsers.length === 0 && (
+                                    <tr><td colSpan={6}><div className="empty-state"><p>No users found</p></div></td></tr>
+                                )}
+                                {sortedUsers.map(u => (
                                 <tr key={u.id}>
                                     <td><strong>{u.full_name}</strong></td>
                                     <td style={{ color: 'var(--text-muted)', fontSize: 13 }}>{u.email}</td>

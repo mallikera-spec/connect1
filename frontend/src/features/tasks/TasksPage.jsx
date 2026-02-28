@@ -8,7 +8,7 @@ import { useAuth } from '../../context/AuthContext'
 const PRIORITY_BADGE = { low: 'badge-blue', medium: 'badge-yellow', high: 'badge-red' }
 const STATUS_BADGE = { pending: 'badge-gray', in_progress: 'badge-yellow', done: 'badge-green' }
 
-const EMPTY_FORM = { project_id: '', title: '', description: '', assigned_to: '', status: 'pending', priority: 'medium', estimated_hours: '', actual_hours: '' }
+const EMPTY_FORM = { project_id: '', title: '', description: '', assigned_to: '', status: 'pending', priority: 'medium', estimated_hours: '', actual_hours: '', end_time: '' }
 
 import DateRangePicker from '../../components/DateRangePicker'
 
@@ -42,7 +42,7 @@ export default function TasksPage() {
         Promise.all([
             api.get('/tasks', { params }),
             api.get('/projects'),
-            isManager ? api.get('/users') : Promise.resolve({ data: { data: [] } }),
+            isManager ? api.get('/users', { params: { role: 'developer' } }) : Promise.resolve({ data: { data: [] } }),
         ])
             .then(([t, p, u]) => {
                 const taskList = t.data.data
@@ -87,6 +87,7 @@ export default function TasksPage() {
             priority: t.priority || 'medium',
             estimated_hours: t.estimated_hours || '',
             actual_hours: t.actual_hours || '',
+            end_time: t.end_time ? t.end_time.slice(0, 10) : '',
         })
         setModal('edit')
     }
@@ -99,9 +100,13 @@ export default function TasksPage() {
             ...form,
             estimated_hours: form.estimated_hours ? Number(form.estimated_hours) : undefined,
             actual_hours: form.actual_hours ? Number(form.actual_hours) : undefined,
+            assigned_to: form.assigned_to || undefined,
+            end_time: form.end_time || undefined,
         }
         if (!payload.estimated_hours) delete payload.estimated_hours
         if (!payload.actual_hours) delete payload.actual_hours
+        if (!payload.assigned_to) delete payload.assigned_to
+        if (!payload.end_time) delete payload.end_time
         try { await api.post('/tasks', payload); toast.success('Task created'); load(); closeModal() }
         catch (err) { toast.error(err.message) }
         finally { setSaving(false) }
@@ -113,9 +118,13 @@ export default function TasksPage() {
             ...form,
             estimated_hours: form.estimated_hours ? Number(form.estimated_hours) : undefined,
             actual_hours: form.actual_hours ? Number(form.actual_hours) : undefined,
+            assigned_to: form.assigned_to || undefined,
+            end_time: form.end_time || undefined,
         }
         if (!payload.estimated_hours) delete payload.estimated_hours
         if (!payload.actual_hours) delete payload.actual_hours
+        if (!payload.assigned_to) delete payload.assigned_to
+        if (!payload.end_time) delete payload.end_time
         try { await api.patch(`/tasks/${selected.id}`, payload); toast.success('Task updated'); load(); closeModal() }
         catch (err) { toast.error(err.message) }
         finally { setSaving(false) }
@@ -189,6 +198,10 @@ export default function TasksPage() {
                 <label className="form-label">Actual Hours (manual)</label>
                 <input type="number" step="0.5" min="0" className="form-input" value={form.actual_hours} onChange={f('actual_hours')} placeholder="0.0" />
             </div>
+            <div className="form-group">
+                <label className="form-label"><Calendar size={13} style={{ marginRight: 4, verticalAlign: 'middle' }} />Due Date</label>
+                <input type="date" className="form-input" value={form.end_time ? form.end_time.slice(0, 10) : ''} onChange={f('end_time')} />
+            </div>
         </>
     )
 
@@ -240,10 +253,10 @@ export default function TasksPage() {
                 {loading ? <div className="page-loader"><div className="spinner" /></div> : (
                     <table>
                         <thead><tr>
-                            <th>Title</th><th>Project</th><th>Assignee</th><th>Status</th><th>Priority</th><th>Est / Actual (h)</th><th>Actions</th>
+                            <th>Title</th><th>Project</th><th>Assignee</th><th>Status</th><th>Priority</th><th>Est / Actual (h)</th><th>Due Date</th><th>Actions</th>
                         </tr></thead>
                         <tbody>
-                            {tasks.length === 0 && <tr><td colSpan={7}><div className="empty-state"><p>No tasks found</p></div></td></tr>}
+                            {tasks.length === 0 && <tr><td colSpan={8}><div className="empty-state"><p>No tasks found</p></div></td></tr>}
                             {(tasks || []).map(t => (
                                 <tr key={t.id}>
                                     <td><strong style={{ fontSize: 13 }}>{t.title}</strong></td>
@@ -253,6 +266,22 @@ export default function TasksPage() {
                                     <td><span className={`badge ${PRIORITY_BADGE[t.priority] || 'badge-gray'}`}>{t.priority}</span></td>
                                     <td style={{ fontSize: 12, color: 'var(--text-muted)' }}>
                                         {t.estimated_hours || '—'} / {t.actual_hours?.toFixed(1) || '—'}
+                                    </td>
+                                    <td>
+                                        {t.end_time ? (() => {
+                                            const due = new Date(t.end_time)
+                                            const isOverdue = due < new Date() && t.status !== 'done'
+                                            return (
+                                                <span style={{
+                                                    fontSize: 12, fontWeight: 600,
+                                                    color: isOverdue ? 'var(--danger)' : 'var(--text-muted)',
+                                                    display: 'flex', alignItems: 'center', gap: 4
+                                                }}>
+                                                    {isOverdue && <span title="Overdue">🔴</span>}
+                                                    {due.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: '2-digit' })}
+                                                </span>
+                                            )
+                                        })() : <span style={{ color: 'var(--text-dim)', fontSize: 12 }}>—</span>}
                                     </td>
                                     <td>
                                         <div className="actions-cell">

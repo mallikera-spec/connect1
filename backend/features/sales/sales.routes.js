@@ -12,6 +12,7 @@ router.post('/leads', salesController.createLead);
 router.get('/leads', salesController.getLeads);
 
 // Bulk Operations (Priortized and prefixed to avoid UUID collision)
+router.post('/leads/bulk/upload', salesController.bulkUploadLeads);
 router.patch('/leads/bulk/assign', salesController.bulkAssignLeads);
 router.patch('/leads/bulk/status', salesController.bulkUpdateStatus);
 router.delete('/leads/bulk/delete', salesController.bulkDeleteLeads);

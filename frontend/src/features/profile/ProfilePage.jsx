@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { User, Phone, MapPin, Calendar, Heart, FileText, Tag, DollarSign, Save, Building2, Briefcase, ArrowLeft } from 'lucide-react'
+import { User, Phone, MapPin, Calendar, Heart, FileText, Tag, DollarSign, Save, Building2, Briefcase, ArrowLeft, Lock, Eye, EyeOff } from 'lucide-react'
 import api from '../../lib/api'
 import toast from 'react-hot-toast'
 import { useAuth } from '../../context/AuthContext'
+import { supabase } from '../../lib/supabase'
 
 const SKILLS_HELP = 'Separate skills with commas (e.g. React, Node.js, SQL)'
 
@@ -21,6 +22,11 @@ export default function ProfilePage() {
     const [saving, setSaving] = useState(false)
     const [ctcSaving, setCtcSaving] = useState(false)
     const [report, setReport] = useState(null)
+
+    // Change password state
+    const [pwForm, setPwForm] = useState({ current: '', next: '', confirm: '' })
+    const [showPw, setShowPw] = useState(false)
+    const [pwSaving, setPwSaving] = useState(false)
 
     const isAdmin = hasPermission('manage_employees')
     const isEditingOther = !!userId && userId !== currentUser?.id
@@ -109,6 +115,30 @@ export default function ProfilePage() {
     }
 
     const f = (k) => (e) => setForm(p => ({ ...p, [k]: e.target.value }))
+
+    const handleChangePassword = async (e) => {
+        e.preventDefault()
+        if (pwForm.next.length < 6) return toast.error('Password must be at least 6 characters')
+        if (pwForm.next !== pwForm.confirm) return toast.error('Passwords do not match')
+        setPwSaving(true)
+        try {
+            // Re-authenticate with current password first
+            const { error: signInErr } = await supabase.auth.signInWithPassword({
+                email: currentUser.email,
+                password: pwForm.current,
+            })
+            if (signInErr) { toast.error('Current password is incorrect'); return }
+
+            const { error } = await supabase.auth.updateUser({ password: pwForm.next })
+            if (error) throw error
+            toast.success('Password changed successfully!')
+            setPwForm({ current: '', next: '', confirm: '' })
+        } catch (err) {
+            toast.error(err.message || 'Failed to change password')
+        } finally {
+            setPwSaving(false)
+        }
+    }
 
     if (loading) return <div className="page-loader"><div className="spinner" /></div>
 
@@ -373,6 +403,72 @@ export default function ProfilePage() {
                             <button type="submit" className="btn btn-primary" disabled={ctcSaving || !ctcTarget.userId || !ctcTarget.ctc} style={{ marginBottom: 1 }}>
                                 {ctcSaving ? <span className="spinner" style={{ width: 16, height: 16 }} /> : <><Save size={14} />Set CTC</>}
                             </button>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Change Password — only on own profile */}
+            {!isEditingOther && (
+                <div className="card shadow-sm" style={{ marginTop: 32, border: '1px solid var(--border)' }}>
+                    <div className="card-header" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '16px 20px', borderBottom: '1px solid var(--border)' }}>
+                        <Lock size={18} style={{ color: 'var(--accent)' }} />
+                        <h3 style={{ margin: 0, fontSize: 15 }}>Change Password</h3>
+                    </div>
+                    <div className="card-body" style={{ padding: 20 }}>
+                        <form onSubmit={handleChangePassword}>
+                            <div className="form-row">
+                                <div className="form-group" style={{ position: 'relative' }}>
+                                    <label className="form-label">Current Password</label>
+                                    <input
+                                        type={showPw ? 'text' : 'password'}
+                                        className="form-input"
+                                        placeholder="Enter current password"
+                                        value={pwForm.current}
+                                        onChange={e => setPwForm(p => ({ ...p, current: e.target.value }))}
+                                        required
+                                    />
+                                </div>
+                                <div className="form-group" style={{ position: 'relative' }}>
+                                    <label className="form-label">New Password</label>
+                                    <div style={{ position: 'relative' }}>
+                                        <input
+                                            type={showPw ? 'text' : 'password'}
+                                            className="form-input"
+                                            placeholder="Min. 6 characters"
+                                            value={pwForm.next}
+                                            onChange={e => setPwForm(p => ({ ...p, next: e.target.value }))}
+                                            required
+                                            style={{ paddingRight: 38 }}
+                                        />
+                                        <button type="button" onClick={() => setShowPw(v => !v)}
+                                            style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 4 }}>
+                                            {showPw ? <EyeOff size={15} /> : <Eye size={15} />}
+                                        </button>
+                                    </div>
+                                </div>
+                                <div className="form-group">
+                                    <label className="form-label">Confirm New Password</label>
+                                    <input
+                                        type={showPw ? 'text' : 'password'}
+                                        className="form-input"
+                                        placeholder="Re-enter new password"
+                                        value={pwForm.confirm}
+                                        onChange={e => setPwForm(p => ({ ...p, confirm: e.target.value }))}
+                                        required
+                                        style={{ borderColor: pwForm.confirm && pwForm.confirm !== pwForm.next ? 'var(--danger)' : undefined }}
+                                    />
+                                    {pwForm.confirm && pwForm.confirm !== pwForm.next && (
+                                        <span style={{ fontSize: 11, color: 'var(--danger)', marginTop: 4, display: 'block' }}>Passwords do not match</span>
+                                    )}
+                                </div>
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
+                                <button type="submit" className="btn btn-primary"
+                                    disabled={pwSaving || (pwForm.confirm && pwForm.confirm !== pwForm.next)}>
+                                    {pwSaving ? <span className="spinner" style={{ width: 16, height: 16 }} /> : <><Lock size={14} /> Change Password</>}
+                                </button>
+                            </div>
                         </form>
                     </div>
                 </div>

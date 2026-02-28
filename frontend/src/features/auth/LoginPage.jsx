@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import toast from 'react-hot-toast'
 
@@ -52,6 +52,12 @@ export default function LoginPage() {
                             onChange={e => setPassword(e.target.value)}
                             required
                         />
+                    </div>
+                    <div style={{ textAlign: 'right', marginTop: -8, marginBottom: 4 }}>
+                        <Link to="/forgot-password"
+                            style={{ fontSize: 12, color: 'var(--accent)', textDecoration: 'none', fontWeight: 500 }}>
+                            Forgot password?
+                        </Link>
                     </div>
                     <button className="login-submit" type="submit" disabled={loading}>
                         {loading ? 'Signing in…' : 'Sign in'}

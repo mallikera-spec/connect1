@@ -55,7 +55,7 @@ export default function ProjectsPage() {
 
     const openCreate = () => { setForm({ name: '', description: '' }); setModal('create') }
     const openEdit = (p) => { setSelected(p); setForm({ name: p.name, description: p.description || '' }); setModal('edit') }
-    const openDetails = (p) => { setSelected(p); setModal('details') }
+    const openDetails = (p) => navigate(`/projects/${p.id}`)
     const openDelete = (p) => { setSelected(p); setModal('delete') }
     const closeModal = () => { setModal(null); setSelected(null) }
 

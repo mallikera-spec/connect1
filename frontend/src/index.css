@@ -560,6 +560,7 @@ tbody td {
 }
 
 .form-input,
+.form-control,
 .form-select,
 .form-textarea {
   background: rgba(255, 255, 255, 0.04);
@@ -575,6 +576,7 @@ tbody td {
 }
 
 .form-input:focus,
+.form-control:focus,
 .form-select:focus,
 .form-textarea:focus {
   border-color: var(--accent-light);
@@ -582,7 +584,8 @@ tbody td {
   box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.2);
 }
 
-.form-input::placeholder {
+.form-input::placeholder,
+.form-control::placeholder {
   color: var(--text-dim);
 }
 
@@ -1235,6 +1238,7 @@ tbody td {
 }
 
 [data-theme="light"] .form-input,
+[data-theme="light"] .form-control,
 [data-theme="light"] .form-select,
 [data-theme="light"] .form-textarea {
   background: rgba(0, 0, 0, 0.03);

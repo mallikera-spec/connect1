@@ -18,7 +18,10 @@ export default function AdminTimesheet() {
 
     const [startDate, setStartDate] = useState(location.state?.startDate || todayISO())
     const [endDate, setEndDate] = useState(location.state?.endDate || todayISO())
-    const [viewUserIds, setViewUserIds] = useState(location.state?.viewUserId ? [location.state?.viewUserId] : [])
+    const [viewUserIds, setViewUserIds] = useState(
+        location.state?.viewUserId ? [location.state.viewUserId] : []
+        // empty = ALL users
+    )
     const [statusFilter, setStatusFilter] = useState(location.state?.statusFilter || '')
     const [allEntries, setAllEntries] = useState([])
     const [allUsers, setAllUsers] = useState([])
@@ -29,14 +32,10 @@ export default function AdminTimesheet() {
 
     const loadUsers = async () => {
         try {
-            const r = await api.get('/users')
+            const r = await api.get('/users', { params: { role: 'developer' } })
             const sorted = r.data.data.sort((a, b) => a.full_name.localeCompare(b.full_name))
             setAllUsers(sorted)
-            // Default to first user if nothing selected
-            if (viewUserIds.length === 0 && sorted.length > 0) {
-                const firstOther = sorted.find(u => u.id !== user?.id) || sorted[0]
-                if (firstOther) setViewUserIds([firstOther.id])
-            }
+            // Don't auto-select a single user — empty viewUserIds means "show all"
         } catch (_) { }
     }
 
@@ -53,6 +52,7 @@ export default function AdminTimesheet() {
             const params = {
                 startDate,
                 endDate,
+                // empty string = all users (backend handles it)
                 userIds: viewUserIds.length > 0 ? viewUserIds.join(',') : ''
             }
             const tsRes = await api.get('/timesheets', { params });
@@ -80,7 +80,7 @@ export default function AdminTimesheet() {
     }, [])
 
     useEffect(() => {
-        if (viewUserIds.length > 0) load()
+        load()
     }, [startDate, endDate, viewUserIds])
 
     const handleUpdate = async (entryId, updates) => {
@@ -184,14 +184,17 @@ export default function AdminTimesheet() {
             {/* Main Table */}
             <div className="table-wrapper shadow-sm">
                 {loading ? <div className="page-loader"><div className="spinner" /></div> : (
-                    <table className="modern-table">
+                    <table className="compact-ts-table">
                         <thead>
                             <tr>
-                                <th style={{ width: 150 }}>Date & Logged</th>
-                                <th style={{ width: 140 }}>Employee</th>
-                                <th style={{ width: 120 }}>Submitted Time</th>
-                                <th>Activity Details & Feedback</th>
-                                <th style={{ width: 130 }}>Status</th>
+                                <th style={{ width: 100 }}>Date</th>
+                                <th style={{ width: 60 }}>Hrs</th>
+                                <th style={{ width: 130 }}>Employee</th>
+                                <th style={{ width: 120 }}>Project</th>
+                                <th>Task / Notes</th>
+                                <th style={{ width: 90 }}>Submitted</th>
+                                <th style={{ width: 110 }}>Status</th>
+                                <th style={{ width: 220 }}>Feedback</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -208,58 +211,61 @@ export default function AdminTimesheet() {
                                 }
 
                                 if (filtered.length === 0) {
-                                    return <tr><td colSpan={5}><div className="empty-state">No entries found for criteria</div></td></tr>;
+                                    return <tr><td colSpan={8}><div className="empty-state">No entries found for criteria</div></td></tr>;
                                 }
 
                                 return filtered.map(e => (
                                     <tr key={e.id}>
                                         <td>
-                                            <div style={{ fontSize: 13, color: 'var(--text-muted)', fontWeight: 700 }}>{fmt(e.date)}</div>
-                                            <div style={{ fontWeight: 950, color: 'var(--accent)', fontSize: 18, marginTop: 4 }}>{e.hours_spent}</div>
-                                        </td>
-                                        <td style={{ fontWeight: 800 }}>{e.userName}</td>
-                                        <td>
-                                            <div style={{ fontSize: 11, fontWeight: 900, color: e.created_at ? 'var(--success)' : 'var(--text-dim)' }}>
-                                                {e.created_at ? new Date(e.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : 'NOT SUBMITTED'}
+                                            <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)' }}>
+                                                {new Date(e.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
                                             </div>
-                                        </td>
-                                        <td className="col-project">
-                                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                                                    <span className="badge-pill badge-purple" style={{ fontSize: 10, fontWeight: 950 }}>
-                                                        {(e.project?.name || e.task?.project?.name || 'In-House Project').toUpperCase()}
-                                                    </span>
-                                                    <div style={{ fontWeight: 900, fontSize: 16, color: '#000000' }}>{e.title}</div>
-                                                </div>
-
-                                                <div style={{ fontSize: 12, color: 'var(--text-muted)', background: 'rgba(0,0,0,0.02)', padding: '8px 12px', borderRadius: 8, borderLeft: '3px solid var(--border)' }}>
-                                                    {e.notes || 'No detailed notes provided.'}
-                                                    {e.task && <div style={{ fontSize: 11, fontWeight: 800, color: 'var(--text-dim)', marginTop: 4, display: 'flex', alignItems: 'center', gap: 4 }}><Link2 size={12} />{e.task.title}</div>}
-                                                </div>
-
-                                                {/* Admin Feedback Section integrated below */}
-                                                <div style={{ marginTop: 12, padding: '12px', background: 'rgba(124, 58, 237, 0.03)', borderRadius: 10, border: '1px dashed var(--border)' }}>
-                                                    <div style={{ fontSize: 10, fontWeight: 900, textTransform: 'uppercase', color: 'var(--accent)', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
-                                                        <Clock size={12} /> Admin Guidance & Feedback
-                                                    </div>
-                                                    <textarea
-                                                        className="form-input sm"
-                                                        style={{ fontSize: 13, minHeight: 60, background: 'white', fontWeight: 700 }}
-                                                        placeholder="Provide guidance or feedback to the developer..."
-                                                        defaultValue={e.admin_feedback || ''}
-                                                        onBlur={ev => handleUpdate(e.id, { admin_feedback: ev.target.value })}
-                                                    />
-                                                    {savingId === e.id && <div className="spinner-sm" style={{ marginTop: 8 }} />}
-                                                    {e.developer_reply && (
-                                                        <div className="dev-reply-pill" style={{ marginTop: 12, background: 'white' }}>
-                                                            <span className="dev-reply-label">Dev Response:</span> {e.developer_reply}
-                                                        </div>
-                                                    )}
-                                                </div>
+                                            <div style={{ fontSize: 10, color: 'var(--text-dim)' }}>
+                                                {new Date(e.date).toLocaleDateString('en-IN', { weekday: 'short' })}
                                             </div>
                                         </td>
                                         <td>
-                                            <span className={`badge-pill ${STATUS_BADGE[e.status]}`} style={{ fontWeight: 800, padding: '6px 14px' }}>{e.status?.replace('_', ' ').toUpperCase()}</span>
+                                            <span style={{ fontWeight: 800, color: 'var(--accent)', fontSize: 15 }}>{e.hours_spent}</span>
+                                            <span style={{ fontSize: 9, color: 'var(--text-dim)', marginLeft: 2 }}>h</span>
+                                        </td>
+                                        <td style={{ fontSize: 12, fontWeight: 600 }}>{e.userName}</td>
+                                        <td>
+                                            <span className="badge-pill badge-purple" style={{ fontSize: 9, padding: '2px 7px', fontWeight: 700 }}>
+                                                {(e.project?.name || e.task?.project?.name || 'In-House').toUpperCase()}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <div style={{ fontWeight: 600, fontSize: 13 }}>{e.title}</div>
+                                            {e.notes && (
+                                                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2, maxWidth: 360, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                    {e.notes}
+                                                </div>
+                                            )}
+                                            {e.developer_reply && (
+                                                <div style={{ fontSize: 10, color: '#34d399', marginTop: 2, fontWeight: 600 }}>
+                                                    ↩ {e.developer_reply}
+                                                </div>
+                                            )}
+                                        </td>
+                                        <td style={{ fontSize: 11, color: e.created_at ? 'var(--success)' : 'var(--text-dim)', fontWeight: 600 }}>
+                                            {e.created_at ? new Date(e.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : '—'}
+                                        </td>
+                                        <td>
+                                            <span className={`badge-pill ${STATUS_BADGE[e.status]}`} style={{ fontSize: 10, padding: '3px 9px', fontWeight: 700 }}>
+                                                {e.status?.replace('_', ' ').toUpperCase()}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <div style={{ position: 'relative' }}>
+                                                <input
+                                                    className="feedback-input"
+                                                    placeholder={e.admin_feedback ? '' : 'Add feedback…'}
+                                                    defaultValue={e.admin_feedback || ''}
+                                                    onBlur={ev => handleUpdate(e.id, { admin_feedback: ev.target.value })}
+                                                    title={e.admin_feedback || 'Add admin feedback'}
+                                                />
+                                                {savingId === e.id && <div className="spinner-sm" style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)' }} />}
+                                            </div>
                                         </td>
                                     </tr>
                                 ))
@@ -278,12 +284,12 @@ export default function AdminTimesheet() {
                     padding: 12px;
                     border-radius: 12px;
                     border: 1px solid var(--border);
-                    max-height: 150px;
+                    max-height: 120px;
                     overflow-y: auto;
                 }
                 .chip {
                     font-size: 11px;
-                    padding: 5px 14px;
+                    padding: 4px 12px;
                     border-radius: 100px;
                     background: var(--bg-card);
                     border: 1px solid var(--border);
@@ -299,17 +305,42 @@ export default function AdminTimesheet() {
                     color: var(--accent-light);
                     font-weight: 600;
                 }
-                .modern-table { width: 100%; border-collapse: separate; border-spacing: 0; }
-                .modern-table th { background: rgba(255, 255, 255, 0.02); padding: 14px 16px; text-align: left; font-size: 11px; text-transform: uppercase; color: var(--text-dim); letter-spacing: 0.05em; font-weight: 600; }
-                .modern-table td { padding: 18px 16px; border-bottom: 1px solid var(--border); vertical-align: top; }
-                .modern-table tr:hover td { background: var(--bg-card-hover); }
-                .form-input.sm { font-size: 12px; padding: 10px; background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 8px; color: var(--text); transition: all 0.2s; }
-                .form-input.sm:focus { border-color: var(--accent); outline: none; background: rgba(255,255,255,0.06); }
-                .spinner-sm { width: 14px; height: 14px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; }
-                .dev-reply-pill { margin-top: 8px; background: rgba(52, 211, 153, 0.1); color: #34d399; padding: 6px 10px; border-radius: 6px; font-size: 11px; border: 1px solid rgba(52, 211, 153, 0.2); }
-                .dev-reply-label { font-weight: 700; text-transform: uppercase; margin-right: 4px; }
+                .compact-ts-table { width: 100%; border-collapse: collapse; }
+                .compact-ts-table th {
+                    background: rgba(255,255,255,0.02);
+                    padding: 9px 12px;
+                    text-align: left;
+                    font-size: 10px;
+                    text-transform: uppercase;
+                    color: var(--text-dim);
+                    letter-spacing: 0.05em;
+                    font-weight: 700;
+                    border-bottom: 2px solid var(--border);
+                    white-space: nowrap;
+                }
+                .compact-ts-table td {
+                    padding: 8px 12px;
+                    border-bottom: 1px solid var(--border);
+                    vertical-align: middle;
+                }
+                .compact-ts-table tr:hover td { background: var(--bg-card-hover, rgba(255,255,255,0.02)); }
+                .feedback-input {
+                    width: 100%;
+                    font-size: 11px;
+                    padding: 5px 8px;
+                    background: rgba(124,58,237,0.04);
+                    border: 1px solid var(--border);
+                    border-radius: 6px;
+                    color: var(--text);
+                    outline: none;
+                    transition: border-color 0.2s;
+                }
+                .feedback-input:focus { border-color: var(--accent); background: rgba(124,58,237,0.08); }
+                .spinner-sm { width: 12px; height: 12px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; }
                 @keyframes spin { to { transform: rotate(360deg); } }
             `}</style>
         </div>
     )
 }
+
+

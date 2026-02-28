@@ -2,12 +2,15 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../lib/api';
 import { EmployeeCard } from './DashboardComponents';
+import { HRService } from '../hr/HRService';
+import { Clock, Calendar, ArrowRight } from 'lucide-react';
 
 export default function AdminDashboard({ dateRange }) {
     const navigate = useNavigate();
     const [stats, setStats] = useState(null);
     const [employeeOverview, setEmployeeOverview] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [hrStats, setHrStats] = useState({ pendingAttendance: 0, pendingLeaves: 0 });
 
     useEffect(() => {
         setLoading(true);
@@ -23,6 +26,17 @@ export default function AdminDashboard({ dateRange }) {
             })
             .catch(() => { })
             .finally(() => setLoading(false));
+
+        // Load HR pending counts independently  
+        Promise.all([
+            HRService.getPendingAttendance(),
+            HRService.getPendingLeaves(),
+        ]).then(([att, lv]) => {
+            setHrStats({
+                pendingAttendance: (att.data || []).length,
+                pendingLeaves: (lv.data || []).length,
+            });
+        }).catch(() => {});
     }, [dateRange]);
 
     if (loading) return <div className="page-loader"><div className="spinner" /></div>;
@@ -108,6 +122,39 @@ export default function AdminDashboard({ dateRange }) {
                             </button>
                         ))}
                     </div>
+                </div>
+            </div>
+
+            {/* HR Approvals */}
+            <div style={{ marginTop: 24, background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: '16px 20px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+                    <h3 style={{ fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>HR Approvals Needed</h3>
+                    <button className="btn btn-ghost btn-sm" onClick={() => navigate('/hr-admin')}
+                        style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
+                        Open HR Admin <ArrowRight size={13} />
+                    </button>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                    <button
+                        onClick={() => navigate('/hr-admin')}
+                        style={{ background: hrStats.pendingAttendance > 0 ? 'var(--warning-bg)' : 'rgba(255,255,255,0.03)', border: '1px solid var(--border)', borderRadius: 8, padding: '14px 16px', cursor: 'pointer', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 12 }}
+                    >
+                        <Clock size={20} style={{ color: hrStats.pendingAttendance > 0 ? 'var(--warning)' : 'var(--text-muted)' }} />
+                        <div>
+                            <div style={{ fontSize: 22, fontWeight: 700, color: hrStats.pendingAttendance > 0 ? 'var(--warning)' : 'var(--text)', lineHeight: 1 }}>{hrStats.pendingAttendance}</div>
+                            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>Pending Attendance</div>
+                        </div>
+                    </button>
+                    <button
+                        onClick={() => navigate('/hr-admin')}
+                        style={{ background: hrStats.pendingLeaves > 0 ? 'var(--info-bg)' : 'rgba(255,255,255,0.03)', border: '1px solid var(--border)', borderRadius: 8, padding: '14px 16px', cursor: 'pointer', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 12 }}
+                    >
+                        <Calendar size={20} style={{ color: hrStats.pendingLeaves > 0 ? 'var(--info)' : 'var(--text-muted)' }} />
+                        <div>
+                            <div style={{ fontSize: 22, fontWeight: 700, color: hrStats.pendingLeaves > 0 ? 'var(--info)' : 'var(--text)', lineHeight: 1 }}>{hrStats.pendingLeaves}</div>
+                            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>Pending Leaves</div>
+                        </div>
+                    </button>
                 </div>
             </div>
 

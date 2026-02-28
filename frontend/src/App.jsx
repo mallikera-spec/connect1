@@ -3,12 +3,15 @@ import ProtectedRoute from './components/ProtectedRoute'
 import PermissionGate from './components/PermissionGate'
 import DashboardLayout from './components/layout/DashboardLayout'
 import LoginPage from './features/auth/LoginPage'
+import ForgotPasswordPage from './features/auth/ForgotPasswordPage'
+import ResetPasswordPage from './features/auth/ResetPasswordPage'
 import DashboardPage from './features/dashboard/DashboardPage'
 import UsersPage from './features/users/UsersPage'
 import RolesPage from './features/roles/RolesPage'
 import PermissionsPage from './features/permissions/PermissionsPage'
 import DepartmentsPage from './features/departments/DepartmentsPage'
 import ProjectsPage from './features/projects/ProjectsPage'
+import ProjectDetailPage from './features/projects/ProjectDetailPage'
 import ClientsList from './features/projects/ClientsList'
 import TasksPage from './features/tasks/TasksPage'
 import ReportsPage from './features/reports/ReportsPage'
@@ -16,9 +19,12 @@ import ProfilePage from './features/profile/ProfilePage'
 import TimesheetPage from './features/timesheets/TimesheetPage'
 import DesignationsPage from './features/designations/DesignationsPage'
 import DeveloperCalendar from './features/reports/DeveloperCalendar'
+import AdminDevCalendar from './features/reports/AdminDevCalendar'
 import QuotationPage from './features/quotations/QuotationPage'
 import Leads from './features/sales/Leads'
 import SalesDashboard from './features/sales/SalesDashboard'
+import HRDashboard from './features/hr/HRDashboard'
+import HRAdminPanel from './features/hr/HRAdminPanel'
 
 function AdminLayout({ children }) {
   return (
@@ -33,6 +39,8 @@ export default function App() {
     <Routes>
       {/* Public */}
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route path="/" element={<Navigate to="/dashboard" replace />} />
 
       {/* Always accessible to any logged-in user */}
@@ -43,6 +51,9 @@ export default function App() {
       {/* Project Management */}
       <Route path="/projects" element={
         <AdminLayout><PermissionGate perm="view_projects"><ProjectsPage /></PermissionGate></AdminLayout>
+      } />
+      <Route path="/projects/:id" element={
+        <AdminLayout><PermissionGate perm="view_projects"><ProjectDetailPage /></PermissionGate></AdminLayout>
       } />
       <Route path="/clients" element={
         <AdminLayout><PermissionGate perm="view_clients"><ClientsList /></PermissionGate></AdminLayout>
@@ -56,6 +67,9 @@ export default function App() {
       <Route path="/developer-calendar" element={
         <AdminLayout><PermissionGate perm="view_reports"><DeveloperCalendar /></PermissionGate></AdminLayout>
       } />
+      <Route path="/admin-dev-calendar" element={
+        <AdminLayout><PermissionGate perm="view_reports"><AdminDevCalendar /></PermissionGate></AdminLayout>
+      } />
 
       {/* Employee Management */}
       <Route path="/departments" element={
@@ -66,6 +80,12 @@ export default function App() {
       } />
       <Route path="/users" element={
         <AdminLayout><PermissionGate perm="view_employees"><UsersPage /></PermissionGate></AdminLayout>
+      } />
+      <Route path="/hr-dashboard" element={
+        <AdminLayout><HRDashboard /></AdminLayout>
+      } />
+      <Route path="/hr-admin" element={
+        <AdminLayout><PermissionGate perm="view_employees"><HRAdminPanel /></PermissionGate></AdminLayout>
       } />
 
       {/* Access Control */}

@@ -27,8 +27,8 @@ export function NotificationProvider({ children }) {
     useEffect(() => {
         loadNotifications();
 
-        // Polling as a fallback if Realtime is not set up yet
-        const interval = setInterval(loadNotifications, 60000); // Every minute
+        // Poll every 20 seconds for new notifications
+        const interval = setInterval(loadNotifications, 20000);
         return () => clearInterval(interval);
     }, [loadNotifications]);
 

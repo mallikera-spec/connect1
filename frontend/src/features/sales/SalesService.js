@@ -57,6 +57,14 @@ export const SalesService = {
     },
 
     /**
+     * Uploads an array of leads in bulk via CSV.
+     */
+    bulkUploadLeads: async (leadsData, assigned_agent_id = null) => {
+        const response = await api.post('/sales/leads/bulk/upload', { leadsData, assigned_agent_id });
+        return response.data;
+    },
+
+    /**
      * Assigns multiple leads to a specific agent in bulk.
      */
     bulkAssignLeads: async (leadIds, assigned_agent_id) => {

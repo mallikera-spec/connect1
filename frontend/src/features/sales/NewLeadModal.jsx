@@ -45,7 +45,7 @@ export default function NewLeadModal({ onClose, onSaved }) {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (!formData.name) return toast.error('Lead name is required');
+        if (!formData.phone) return toast.error('Phone number is required');
 
         setIsSaving(true);
         try {
@@ -74,7 +74,7 @@ export default function NewLeadModal({ onClose, onSaved }) {
                 <form onSubmit={handleSubmit}>
                     <div className="modal-body" style={{ gap: '20px' }}>
                         <div className="form-group">
-                            <label className="form-label">Full Name *</label>
+                            <label className="form-label">Full Name</label>
                             <input
                                 className="form-control"
                                 placeholder="e.g. John Doe"
@@ -125,7 +125,7 @@ export default function NewLeadModal({ onClose, onSaved }) {
                             </div>
 
                             <div className="form-group">
-                                <label className="form-label">Phone Number</label>
+                                <label className="form-label">Phone Number *</label>
                                 <input
                                     className="form-control"
                                     placeholder="+1 (555) 000-0000"
@@ -207,13 +207,6 @@ export default function NewLeadModal({ onClose, onSaved }) {
                     </div>
                 </form>
             </div>
-
-            <style>{`
-                .form-control:focus {
-                    border-color: var(--accent);
-                    box-shadow: 0 0 0 2px rgba(124, 58, 237, 0.1);
-                }
-            `}</style>
         </div>
     );
 }

@@ -50,7 +50,7 @@ export const getAllLeads = async (filters = {}) => {
             assigned_agent:profiles!assigned_agent_id(id, full_name, email),
             owner:profiles!owner_id(id, full_name, email),
             follow_ups(id, type, status, scheduled_at)
-        `);
+        `, { count: 'exact' });
 
     if (filters.status) query = query.eq('status', filters.status);
     if (filters.assigned_agent_id) query = query.eq('assigned_agent_id', filters.assigned_agent_id);
@@ -80,9 +80,17 @@ export const getAllLeads = async (filters = {}) => {
     // For now we assume the frontend sends direct column names (e.g., 'deal_value', 'name', 'created_at')
     query = query.order(sortBy, { ascending: sortOrder === 'asc' });
 
-    const { data, error } = await query;
+    // Pagination (defaults to page 1, 50 items if not specified)
+    const page = parseInt(filters.page) || 1;
+    const limit = parseInt(filters.limit) || 50;
+    const from = (page - 1) * limit;
+    const to = from + limit - 1;
+
+    // We do a second query with just the count to avoid heavy selects if needed, 
+    // or just pass { count: 'exact' } to the main query.
+    const { data, error, count } = await query.range(from, to);
     if (error) throw error;
-    return data;
+    return { leads: data, total: count || 0, page, limit };
 };
 
 /**
@@ -210,14 +218,24 @@ export const deleteLead = async (id) => {
  * @param {string} agentId - Agent UUID.
  */
 export const bulkAssignLeads = async (leadIds, agentId) => {
-    const { data, error } = await supabaseAdmin
-        .from('leads')
-        .update({ assigned_agent_id: agentId || null })
-        .in('id', leadIds)
-        .select();
+    const chunked = [];
+    for (let i = 0; i < leadIds.length; i += 100) {
+        chunked.push(leadIds.slice(i, i + 100));
+    }
 
-    if (error) throw error;
-    return data;
+    const allData = [];
+    for (const chunk of chunked) {
+        const { data, error } = await supabaseAdmin
+            .from('leads')
+            .update({ assigned_agent_id: agentId || null })
+            .in('id', chunk)
+            .select();
+
+        if (error) throw error;
+        allData.push(...(data || []));
+    }
+
+    return allData;
 };
 
 /**
@@ -226,17 +244,26 @@ export const bulkAssignLeads = async (leadIds, agentId) => {
  * @param {string} status - New status.
  */
 export const bulkUpdateStatus = async (leadIds, status) => {
-    const { data, error } = await supabaseAdmin
-        .from('leads')
-        .update({ status })
-        .in('id', leadIds)
-        .select();
+    const chunked = [];
+    for (let i = 0; i < leadIds.length; i += 100) {
+        chunked.push(leadIds.slice(i, i + 100));
+    }
 
-    if (error) throw error;
+    const allData = [];
+    for (const chunk of chunked) {
+        const { data, error } = await supabaseAdmin
+            .from('leads')
+            .update({ status })
+            .in('id', chunk)
+            .select();
+
+        if (error) throw error;
+        allData.push(...(data || []));
+    }
 
     // Auto-convert to clients if status is 'Won'
-    if (status === 'Won' && data && data.length > 0) {
-        for (const lead of data) {
+    if (status === 'Won' && allData.length > 0) {
+        for (const lead of allData) {
             try {
                 await createClient({
                     company_name: lead.company || lead.name,
@@ -252,7 +279,7 @@ export const bulkUpdateStatus = async (leadIds, status) => {
         }
     }
 
-    return data;
+    return allData;
 };
 
 /**
@@ -260,14 +287,132 @@ export const bulkUpdateStatus = async (leadIds, status) => {
  * @param {Array<string>} leadIds - List of lead UUIDs.
  */
 export const bulkDeleteLeads = async (leadIds) => {
-    const { data, error } = await supabaseAdmin
-        .from('leads')
-        .delete()
-        .in('id', leadIds)
-        .select();
+    const chunked = [];
+    for (let i = 0; i < leadIds.length; i += 100) {
+        chunked.push(leadIds.slice(i, i + 100));
+    }
 
-    if (error) throw error;
-    return data;
+    const allData = [];
+    for (const chunk of chunked) {
+        const { data, error } = await supabaseAdmin
+            .from('leads')
+            .delete()
+            .in('id', chunk)
+            .select();
+
+        if (error) throw error;
+        allData.push(...(data || []));
+    }
+
+    return allData;
+};
+
+/**
+ * Bulk uploads an array of leads.
+ * @param {Array} leadsData - Array of lead objects parsed from CSV.
+ * @param {string} ownerId - ID of the user uploading the leads.
+ * @param {string} [defaultAssignedAgentId] - Optional default agent ID.
+ * @returns {Promise<number>} Number of leads inserted.
+ */
+export const bulkUploadLeads = async (leadsData, ownerId, defaultAssignedAgentId = null) => {
+    // 1. Fetch profiles to map BDM names/emails to their UUIDs
+    const { data: profiles } = await supabaseAdmin
+        .from('profiles')
+        .select('id, full_name, email');
+
+    const agentMap = {};
+    if (profiles) {
+        profiles.forEach(p => {
+            if (p.full_name) agentMap[p.full_name.toLowerCase().trim()] = p.id;
+            if (p.email) agentMap[p.email.toLowerCase().trim()] = p.id;
+        });
+    }
+
+    // 2. Sanitize and prepare data
+    const preparedLeads = leadsData.map(lead => {
+        let assigned_agent_id = defaultAssignedAgentId;
+        let bdmKey = null;
+        
+        // If CSV provided a BDM name or email, try to resolve it
+        if (lead.assigned_bdm && lead.assigned_bdm.trim()) {
+            bdmKey = lead.assigned_bdm.toLowerCase().trim();
+            if (agentMap[bdmKey]) {
+                assigned_agent_id = agentMap[bdmKey];
+            }
+        }
+
+        return {
+            name: lead.name,
+            company: lead.company || null,
+            email: lead.email || null,
+            phone: lead.phone || 'N/A', // fallback if empty but schema requires it
+            source: lead.source || 'Other',
+            status: lead.status || 'New',
+            score: parseInt(lead.score) || 1,
+            deal_value: parseFloat(lead.deal_value) || 0,
+            owner_id: ownerId,
+            assigned_agent_id: assigned_agent_id,
+            // Temporary field to hold the note for the secondary insert
+            _temp_note: lead.notes || null,
+            _temp_note_date: lead.notes_date || null,
+            _temp_original_agent: bdmKey || null
+        };
+    });
+
+    // 3. Separate actual DB fields from temp fields
+    const leadsToInsert = preparedLeads.map(({ _temp_note, _temp_note_date, _temp_original_agent, ...dbFields }) => dbFields);
+
+    // 4. Insert leads and get IDs back
+    const { data: insertedLeads, error } = await supabaseAdmin
+        .from('leads')
+        .insert(leadsToInsert)
+        .select('*');
+
+    if (error) {
+        console.error('Bulk upload error:', error);
+        throw new Error(`Failed to insert leads: ${error.message}`);
+    }
+
+    // 5. Create Follow-up records for leads that had notes
+    const followUpsToInsert = [];
+    
+    // We assume the returned `insertedLeads` array matches the order of `preparedLeads`.
+    // (Usually true for bulk inserts, but we map by index just in case)
+    insertedLeads.forEach((leadRow, index) => {
+        const correspondingTemp = preparedLeads[index];
+        if (correspondingTemp && correspondingTemp._temp_note && correspondingTemp._temp_note.trim() !== '') {
+            
+            // Validate and parse the date, fallback to current time if invalid
+            let historicalDate = new Date().toISOString();
+            if (correspondingTemp._temp_note_date) {
+                const parsedDate = new Date(correspondingTemp._temp_note_date);
+                if (!isNaN(parsedDate.valueOf())) historicalDate = parsedDate.toISOString();
+            }
+
+            followUpsToInsert.push({
+                lead_id: leadRow.id,
+                agent_id: correspondingTemp.assigned_agent_id || ownerId, // Attribute note to assigned BDM or uploader
+                type: 'Note',
+                status: 'Completed',
+                notes: `Historical Note (via CSV Import): ${correspondingTemp._temp_note}`,
+                created_at: historicalDate,
+                scheduled_at: historicalDate // Sync scheduled_at so it shows correctly in timeline orders
+            });
+        }
+    });
+
+    if (followUpsToInsert.length > 0) {
+        const { error: followUpError } = await supabaseAdmin
+            .from('follow_ups')
+            .insert(followUpsToInsert);
+            
+        if (followUpError) {
+            console.error('Failed to insert historical notes as follow_ups:', followUpError);
+            // We do not throw here to prevent failing the entire lead upload if only notes failed
+        }
+    }
+
+    return insertedLeads.length;
 };
 
 /* ── Follow-Up Operations ────────────────────────────────── */

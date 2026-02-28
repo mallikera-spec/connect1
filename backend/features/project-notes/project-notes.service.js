@@ -15,6 +15,7 @@ export const getNotesByProject = async (projectId) => {
 };
 
 export const addNote = async (noteData) => {
+    // noteData: { project_id, content, created_by, type, title, meta }
     const { data, error } = await supabaseAdmin
         .from('project_notes')
         .insert([noteData])
@@ -25,10 +26,10 @@ export const addNote = async (noteData) => {
     return data;
 };
 
-export const updateNote = async (noteId, content) => {
+export const updateNote = async (noteId, updates) => {
     const { data, error } = await supabaseAdmin
         .from('project_notes')
-        .update({ content })
+        .update(updates)
         .eq('id', noteId)
         .select()
         .single();
