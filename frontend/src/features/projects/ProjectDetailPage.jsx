@@ -90,8 +90,15 @@ export default function ProjectDetailPage() {
             setProject(pRes.data.data)
             setTasks(tRes.data.data || [])
             const allNotes = nRes.data.data || []
-            setTodos(allNotes.filter(n => n.type === 'todo'))
-            setNotes(allNotes.filter(n => n.type === 'meeting'))
+            // Resilient filtering — if type column has no data yet, treat all non-brd notes as meeting notes
+            const hasTypes = allNotes.some(n => n.type && n.type !== 'meeting')
+            if (hasTypes) {
+                setTodos(allNotes.filter(n => n.type === 'todo'))
+                setNotes(allNotes.filter(n => n.type === 'meeting'))
+            } else {
+                setTodos([])
+                setNotes(allNotes.filter(n => n.type !== 'brd'))
+            }
             const brdNote = allNotes.find(n => n.type === 'brd')
             setBrd(brdNote || null)
             setBrdContent(brdNote?.content || '')
@@ -111,6 +118,9 @@ export default function ProjectDetailPage() {
     }
 
     useEffect(() => { load() }, [id])
+
+    // Allow any user to add todos (not just canManage) — developers need this
+    const canAddTodo = canManage || hasPermission('view_project_notes')
 
     const addNote = async (type, content) => {
         if (!content.trim()) return
@@ -253,13 +263,18 @@ export default function ProjectDetailPage() {
             <div style={{ display: 'flex', gap: 4, marginBottom: 20, padding: '5px', background: 'rgba(255,255,255,0.03)', borderRadius: 10, border: '1px solid var(--border)', overflowX: 'auto', width: '100%' }}>
                 {[
                     { id: 'overview', icon: ListTodo, label: 'Tasks', count: tasks.length },
-                    { id: 'milestones', icon: Flag, label: 'Milestones', count: milestones.length },
                     { id: 'team', icon: Users, label: 'Team', count: members.length },
                     { id: 'todo', icon: CheckSquare, label: 'To-Do', count: todos.length },
                     { id: 'notes', icon: BookOpen, label: 'Meeting Notes', count: notes.length },
                     { id: 'brd', icon: FileText, label: 'BRD' },
                 ].map(t => <TabBtn key={t.id} {...t} active={tab === t.id} onClick={setTab} />)}
             </div>
+
+            {/* Two-column layout: main content + always-visible milestones panel */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: 20, alignItems: 'start' }}>
+
+            {/* LEFT: main tab content */}
+            <div>
 
             {/* ── TASKS ───────────────── */}
             {tab === 'overview' && (
@@ -302,108 +317,7 @@ export default function ProjectDetailPage() {
                 </Section>
             )}
 
-            {/* ── MILESTONES ──────────── */}
-            {tab === 'milestones' && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                    {/* Milestone progress */}
-                    {milestones.length > 0 && (
-                        <div className="card" style={{ padding: '14px 20px' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, fontSize: 13 }}>
-                                <span style={{ fontWeight: 600 }}>Milestone Progress</span>
-                                <span style={{ color: 'var(--accent)', fontWeight: 700 }}>{msDone}/{milestones.length} Completed</span>
-                            </div>
-                            <div style={{ height: 8, borderRadius: 99, background: 'var(--border)', overflow: 'hidden' }}>
-                                <div style={{ height: '100%', borderRadius: 99, background: 'linear-gradient(90deg,#10b981,#059669)', width: `${milestones.length ? (msDone / milestones.length) * 100 : 0}%`, transition: 'width 0.5s' }} />
-                            </div>
-                            {msOverdue.length > 0 && <div style={{ marginTop: 6, fontSize: 11, color: '#dc2626', fontWeight: 700 }}>🔴 {msOverdue.length} milestone{msOverdue.length > 1 ? 's' : ''} overdue</div>}
-                        </div>
-                    )}
-
-                    {canManage && (showMsForm || editingMs) ? (
-                        <div className="card" style={{ padding: 20 }}>
-                            <h3 style={{ fontSize: 14, fontWeight: 700, marginBottom: 14 }}>{editingMs ? 'Edit Milestone' : 'New Milestone'}</h3>
-                            <form onSubmit={saveMilestone}>
-                                <div className="form-row">
-                                    <div className="form-group" style={{ flex: 2 }}>
-                                        <label className="form-label">Milestone Title *</label>
-                                        <input className="form-input" placeholder="e.g. MVP Launch" value={newMs.title} onChange={e => setNewMs(p => ({ ...p, title: e.target.value }))} required />
-                                    </div>
-                                    <div className="form-group">
-                                        <label className="form-label"><Calendar size={12} style={{ marginRight: 4 }} />Due Date</label>
-                                        <input type="date" className="form-input" value={newMs.due_date} onChange={e => setNewMs(p => ({ ...p, due_date: e.target.value }))} />
-                                    </div>
-                                    <div className="form-group">
-                                        <label className="form-label">Status</label>
-                                        <select className="form-select" value={newMs.status} onChange={e => setNewMs(p => ({ ...p, status: e.target.value }))}>
-                                            <option value="pending">Pending</option>
-                                            <option value="in_progress">In Progress</option>
-                                            <option value="completed">Completed</option>
-                                        </select>
-                                    </div>
-                                </div>
-                                <div className="form-group">
-                                    <label className="form-label">Description</label>
-                                    <textarea className="form-textarea" rows={2} placeholder="Describe what this milestone means…" value={newMs.description} onChange={e => setNewMs(p => ({ ...p, description: e.target.value }))} style={{ resize: 'vertical' }} />
-                                </div>
-                                <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-                                    <button type="button" className="btn btn-ghost btn-sm" onClick={() => { setShowMsForm(false); setEditingMs(null); setNewMs({ title: '', description: '', due_date: '', status: 'pending' }) }}><X size={13} /> Cancel</button>
-                                    <button type="submit" className="btn btn-primary btn-sm" disabled={saving}><Save size={13} /> {editingMs ? 'Update' : 'Add Milestone'}</button>
-                                </div>
-                            </form>
-                        </div>
-                    ) : canManage && (
-                        <button className="btn btn-primary btn-sm" style={{ alignSelf: 'flex-start' }} onClick={() => setShowMsForm(true)}>
-                            <Plus size={14} /> Add Milestone
-                        </button>
-                    )}
-
-                    {milestones.length === 0 && !showMsForm && <div className="card"><div className="empty-state"><p>No milestones yet</p></div></div>}
-
-                    {/* Milestone timeline */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                        {milestones.map((ms, i) => {
-                            const isOverdue = ms.due_date && new Date(ms.due_date) < today && ms.status !== 'completed'
-                            const msColor = MS_STATUS[ms.status]?.color || '#6b7280'
-                            return (
-                                <div key={ms.id} className="card" style={{ padding: 0, overflow: 'hidden', borderLeft: `4px solid ${msColor}` }}>
-                                    <div style={{ padding: '14px 18px' }}>
-                                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
-                                            <div style={{ marginTop: 2, background: msColor + '22', color: msColor, padding: 6, borderRadius: 8 }}>
-                                                <Flag size={16} />
-                                            </div>
-                                            <div style={{ flex: 1, minWidth: 0 }}>
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                                                    <span style={{ fontWeight: 700, fontSize: 15 }}>{ms.title}</span>
-                                                    <span style={{ background: msColor + '22', color: msColor, fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 99 }}>{MS_STATUS[ms.status]?.label}</span>
-                                                    {ms.due_date && (
-                                                        <span style={{ fontSize: 11, color: isOverdue ? '#dc2626' : 'var(--text-muted)', fontWeight: isOverdue ? 700 : 500, display: 'flex', alignItems: 'center', gap: 4 }}>
-                                                            <Calendar size={11} />
-                                                            {isOverdue && '🔴 '}
-                                                            Due: {new Date(ms.due_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
-                                                        </span>
-                                                    )}
-                                                </div>
-                                                {ms.description && <p style={{ margin: '6px 0 0', fontSize: 13, color: 'var(--text-muted)' }}>{ms.description}</p>}
-                                            </div>
-                                            {canManage && (
-                                                <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-                                                    {ms.status !== 'completed' && (
-                                                        <button className="btn btn-ghost btn-sm" style={{ fontSize: 11, padding: '4px 10px' }} onClick={() => updateMsStatus(ms, ms.status === 'pending' ? 'in_progress' : 'completed')} title="Advance Status">
-                                                            <Check size={13} /> {ms.status === 'pending' ? 'Start' : 'Complete'}
-                                                        </button>
-                                                    )}
-                                                    <button className="btn btn-ghost btn-sm btn-icon" onClick={() => { setEditingMs(ms); setNewMs({ title: ms.title, description: ms.description || '', due_date: ms.due_date || '', status: ms.status }) }}><Pencil size={13} /></button>
-                                                    <button className="btn btn-danger btn-sm btn-icon" onClick={() => deleteMilestone(ms.id)}><Trash2 size={13} /></button>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                </div>
-                            )
-                        })}
-                    </div>
-                </div>
-            )}
+            {tab === 'milestones' && null /* milestones always in right panel */}
 
             {/* ── TEAM ────────────────── */}
             {tab === 'team' && (
@@ -469,7 +383,7 @@ export default function ProjectDetailPage() {
             {/* ── TO-DO ───────────────── */}
             {tab === 'todo' && (
                 <Section title="Project To-Do List">
-                    {canManage && (
+                    {canAddTodo && (
                         <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
                             <input className="form-input" placeholder="Add a to-do item…" value={newTodo} onChange={e => setNewTodo(e.target.value)} onKeyDown={e => e.key === 'Enter' && addNote('todo', newTodo)} style={{ flex: 1 }} />
                             <button className="btn btn-primary btn-sm" onClick={() => addNote('todo', newTodo)} disabled={saving || !newTodo.trim()}><Plus size={14} /> Add</button>
@@ -483,7 +397,7 @@ export default function ProjectDetailPage() {
                                     <CheckSquare size={18} />
                                 </button>
                                 <span style={{ flex: 1, fontSize: 14, textDecoration: todo.meta?.done ? 'line-through' : 'none', color: todo.meta?.done ? 'var(--text-dim)' : 'var(--text)' }}>{todo.content}</span>
-                                {canManage && <button className="btn btn-danger btn-sm btn-icon" onClick={() => deleteNote(todo.id)}><Trash2 size={13} /></button>}
+                                {canAddTodo && <button className="btn btn-danger btn-sm btn-icon" onClick={() => deleteNote(todo.id)}><Trash2 size={13} /></button>}
                             </div>
                         ))}
                     </div>
@@ -540,9 +454,102 @@ export default function ProjectDetailPage() {
                             {canManage && <button className="btn btn-primary btn-sm" onClick={() => setBrdEditing(true)}><Plus size={13} /> Start Writing</button>}
                         </div>
                     )}
-                    {brd && !brdEditing && <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 12 }}>Last updated: {new Date(brd.updated_at || brd.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}</div>}
+                    </div> {/* end left column */}
+
+            {/* RIGHT: Always-visible Milestones Panel */}
+            <div style={{ position: 'sticky', top: 20 }}>
+                <div className="card" style={{ overflow: 'hidden' }}>
+                    <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <Flag size={15} style={{ color: '#0891b2' }} />
+                            <span style={{ fontWeight: 700, fontSize: 14 }}>Milestones</span>
+                            <span style={{ background: 'var(--border)', borderRadius: 99, padding: '1px 7px', fontSize: 11, fontWeight: 700 }}>{milestones.length}</span>
+                        </div>
+                        {canManage && <button className="btn btn-ghost btn-sm btn-icon" onClick={() => setShowMsForm(f => !f)} title="Add Milestone"><Plus size={14} /></button>}
+                    </div>
+
+                    {/* Progress */}
+                    {milestones.length > 0 && (
+                        <div style={{ padding: '10px 18px', borderBottom: '1px solid var(--border)' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, marginBottom: 5 }}>
+                                <span style={{ color: 'var(--text-muted)' }}>Progress</span>
+                                <span style={{ fontWeight: 700, color: '#0891b2' }}>{msDone}/{milestones.length}</span>
+                            </div>
+                            <div style={{ height: 6, borderRadius: 99, background: 'var(--border)', overflow: 'hidden' }}>
+                                <div style={{ height: '100%', borderRadius: 99, background: 'linear-gradient(90deg,#10b981,#059669)', width: `${milestones.length ? (msDone / milestones.length) * 100 : 0}%`, transition: 'width 0.5s' }} />
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Add form inline */}
+                    {canManage && (showMsForm || editingMs) && (
+                        <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--border)' }}>
+                            <form onSubmit={saveMilestone}>
+                                <div className="form-group" style={{ marginBottom: 8 }}>
+                                    <input className="form-input" placeholder="Milestone title *" value={newMs.title} onChange={e => setNewMs(p => ({ ...p, title: e.target.value }))} required style={{ fontSize: 13 }} />
+                                </div>
+                                <div className="form-group" style={{ marginBottom: 8 }}>
+                                    <input type="date" className="form-input" value={newMs.due_date} onChange={e => setNewMs(p => ({ ...p, due_date: e.target.value }))} style={{ fontSize: 13 }} />
+                                </div>
+                                <div className="form-group" style={{ marginBottom: 8 }}>
+                                    <select className="form-select" value={newMs.status} onChange={e => setNewMs(p => ({ ...p, status: e.target.value }))} style={{ fontSize: 13 }}>
+                                        <option value="pending">Pending</option>
+                                        <option value="in_progress">In Progress</option>
+                                        <option value="completed">Completed</option>
+                                    </select>
+                                </div>
+                                <div style={{ display: 'flex', gap: 6 }}>
+                                    <button type="button" className="btn btn-ghost btn-sm" style={{ flex: 1 }} onClick={() => { setShowMsForm(false); setEditingMs(null); setNewMs({ title: '', description: '', due_date: '', status: 'pending' }) }}>Cancel</button>
+                                    <button type="submit" className="btn btn-primary btn-sm" style={{ flex: 1 }} disabled={saving}>{editingMs ? 'Update' : 'Add'}</button>
+                                </div>
+                            </form>
+                        </div>
+                    )}
+
+                    {/* Milestone list */}
+                    <div style={{ maxHeight: 520, overflowY: 'auto' }}>
+                        {milestones.length === 0 && (
+                            <div style={{ padding: '24px 18px', textAlign: 'center', color: 'var(--text-dim)', fontSize: 13 }}>
+                                {canManage ? 'Click + to add the first milestone' : 'No milestones yet'}
+                            </div>
+                        )}
+                        {milestones.map(ms => {
+                            const isOverdue = ms.due_date && new Date(ms.due_date) < today && ms.status !== 'completed'
+                            const msColor = MS_STATUS[ms.status]?.color || '#6b7280'
+                            return (
+                                <div key={ms.id} style={{ padding: '12px 18px', borderBottom: '1px solid var(--border)', borderLeft: `3px solid ${msColor}` }}>
+                                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
+                                        <div style={{ flex: 1, minWidth: 0 }}>
+                                            <div style={{ fontWeight: 600, fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                <span style={{ background: msColor + '22', color: msColor, fontSize: 9, fontWeight: 700, padding: '1px 6px', borderRadius: 99 }}>{MS_STATUS[ms.status]?.label}</span>
+                                                {ms.title}
+                                            </div>
+                                            {ms.due_date && (
+                                                <div style={{ fontSize: 11, marginTop: 3, color: isOverdue ? '#dc2626' : 'var(--text-dim)', fontWeight: isOverdue ? 700 : 400 }}>
+                                                    {isOverdue && '🔴 '}Due: {new Date(ms.due_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                                                </div>
+                                            )}
+                                        </div>
+                                        {canManage && (
+                                            <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+                                                {ms.status !== 'completed' && (
+                                                    <button className="btn btn-ghost btn-sm btn-icon" title={ms.status === 'pending' ? 'Start' : 'Complete'} onClick={() => updateMsStatus(ms, ms.status === 'pending' ? 'in_progress' : 'completed')}>
+                                                        <Check size={12} />
+                                                    </button>
+                                                )}
+                                                <button className="btn btn-ghost btn-sm btn-icon" onClick={() => { setEditingMs(ms); setShowMsForm(true); setNewMs({ title: ms.title, description: ms.description || '', due_date: ms.due_date || '', status: ms.status }) }}><Pencil size={12} /></button>
+                                                <button className="btn btn-danger btn-sm btn-icon" onClick={() => deleteMilestone(ms.id)}><Trash2 size={12} /></button>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            )
+                        })}
+                    </div>
                 </div>
-            )}
+            </div>
+
+            </div> {/* end two-column grid */}
         </div>
     )
 }
