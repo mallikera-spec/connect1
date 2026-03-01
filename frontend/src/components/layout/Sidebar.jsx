@@ -6,7 +6,7 @@ import {
     Users, ShieldCheck, Key, Building2, Briefcase,
     FolderKanban, ListTodo, BarChart3,
     ChevronLeft, ChevronRight, LogOut,
-    UserCircle, Clock, Calendar, FileText, Sparkles, TrendingUp, Vote
+    UserCircle, Clock, Calendar, FileText, Sparkles, TrendingUp, Vote, Shield
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -17,6 +17,7 @@ const NAV = [
         items: [
             { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
             { to: '/polls', label: 'Polls', icon: Vote },
+            { to: '/policies', label: 'Argomsob Policies', icon: Shield },
             { to: '/profile', label: 'My Profile', icon: UserCircle },
         ]
     },
@@ -24,9 +25,9 @@ const NAV = [
         section: 'Project Management',
         icon: FolderKanban,
         items: [
-            { to: '/projects', label: 'All Projects', perm: 'manage_projects', icon: FolderKanban },
-            { to: '/projects', label: 'My Projects', perm: 'view_projects', hideIfHas: 'manage_projects', icon: FolderKanban },
-            { to: '/tasks', label: 'Tasks', perm: 'view_tasks', icon: ListTodo },
+            { to: '/projects', label: 'All Projects', perm: 'manage_projects', roles: ['Tester'], icon: FolderKanban },
+            { to: '/projects', label: 'My Projects', perm: 'view_projects', roles: ['Tester'], hideIfHas: 'manage_projects', icon: FolderKanban },
+            { to: '/tasks', label: 'Tasks', perm: 'view_tasks', roles: ['Tester'], icon: ListTodo },
             { to: '/timesheet', label: 'Timesheet', perm: 'view_timesheet', icon: Clock },
             { to: '/reports', label: 'Reports', perm: 'view_overall_report', icon: BarChart3 },
             { to: '/admin-dev-calendar', label: 'Developer Calendar', perm: 'view_employees', icon: Calendar },
@@ -37,9 +38,9 @@ const NAV = [
         icon: ShieldCheck,
         items: [
             { to: '/tester-dashboard', label: 'Tester Dashboard', roles: ['Tester', 'super_admin'], icon: LayoutDashboard },
-            { to: '/testing-queue', label: 'Testing Queue', roles: ['Tester', 'super_admin'], icon: ShieldCheck },
             { to: '/testing-reports', label: 'Testing Reports', roles: ['Tester', 'super_admin'], icon: BarChart3 },
-            { to: '/tasks', label: 'Testing Tasks', roles: ['Tester', 'super_admin'], icon: ListTodo },
+            { to: '/testing-todos', label: 'Testing Todos', roles: ['Tester', 'super_admin'], icon: ShieldCheck },
+            { to: '/testing-tasks', label: 'Testing Tasks', roles: ['Tester', 'super_admin'], icon: ListTodo },
         ]
     },
     {
@@ -78,7 +79,7 @@ const NAV = [
 
 export default function Sidebar() {
     const [collapsed, setCollapsed] = useState(false)
-    const [expandedGroups, setExpandedGroups] = useState(['Overview', 'Project Management'])
+    const [expandedGroups, setExpandedGroups] = useState(['Overview', 'Project Management', 'Testing Module'])
     const { logout, hasPermission, hasRole } = useAuth()
     const navigate = useNavigate()
 
@@ -101,10 +102,23 @@ export default function Sidebar() {
         .map(group => ({
             ...group,
             items: group.items.filter(item => {
-                if (item.perm && !hasPermission(item.perm)) return false;
+                const hasItemPerm = item.perm ? hasPermission(item.perm) : true;
+                const hasItemRole = item.roles ? item.roles.some(r => hasRole(r)) : true;
+
+                // Grant access if (no perm/role) OR (has perm) OR (has role)
+                let authorized = true;
+                if (item.perm && item.roles) {
+                    authorized = hasItemPerm || hasItemRole;
+                } else if (item.perm) {
+                    authorized = hasItemPerm;
+                } else if (item.roles) {
+                    authorized = hasItemRole;
+                }
+
+                if (!authorized) return false;
+
                 if (item.hideIfHas && hasPermission(item.hideIfHas)) return false;
                 if (item.hideIfRole && item.hideIfRole.some(r => hasRole(r))) return false;
-                if (item.roles && !item.roles.some(r => hasRole(r))) return false;
                 return true;
             }),
         }))

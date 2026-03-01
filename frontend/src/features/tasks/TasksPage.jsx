@@ -18,6 +18,7 @@ export default function TasksPage() {
     const canUpdate = hasPermission('update_task')
     const canDelete = hasPermission('delete_task')
     const isManager = hasPermission('manage_projects') || hasPermission('manage_employees')
+    const location = useLocation()
 
     const [tasks, setTasks] = useState([])
     const [projects, setProjects] = useState([])
@@ -27,7 +28,6 @@ export default function TasksPage() {
     const [modal, setModal] = useState(null)
     const [selected, setSelected] = useState(null)
     const [form, setForm] = useState(EMPTY_FORM)
-    const location = useLocation()
     const [filters, setFilters] = useState({
         project_id: location.state?.project_id || '',
         status: location.state?.status || '',
@@ -103,6 +103,8 @@ export default function TasksPage() {
             estimated_hours: t.estimated_hours || '',
             actual_hours: t.actual_hours || '',
             end_time: t.end_time ? t.end_time.slice(0, 10) : '',
+            developer_reply: t.developer_reply || '',
+            qa_notes: t.qa_notes || '',
         })
         setModal('edit')
     }
@@ -140,6 +142,15 @@ export default function TasksPage() {
             actual_hours: form.actual_hours ? Number(form.actual_hours) : undefined,
             assigned_to: form.assigned_to || undefined,
             end_time: form.end_time || undefined,
+            developer_reply: form.developer_reply || undefined
+        }
+
+        // Prevent overwriting qa_notes with empty string if not explicitly intended
+        if (!payload.qa_notes) delete payload.qa_notes
+
+        // If it was failed and dev replied, mark as done for re-test
+        if (selected?.status === 'failed' && form.developer_reply?.trim()) {
+            payload.status = 'done'
         }
         if (!payload.estimated_hours) delete payload.estimated_hours
         if (!payload.actual_hours) delete payload.actual_hours
@@ -235,9 +246,29 @@ export default function TasksPage() {
                 <input type="number" step="0.5" min="0" className="form-input" value={form.actual_hours} onChange={f('actual_hours')} placeholder="0.0" />
             </div>
             <div className="form-group">
-                <label className="form-label"><Calendar size={13} style={{ marginRight: 4, verticalAlign: 'middle' }} />Due Date</label>
                 <input type="date" className="form-input" value={form.end_time ? form.end_time.slice(0, 10) : ''} onChange={f('end_time')} />
             </div>
+            {form.qa_notes && (
+                <div className="form-group" style={{ background: 'rgba(239, 68, 68, 0.05)', padding: 12, borderRadius: 8, marginTop: 12 }}>
+                    <label className="form-label" style={{ color: '#ef4444' }}><AlertCircle size={14} style={{ marginRight: 6 }} />QA Notes</label>
+                    <p style={{ fontSize: 13, marginBottom: 12 }}>{form.qa_notes}</p>
+
+                    <label className="form-label">Developer's Reply</label>
+                    <textarea
+                        className="form-textarea"
+                        rows={3}
+                        value={form.developer_reply}
+                        onChange={f('developer_reply')}
+                        placeholder="Explain fix or reply to QA..."
+                    />
+                </div>
+            )}
+            {selected?.developer_reply && !form.qa_notes && (
+                <div className="form-group" style={{ background: 'rgba(59, 130, 246, 0.05)', padding: 12, borderRadius: 8, marginTop: 12 }}>
+                    <label className="form-label" style={{ color: 'var(--accent)' }}>Developer's Reply</label>
+                    <p style={{ fontSize: 13, margin: 0 }}>{selected.developer_reply}</p>
+                </div>
+            )}
         </>
     )
 
@@ -291,19 +322,14 @@ export default function TasksPage() {
                 {loading ? <div className="page-loader"><div className="spinner" /></div> : (
                     <table>
                         <thead><tr>
-                            <th>Title</th><th>Project</th><th>Assignee</th><th>Status</th><th>Priority</th><th>Created</th><th>Due Date</th><th>Actions</th>
+                            <th>Date</th><th>Due Date</th><th>QA Feedback</th><th>Project</th><th>Title</th><th>Assignee</th><th>Status</th><th>Priority</th><th>Actions</th>
                         </tr></thead>
                         <tbody>
                             {tasks.length === 0 && <tr><td colSpan={8}><div className="empty-state"><p>No tasks found</p></div></td></tr>}
                             {(tasks || []).map(t => (
                                 <tr key={t.id}>
-                                    <td><strong style={{ fontSize: 13 }}>{t.title}</strong></td>
-                                    <td style={{ fontSize: 12, color: 'var(--text-muted)' }}>{t.project?.name || '—'}</td>
-                                    <td style={{ fontSize: 12 }}>{t.assignee?.full_name || '—'}</td>
-                                    <td><span className={`badge ${STATUS_BADGE[t.status] || 'badge-gray'}`}>{t.status?.replace('_', ' ')}</span></td>
-                                    <td><span className={`badge ${PRIORITY_BADGE[t.priority] || 'badge-gray'}`}>{t.priority}</span></td>
-                                    <td style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-                                        {t.created_at ? new Date(t.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : '—'}
+                                    <td style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600 }}>
+                                        {t.created_at ? new Date(t.created_at).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—'}
                                     </td>
                                     <td>
                                         {t.end_time ? (() => {
@@ -311,39 +337,43 @@ export default function TasksPage() {
                                             const isOverdue = due < new Date() && t.status !== 'done'
                                             return (
                                                 <span style={{
-                                                    fontSize: 12, fontWeight: 600,
+                                                    fontSize: 11, fontWeight: 600,
                                                     color: isOverdue ? 'var(--danger)' : 'var(--text-muted)',
                                                     display: 'flex', alignItems: 'center', gap: 4
                                                 }}>
                                                     {isOverdue && <span title="Overdue">🔴</span>}
-                                                    {due.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: '2-digit' })}
+                                                    {due.toLocaleString('en-IN', { day: 'numeric', month: 'short', year: '2-digit', hour: '2-digit', minute: '2-digit' })}
                                                 </span>
                                             )
                                         })() : <span style={{ color: 'var(--text-dim)', fontSize: 12 }}>—</span>}
                                     </td>
                                     <td>
+                                        {t.qa_notes ? (
+                                            <div style={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: 6,
+                                                fontSize: 11,
+                                                color: t.status === 'failed' ? '#ef4444' : 'var(--text-muted)',
+                                                background: t.status === 'failed' ? 'rgba(239, 68, 68, 0.08)' : 'rgba(255, 255, 255, 0.03)',
+                                                padding: '3px 8px',
+                                                borderRadius: 4,
+                                                width: 'fit-content',
+                                                maxWidth: '200px'
+                                            }}>
+                                                <AlertCircle size={12} fill="currentColor" />
+                                                <span style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={t.qa_notes}>{t.qa_notes}</span>
+                                            </div>
+                                        ) : <span style={{ color: 'var(--text-dim)', fontSize: 11 }}>—</span>}
+                                    </td>
+                                    <td style={{ fontSize: 12, color: 'var(--text-muted)' }}>{t.project?.name || '—'}</td>
+                                    <td><strong style={{ fontSize: 13 }}>{t.title}</strong></td>
+                                    <td style={{ fontSize: 12 }}>{t.assignee?.full_name || '—'}</td>
+                                    <td><span className={`badge ${STATUS_BADGE[t.status] || 'badge-gray'}`}>{t.status?.replace('_', ' ')}</span></td>
+                                    <td><span className={`badge ${PRIORITY_BADGE[t.priority] || 'badge-gray'}`}>{t.priority}</span></td>
+                                    <td>
                                         <div className="actions-cell">
-                                            {(hasRole('Tester') || hasRole('super_admin')) && (t.status === 'done' || t.status === 'in_progress') && (
-                                                <div style={{ display: 'flex', gap: 4 }}>
-                                                    <button
-                                                        className="btn btn-ghost btn-sm btn-icon"
-                                                        style={{ color: '#10b981' }}
-                                                        onClick={() => openQaModal(t, 'verified')}
-                                                        title="Pass / Verify"
-                                                    >
-                                                        <ShieldCheck size={14} />
-                                                    </button>
-                                                    <button
-                                                        className="btn btn-ghost btn-sm btn-icon"
-                                                        style={{ color: '#ef4444' }}
-                                                        onClick={() => openQaModal(t, 'failed')}
-                                                        title="Fail / Rejected"
-                                                    >
-                                                        <AlertCircle size={14} />
-                                                    </button>
-                                                </div>
-                                            )}
-                                            {canUpdate && <button className="btn btn-ghost btn-sm btn-icon" onClick={() => openEdit(t)}><Pencil size={14} /></button>}
+                                            {canUpdate && <button className="btn btn-ghost" onClick={() => openEdit(t)}>Edit</button>}
                                             {canDelete && <button className="btn btn-danger btn-sm btn-icon" onClick={() => openDelete(t)}><Trash2 size={14} /></button>}
                                         </div>
                                     </td>

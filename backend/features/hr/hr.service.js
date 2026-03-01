@@ -41,10 +41,6 @@ export const clockOut = async (userId, date, checkOutTime) => {
         throw new Error('Already clocked out today.');
     }
 
-    // Determine status purely on time? Or wait for admin? 
-    // Usually BDM works 9 hours. Let's set status = 'Pending' always, let Admin bulk approve.
-    // We could calculate a recommended string if we wanted.
-
     const { data, error } = await supabaseAdmin
         .from('attendance')
         .update({ check_out_time: checkOutTime })
@@ -102,13 +98,161 @@ export const approveAttendance = async (id, status, isApproved, adminId, adminCo
     return data;
 };
 
+// --- Leave Policies ---
+
+export const getLeaveTypes = async () => {
+    const { data, error } = await supabaseAdmin.from('leave_types').select('*').order('name');
+    if (error) throw error;
+    return data;
+};
+
+const ensureUserBalances = async (userId) => {
+    // 1. Fetch user profile for joining_date
+    const { data: profile } = await supabaseAdmin.from('profiles').select('joining_date, created_at').eq('id', userId).single();
+    const { data: types } = await supabaseAdmin.from('leave_types').select('*');
+    const { data: existing } = await supabaseAdmin.from('user_leave_balances').select('*').eq('user_id', userId);
+
+    const existingMap = new Map((existing || []).map(b => [b.leave_type_id, b]));
+    const now = new Date();
+
+    // Financial Year starts April 1st (month index 3)
+    const currentFYYear = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1;
+    const fyStartDate = new Date(currentFYYear, 3, 1);
+
+    // Effective start date: max(FY_Start, Joining_Date)
+    let joiningDate = profile?.joining_date ? new Date(profile.joining_date) : (profile?.created_at ? new Date(profile.created_at) : fyStartDate);
+    const accrualStartDate = joiningDate > fyStartDate ? joiningDate : fyStartDate;
+
+    // Calculate months to accrue (pro-rated)
+    let monthsToAccrue = (now.getFullYear() - accrualStartDate.getFullYear()) * 12 + (now.getMonth() - accrualStartDate.getMonth()) + 1;
+    if (monthsToAccrue < 1) monthsToAccrue = 1;
+    if (monthsToAccrue > 12) monthsToAccrue = 12;
+
+    const toInsert = [];
+    const updates = [];
+
+    (types || []).forEach(t => {
+        let targetAccrued = 0;
+        const existingRecord = existingMap.get(t.id);
+
+        // Check if we need to reset 'used' leaves (FY change detection)
+        let resetUsed = false;
+        if (existingRecord?.last_accrual_date) {
+            const lastAccrual = new Date(existingRecord.last_accrual_date);
+            if (lastAccrual < fyStartDate) {
+                resetUsed = true;
+            }
+        }
+
+        if (t.name === 'Earned Leave') {
+            // Probation rule: 1 leave/month for first 6 months, then normal rate (annual_limit/12)
+            const normalRate = t.annual_limit / 12;
+
+            // Iterate months in current FY and check their "service month index"
+            for (let i = 0; i < monthsToAccrue; i++) {
+                // Determine which month of service this is
+                const monthDate = new Date(accrualStartDate);
+                monthDate.setMonth(monthDate.getMonth() + i);
+
+                // total months from joining to this specific month
+                const serviceMonths = (monthDate.getFullYear() - joiningDate.getFullYear()) * 12 + (monthDate.getMonth() - joiningDate.getMonth()) + 1;
+
+                if (serviceMonths <= 6) {
+                    targetAccrued += 1.0;
+                } else {
+                    targetAccrued += normalRate;
+                }
+            }
+        } else {
+            const monthlyRate = t.annual_limit / 12;
+            targetAccrued = monthlyRate * monthsToAccrue;
+        }
+
+        targetAccrued = parseFloat(targetAccrued.toFixed(2));
+
+        if (!existingRecord) {
+            toInsert.push({
+                user_id: userId,
+                leave_type_id: t.id,
+                accrued: targetAccrued,
+                used: 0,
+                balance: targetAccrued,
+                last_accrual_date: now.toISOString().split('T')[0]
+            });
+        } else {
+            // Update existing if accrued is out of sync or FY reset triggered
+            const currentUsed = resetUsed ? 0 : parseFloat(existingRecord.used || 0);
+            const currentAccrued = parseFloat(existingRecord.accrued);
+
+            if (currentAccrued !== targetAccrued || resetUsed) {
+                updates.push(
+                    supabaseAdmin.from('user_leave_balances')
+                        .update({
+                            accrued: targetAccrued,
+                            used: currentUsed,
+                            balance: targetAccrued - currentUsed,
+                            last_accrual_date: now.toISOString().split('T')[0]
+                        })
+                        .eq('id', existingRecord.id)
+                );
+            }
+        }
+    });
+
+    if (toInsert.length > 0) {
+        await supabaseAdmin.from('user_leave_balances').insert(toInsert);
+    }
+    if (updates.length > 0) {
+        await Promise.all(updates);
+    }
+};
+
+export const syncAllBalances = async () => {
+    const { data: profiles, error } = await supabaseAdmin.from('profiles').select('id');
+    if (error) throw error;
+    if (!profiles) return;
+
+    const results = [];
+    for (const profile of profiles) {
+        try {
+            await ensureUserBalances(profile.id);
+            results.push({ userId: profile.id, status: 'success' });
+        } catch (err) {
+            results.push({ userId: profile.id, status: 'error', error: err.message });
+        }
+    }
+    return results;
+};
+
 // --- Leave Requests ---
 
 export const submitLeaveRequest = async (userId, payload) => {
-    const { start_date, end_date, type, reason } = payload;
+    const { start_date, end_date, type, leave_type_id, reason } = payload;
+
+    // 1. Ensure balances are initialized
+    await ensureUserBalances(userId);
+
+    // 2. Validate balance if leave_type_id is provided
+    if (leave_type_id) {
+        const { data: bal } = await supabaseAdmin
+            .from('user_leave_balances')
+            .select('balance')
+            .eq('user_id', userId)
+            .eq('leave_type_id', leave_type_id)
+            .single();
+
+        const sd = new Date(start_date);
+        const ed = new Date(end_date);
+        const days = Math.ceil(Math.abs(ed - sd) / (1000 * 60 * 60 * 24)) + 1;
+
+        if (bal && bal.balance < days) {
+            throw new Error(`Insufficient leave balance. Required: ${days}, Available: ${bal.balance}`);
+        }
+    }
+
     const { data, error } = await supabaseAdmin
         .from('leave_requests')
-        .insert({ user_id: userId, start_date, end_date, type, reason, status: 'Pending' })
+        .insert({ user_id: userId, start_date, end_date, type, leave_type_id, reason, status: 'Pending' })
         .select()
         .single();
     if (error) throw error;
@@ -156,14 +300,13 @@ export const getMyLeaves = async (userId) => {
 export const getAllPendingLeaves = async () => {
     const { data, error } = await supabaseAdmin
         .from('leave_requests')
-        .select('*')
+        .select('*, leave_type:leave_types(id, name)')
         .eq('status', 'Pending')
         .order('start_date', { ascending: true });
     if (error) throw error;
 
     if (!data || data.length === 0) return [];
 
-    // Enrich with profile data (FK is to auth.users, not profiles)
     const userIds = [...new Set(data.map(r => r.user_id))];
     const { data: profiles } = await supabaseAdmin
         .from('profiles')
@@ -175,6 +318,9 @@ export const getAllPendingLeaves = async () => {
 };
 
 export const updateLeaveStatus = async (id, status, adminId, adminComment) => {
+    const { data: oldReq } = await supabaseAdmin.from('leave_requests').select('*').eq('id', id).single();
+    if (!oldReq) throw new Error('Leave request not found');
+
     const { data, error } = await supabaseAdmin
         .from('leave_requests')
         .update({ status, approved_by: adminId, admin_comment: adminComment || null })
@@ -183,15 +329,37 @@ export const updateLeaveStatus = async (id, status, adminId, adminComment) => {
         .single();
     if (error) throw error;
 
-    // Notify the employee about their leave status
+    if (status === 'Approved' && data.leave_type_id) {
+        const sd = new Date(data.start_date);
+        const ed = new Date(data.end_date);
+        const days = Math.ceil(Math.abs(ed - sd) / (1000 * 60 * 60 * 24)) + 1;
+
+        const { data: bal } = await supabaseAdmin
+            .from('user_leave_balances')
+            .select('used, balance')
+            .eq('user_id', data.user_id)
+            .eq('leave_type_id', data.leave_type_id)
+            .single();
+
+        if (bal) {
+            await supabaseAdmin
+                .from('user_leave_balances')
+                .update({
+                    used: parseFloat(bal.used) + days,
+                    balance: parseFloat(bal.balance) - days
+                })
+                .eq('user_id', data.user_id)
+                .eq('leave_type_id', data.leave_type_id);
+        }
+    }
+
     try {
         const emoji = status === 'Approved' ? '✅' : '❌';
         await createNotification({
             userId: data.user_id,
             type: 'leave_status',
             title: `Leave ${status}`,
-            message: `${emoji} Your leave request (${data.start_date} → ${data.end_date}) has been ${status.toLowerCase()}.${adminComment ? ` Note: ${adminComment}` : ''
-                }`,
+            message: `${emoji} Your leave request (${data.start_date} → ${data.end_date}) has been ${status.toLowerCase()}.${adminComment ? ` Note: ${adminComment}` : ''}`,
             data: { leave_id: id, status }
         });
     } catch (_) { /* non-blocking */ }
@@ -200,77 +368,33 @@ export const updateLeaveStatus = async (id, status, adminId, adminComment) => {
 };
 
 export const calculateAvailableLeaves = async (userId) => {
-    // Fetch user profile with fallback to created_at
-    const { data: profile, error: pErr } = await supabaseAdmin
-        .from('profiles')
-        .select('joining_date, created_at')
-        .eq('id', userId)
-        .single();
+    await ensureUserBalances(userId);
 
-    if (pErr || !profile) return { totalAccrued: 0, used: 0, balance: 0 };
+    const { data: balances, error } = await supabaseAdmin
+        .from('user_leave_balances')
+        .select(`
+            accrued, used, balance,
+            leave_type:leave_types(id, name, is_paid)
+        `)
+        .eq('user_id', userId);
 
-    // Use joining_date; fallback to created_at if not set or if set to today
-    let joiningDate = profile.joining_date ? new Date(profile.joining_date) : null;
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    if (error) throw error;
 
-    if (!joiningDate || joiningDate.getTime() >= today.getTime()) {
-        // Fall back to account creation date
-        joiningDate = profile.created_at ? new Date(profile.created_at) : null;
-    }
-
-    // If still no valid date, grant a default 1-month accrual as grace
-    const now = new Date();
-    let monthsTenure = 0;
-    if (joiningDate) {
-        monthsTenure = (now.getFullYear() - joiningDate.getFullYear()) * 12 + (now.getMonth() - joiningDate.getMonth());
-        if (now.getDate() < joiningDate.getDate()) monthsTenure--;
-        if (monthsTenure < 0) monthsTenure = 0;
-    }
-
-    let totalAccrued = 0;
-    if (monthsTenure <= 6) {
-        totalAccrued = monthsTenure * 1.0;
-    } else {
-        totalAccrued = (6 * 1.0) + ((monthsTenure - 6) * 1.5);
-    }
-
-    // Ensure at least 1 leave for active employees
-    if (totalAccrued < 1) totalAccrued = 1;
-
-    // Fetch approved paid leaves
-    const { data: leaves } = await supabaseAdmin
-        .from('leave_requests')
-        .select('start_date, end_date')
-        .eq('user_id', userId)
-        .eq('status', 'Approved')
-        .eq('type', 'Paid Leave');
-
-    let usedLeaves = 0;
-    if (leaves) {
-        leaves.forEach(l => {
-            const sd = new Date(l.start_date);
-            const ed = new Date(l.end_date);
-            const diffTime = Math.abs(ed - sd);
-            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
-            usedLeaves += diffDays;
-        });
-    }
+    const totalAccrued = (balances || []).reduce((sum, b) => sum + parseFloat(b.accrued || 0), 0);
+    const totalUsed = (balances || []).reduce((sum, b) => sum + parseFloat(b.used || 0), 0);
+    const totalBalance = (balances || []).reduce((sum, b) => sum + parseFloat(b.balance || 0), 0);
 
     return {
         totalAccrued,
-        used: usedLeaves,
-        balance: Math.max(0, totalAccrued - usedLeaves),
-        monthsTenure,
+        used: totalUsed,
+        balance: totalBalance,
+        breakdown: balances || []
     };
 };
 
-
 // --- Salary Slips ---
 
-// Logic for generating payroll 
 export const generateSalarySlip = async (userId, month, year, adminId) => {
-    // 1. Fetch profile for base salary
     const { data: profile } = await supabaseAdmin
         .from('profiles')
         .select('base_salary')
@@ -279,16 +403,40 @@ export const generateSalarySlip = async (userId, month, year, adminId) => {
 
     const baseSalary = parseFloat(profile?.base_salary || 0);
 
-    // 2. Fetch Unapproved/Absent tracking for deductions
+    const now = new Date();
+    const currentMonth = now.getMonth() + 1;
+    const currentYear = now.getFullYear();
+
+    // 2. Determine payable days and date range
+    const daysInMonth = new Date(year, month, 0).getDate();
+    const dailyWage = baseSalary / daysInMonth;
+
+    let payableDays = daysInMonth;
+    let effectiveEndDate;
+
+    if (year > currentYear || (year === currentYear && month > currentMonth)) {
+        // Future month
+        payableDays = 0;
+        effectiveEndDate = new Date(year, month - 1, 1);
+    } else if (year === currentYear && month === currentMonth) {
+        // Current month: pay up to yesterday
+        payableDays = Math.max(0, now.getDate() - 1);
+        effectiveEndDate = new Date(year, month - 1, payableDays, 23, 59, 59);
+    } else {
+        // Past month: pay full
+        payableDays = daysInMonth;
+        effectiveEndDate = new Date(year, month, 0, 23, 59, 59);
+    }
+
     const startDate = new Date(year, month - 1, 1).toISOString();
-    const endDate = new Date(year, month, 0, 23, 59, 59).toISOString();
+    const endDateString = effectiveEndDate.toISOString();
 
     const { data: dailyRecords } = await supabaseAdmin
         .from('attendance')
         .select('status, is_approved')
         .eq('user_id', userId)
         .gte('date', startDate)
-        .lte('date', endDate)
+        .lte('date', endDateString)
         .in('status', ['Absent', 'Half Day']);
 
     let deductions = 0;
@@ -297,9 +445,6 @@ export const generateSalarySlip = async (userId, month, year, adminId) => {
 
     if (dailyRecords) {
         dailyRecords.forEach(r => {
-            // Unapproved absences or half days decrease pay. 
-            // In a real system, you'd calculate exact daily wage. Let's assume daily wage = base_salary / 30
-            const dailyWage = baseSalary / 30;
             if (r.status === 'Absent' && r.is_approved === false) {
                 deductions += dailyWage;
                 absentDays++;
@@ -310,7 +455,6 @@ export const generateSalarySlip = async (userId, month, year, adminId) => {
         });
     }
 
-    // Also include Unpaid leaves approved
     const { data: leaves } = await supabaseAdmin
         .from('leave_requests')
         .select('start_date, end_date')
@@ -318,7 +462,7 @@ export const generateSalarySlip = async (userId, month, year, adminId) => {
         .eq('status', 'Approved')
         .eq('type', 'Unpaid Leave')
         .gte('start_date', startDate)
-        .lte('start_date', endDate); // Simplification: assumes leave starts in this month
+        .lte('start_date', endDateString);
 
     let unpaidLeaveDays = 0;
     if (leaves) {
@@ -327,13 +471,13 @@ export const generateSalarySlip = async (userId, month, year, adminId) => {
             const ed = new Date(l.end_date);
             const diffDays = Math.ceil(Math.abs(ed - sd) / (1000 * 60 * 60 * 24)) + 1;
             unpaidLeaveDays += diffDays;
-            deductions += (diffDays * (baseSalary / 30));
+            deductions += (diffDays * dailyWage);
         });
     }
 
-    const netSalary = Math.max(0, baseSalary - deductions);
+    const grossSalary = dailyWage * payableDays;
+    const netSalary = Math.max(0, grossSalary - deductions);
 
-    // Check if slip already exists
     const { data: existingSlip } = await supabaseAdmin
         .from('salary_slips')
         .select('id')
@@ -350,7 +494,7 @@ export const generateSalarySlip = async (userId, month, year, adminId) => {
         deductions,
         net_salary: netSalary,
         status: 'Generated',
-        details: { absentDays, halfDays, unpaidLeaveDays }
+        details: { absentDays, halfDays, unpaidLeaveDays, payableDays, gross_salary: grossSalary }
     };
 
     let result;
@@ -376,6 +520,26 @@ export const generateSalarySlip = async (userId, month, year, adminId) => {
     return result;
 };
 
+export const generateAllSalarySlips = async (month, year, adminId) => {
+    const { data: profiles, error } = await supabaseAdmin
+        .from('profiles')
+        .select('id');
+
+    if (error) throw error;
+    if (!profiles || profiles.length === 0) return [];
+
+    const results = [];
+    for (const profile of profiles) {
+        try {
+            const slip = await generateSalarySlip(profile.id, month, year, adminId);
+            results.push({ user_id: profile.id, status: 'success', slip_id: slip.id });
+        } catch (err) {
+            results.push({ user_id: profile.id, status: 'error', error: err.message });
+        }
+    }
+    return results;
+};
+
 export const getMySalarySlips = async (userId) => {
     const { data, error } = await supabaseAdmin
         .from('salary_slips')
@@ -387,7 +551,6 @@ export const getMySalarySlips = async (userId) => {
     return data;
 };
 
-// Admin view 
 export const getAllSalarySlips = async (month, year) => {
     let query = supabaseAdmin
         .from('salary_slips')
@@ -401,7 +564,6 @@ export const getAllSalarySlips = async (month, year) => {
 
     if (!slips || slips.length === 0) return [];
 
-    // Enrich with profile data manually since relationship might not be detected
     const userIds = [...new Set(slips.map(s => s.user_id))];
     const { data: profiles } = await supabaseAdmin
         .from('profiles')
@@ -428,7 +590,6 @@ export const getAttendanceReport = async ({ userId, startDate, endDate, status }
 
     if (!data || data.length === 0) return [];
 
-    // Enrich with profile data
     const uIds = [...new Set(data.map(r => r.user_id))];
     const { data: profiles } = await supabaseAdmin
         .from('profiles')

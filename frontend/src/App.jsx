@@ -18,6 +18,7 @@ import ReportsPage from './features/reports/ReportsPage'
 import ProfilePage from './features/profile/ProfilePage'
 import TimesheetPage from './features/timesheets/TimesheetPage'
 import TestingQueue from './features/timesheets/TestingQueue'
+import TestingTasks from './features/tasks/TestingTasks'
 import DesignationsPage from './features/designations/DesignationsPage'
 import DeveloperCalendar from './features/reports/DeveloperCalendar'
 import AdminDevCalendar from './features/reports/AdminDevCalendar'
@@ -31,6 +32,7 @@ import PollsPage from './features/polls/PollsPage'
 import AttendanceReport from './features/reports/AttendanceReport'
 import TesterPage from './features/dashboard/TesterPage'
 import TestingReports from './features/timesheets/TestingReports'
+import PoliciesPage from './features/hr/PoliciesPage'
 
 function AdminLayout({ children }) {
   return (
@@ -55,13 +57,14 @@ export default function App() {
       <Route path="/polls" element={<AdminLayout><PollsPage /></AdminLayout>} />
       <Route path="/attendance-report" element={<AdminLayout><AttendanceReport /></AdminLayout>} />
       <Route path="/tester-dashboard" element={<AdminLayout><PermissionGate perm="view_tasks" allowedRoles={['Tester', 'super_admin']}><TesterPage /></PermissionGate></AdminLayout>} />
-      <Route path="/testing-queue" element={<AdminLayout><PermissionGate perm="view_timesheet" allowedRoles={['Tester', 'super_admin']}><TestingQueue /></PermissionGate></AdminLayout>} />
+      <Route path="/testing-todos" element={<AdminLayout><PermissionGate perm="view_timesheet" allowedRoles={['Tester', 'super_admin']}><TestingQueue /></PermissionGate></AdminLayout>} />
+      <Route path="/testing-tasks" element={<AdminLayout><PermissionGate perm="view_tasks" allowedRoles={['Tester', 'super_admin']}><TestingTasks /></PermissionGate></AdminLayout>} />
       <Route path="/testing-reports" element={<AdminLayout><PermissionGate perm="view_timesheet" allowedRoles={['Tester', 'super_admin']}><TestingReports /></PermissionGate></AdminLayout>} />
       <Route path="/timesheet" element={<AdminLayout><PermissionGate perm="view_timesheet"><TimesheetPage /></PermissionGate></AdminLayout>} />
 
       {/* Project Management */}
       <Route path="/projects" element={
-        <AdminLayout><PermissionGate perm="view_projects"><ProjectsPage /></PermissionGate></AdminLayout>
+        <AdminLayout><PermissionGate perm="view_projects" allowedRoles={['Tester']}><ProjectsPage /></PermissionGate></AdminLayout>
       } />
       <Route path="/projects/:id" element={
         <AdminLayout><PermissionGate perm="view_projects"><ProjectDetailPage /></PermissionGate></AdminLayout>
@@ -70,7 +73,7 @@ export default function App() {
         <AdminLayout><PermissionGate perm="view_clients"><ClientsList /></PermissionGate></AdminLayout>
       } />
       <Route path="/tasks" element={
-        <AdminLayout><PermissionGate perm="view_tasks"><TasksPage /></PermissionGate></AdminLayout>
+        <AdminLayout><PermissionGate perm="view_tasks" allowedRoles={['Tester']}><TasksPage /></PermissionGate></AdminLayout>
       } />
       <Route path="/reports" element={
         <AdminLayout><PermissionGate perm="view_reports"><ReportsPage /></PermissionGate></AdminLayout>
@@ -97,6 +100,9 @@ export default function App() {
       } />
       <Route path="/hr-admin" element={
         <AdminLayout><PermissionGate perm="view_employees"><HRAdminPanel /></PermissionGate></AdminLayout>
+      } />
+      <Route path="/policies" element={
+        <AdminLayout><PoliciesPage /></AdminLayout>
       } />
 
       {/* Access Control */}

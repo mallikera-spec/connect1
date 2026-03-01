@@ -299,14 +299,14 @@ export default function ProjectDetailPage() {
     if (!project) return null
 
     const today = getISTDate()
-    const tasksDone = tasks.filter(t => t.status === 'done').length
-    const tasksIP = tasks.filter(t => t.status === 'in_progress').length
-    const tasksP = tasks.filter(t => t.status === 'pending').length
-    const overdue = tasks.filter(t => t.end_time && new Date(t.end_time) < today && t.status !== 'done')
-    const msDone = milestones.filter(m => m.status === 'completed').length
-    const msOverdue = milestones.filter(m => m.due_date && new Date(m.due_date) < today && m.status !== 'completed')
-    const assignedIds = members.map(m => m.user?.id)
-    const availableUsers = allUsers.filter(u => !assignedIds.includes(u.id))
+    const tasksDone = (tasks || []).filter(t => t.status === 'done').length
+    const tasksIP = (tasks || []).filter(t => t.status === 'in_progress').length
+    const tasksP = (tasks || []).filter(t => t.status === 'pending').length
+    const overdue = (tasks || []).filter(t => t.end_time && new Date(t.end_time) < today && t.status !== 'done')
+    const msDone = (milestones || []).filter(m => m.status === 'completed').length
+    const msOverdue = (milestones || []).filter(m => m.due_date && new Date(m.due_date) < today && m.status !== 'completed')
+    const assignedIds = (members || []).map(m => m.user?.id)
+    const availableUsers = (allUsers || []).filter(u => !assignedIds.includes(u.id))
 
     return (
         <div style={{ width: '100%' }}>
@@ -472,7 +472,7 @@ export default function ProjectDetailPage() {
                     <div key={t.id} style={{ flex: 1, display: 'flex' }}>
                         <button onClick={() => setTab(t.id)}
                             style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, padding: '9px 18px', borderRadius: 8, border: 'none', cursor: 'pointer', fontWeight: tab === t.id ? 700 : 500, fontSize: 13, background: tab === t.id ? 'var(--accent)' : 'transparent', color: tab === t.id ? '#fff' : 'var(--text-muted)', transition: 'all 0.2s', whiteSpace: 'nowrap' }}>
-                            <t.icon size={15} />
+                            <t.icon size={15} strokeWidth={2.5} fill="currentColor" />
                             {t.label}
                             {t.count !== undefined && (
                                 <span style={{ background: tab === t.id ? 'rgba(255,255,255,0.3)' : 'var(--border)', borderRadius: 99, padding: '1px 7px', fontSize: 11, fontWeight: 700 }}>
@@ -507,11 +507,11 @@ export default function ProjectDetailPage() {
                                         <span style={{ color: 'var(--text-dim)' }}>-</span>
                                         <input type="date" className="form-input" style={{ padding: '4px 8px', fontSize: 12, width: 120 }} value={taskDateRange.endDate} onChange={e => setTaskDateRange(p => ({ ...p, endDate: e.target.value }))} />
                                     </div>
-                                    {canManage && <button className="btn btn-primary btn-sm" onClick={() => navigate('/tasks', { state: { openCreateModal: true, project_id: id } })}><Plus size={13} /> Add Task</button>}
+                                    {canManage && <button className="btn btn-primary btn-sm" onClick={() => navigate('/tasks', { state: { openCreateModal: true, project_id: id } })}><Plus size={13} strokeWidth={3} fill="currentColor" /> Add Task</button>}
                                 </div>
                             }
                         >
-                            {tasks.length === 0 ? <div className="empty-state"><p>No tasks yet</p></div> : (
+                            {!tasks || tasks.length === 0 ? <div className="empty-state"><p>No tasks yet</p></div> : (
                                 <div style={{ overflowX: 'auto' }}>
                                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                                         <thead>

@@ -15,11 +15,11 @@ const router = Router();
 
 router.use(authMiddleware);
 
-router.post('/', requirePermission('assign_task'), createTask);
-router.get('/', requirePermission('view_tasks'), getAllTasks);
-router.get('/:id', requirePermission('view_tasks'), getTaskById);
-router.patch('/:id', requirePermission('update_task'), updateTask);
-router.delete('/:id', requirePermission('delete_task'), deleteTask);
+router.post('/', requirePermission('assign_task', ['tester']), createTask);
+router.get('/', requirePermission('view_tasks', ['tester']), getAllTasks);
+router.get('/:id', requirePermission('view_tasks', ['tester']), getTaskById);
+router.patch('/:id', requirePermission('update_task', ['tester']), updateTask);
+router.delete('/:id', requirePermission('delete_task', ['tester']), deleteTask);
 
 // Time tracking — nested under tasks
 router.post('/:id/start', requirePermission('update_task_status'), startTaskTimer);

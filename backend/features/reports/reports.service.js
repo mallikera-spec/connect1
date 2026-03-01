@@ -48,13 +48,6 @@ export const getUserReport = async (userId, { startDate, endDate, roles = [] } =
     const { data: tasks, error } = await taskQuery;
     if (error) throw error;
 
-    // Fetch projects where user is a member
-    const { count: projectCount, error: projectError } = await supabaseAdmin
-        .from('project_members')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', userId);
-    if (projectError) throw projectError;
-
     const totalActualHours = tasks.reduce((sum, t) => sum + (t.actual_hours || 0), 0);
 
     // Fetch timesheet tasks by status for the period
@@ -62,6 +55,9 @@ export const getUserReport = async (userId, { startDate, endDate, roles = [] } =
         .from('timesheet_entries')
         .select(`
             status,
+            project_id,
+            title,
+            hours_spent,
             timesheet:timesheets!inner(user_id, work_date)
         `);
 
@@ -75,10 +71,26 @@ export const getUserReport = async (userId, { startDate, endDate, roles = [] } =
     const tsStats = { todo: 0, in_progress: 0, done: 0, blocked: 0, verified: 0, failed: 0 };
     (tsEntries || []).forEach(e => { if (tsStats[e.status] !== undefined) tsStats[e.status]++; });
 
+    // Calculate dynamic project count for Testers/Admins based on active work
+    let finalProjectCount = 0;
+    if (isTester) {
+        const activeProjectIds = new Set();
+        tasks.forEach(t => { if (t.project?.id) activeProjectIds.add(t.project.id); });
+        (tsEntries || []).forEach(e => { if (e.project_id) activeProjectIds.add(e.project_id); });
+        finalProjectCount = activeProjectIds.size;
+    } else {
+        // For others, use project membership count
+        const { count: projectCount } = await supabaseAdmin
+            .from('project_members')
+            .select('*', { count: 'exact', head: true })
+            .eq('user_id', userId);
+        finalProjectCount = projectCount || 0;
+    }
+
     return {
         user_id: userId,
         total_tasks: tasks.length,
-        total_projects: projectCount || 0,
+        total_projects: finalProjectCount,
         tasks_by_status: {
             pending: tasks.filter((t) => t.status === 'pending').length,
             in_progress: tasks.filter((t) => t.status === 'in_progress').length,
@@ -88,7 +100,15 @@ export const getUserReport = async (userId, { startDate, endDate, roles = [] } =
         },
         timesheet_tasks_by_status: tsStats,
         total_hours_logged: parseFloat(totalActualHours.toFixed(2)),
-        tasks,
+        tasks: tasks.map(t => ({
+            ...t,
+            // Ensure project name is flattened or ready for display
+            projectName: t.project?.name
+        })),
+        todos: (tsEntries || []).map(e => ({
+            ...e,
+            work_date: e.timesheet?.work_date
+        }))
     };
 };
 

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { FolderKanban, ListTodo, CheckCircle2, Clock, AlertCircle, Timer, ShieldCheck } from 'lucide-react';
 import api from '../../lib/api';
-import { StatCard, AttendanceWidget } from './DashboardComponents';
+import { StatCard, AttendanceWidget, NotificationCard } from './DashboardComponents';
 
 export default function TesterDashboard({ dateRange }) {
     const [stats, setStats] = useState(null);
@@ -31,8 +31,14 @@ export default function TesterDashboard({ dateRange }) {
     const todoFailed = stats.timesheet_tasks_by_status?.failed ?? 0;
 
     return (
-        <div>
-            <div className="stats-grid">
+        <div className="tester-dashboard">
+            {/* Section 1: General Overview */}
+            <div className="dashboard-section-header" style={{ marginBottom: 16 }}>
+                <h3 style={{ fontSize: 14, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--accent-light)' }}>
+                    General Overview
+                </h3>
+            </div>
+            <div className="stats-grid" style={{ marginBottom: 32 }}>
                 <AttendanceWidget />
                 <StatCard
                     icon={FolderKanban}
@@ -43,35 +49,40 @@ export default function TesterDashboard({ dateRange }) {
                     state={{ startDate: dateRange.startDate, endDate: dateRange.endDate }}
                 />
                 <StatCard
+                    icon={Timer}
+                    label="Testing Hours"
+                    value={`${stats.total_hours_logged ?? 0}h`}
+                    color="rgba(139,92,246,0.25)"
+                    to="/timesheet"
+                    state={{ startDate: dateRange.startDate, endDate: dateRange.endDate }}
+                />
+            </div>
+
+            <div style={{ marginBottom: 32 }}>
+                <NotificationCard />
+            </div>
+
+            {/* Section 2: Project Tasks (Active Bugs) */}
+            <div className="dashboard-section-header" style={{ marginBottom: 16 }}>
+                <h3 style={{ fontSize: 14, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--accent-light)' }}>
+                    Project Tasks (Active Bugs)
+                </h3>
+            </div>
+            <div className="stats-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', marginBottom: 32 }}>
+                <StatCard
                     icon={ListTodo}
                     label="Active Bugs/Tasks"
                     value={total}
                     color="rgba(59,130,246,0.25)"
-                    to="/tasks"
+                    to="/testing-tasks"
                     state={{ startDate: dateRange.startDate, endDate: dateRange.endDate }}
-                />
-                <StatCard
-                    icon={ShieldCheck}
-                    label="Verified (Passed)"
-                    value={verified}
-                    color="rgba(16,185,129,0.25)"
-                    to="/tasks"
-                    state={{ status: 'verified', startDate: dateRange.startDate, endDate: dateRange.endDate }}
-                />
-                <StatCard
-                    icon={AlertCircle}
-                    label="Failed (Rejected)"
-                    value={stats.tasks_by_status?.failed ?? 0}
-                    color="rgba(239,68,68,0.25)"
-                    to="/tasks"
-                    state={{ status: 'failed', startDate: dateRange.startDate, endDate: dateRange.endDate }}
                 />
                 <StatCard
                     icon={CheckCircle2}
                     label="Ready for Testing"
                     value={done}
                     color="rgba(79,70,229,0.25)"
-                    to="/tasks"
+                    to="/testing-tasks"
                     state={{ status: 'done', startDate: dateRange.startDate, endDate: dateRange.endDate }}
                 />
                 <StatCard
@@ -79,31 +90,40 @@ export default function TesterDashboard({ dateRange }) {
                     label="Testing in Progress"
                     value={inProgress}
                     color="rgba(245,158,11,0.25)"
-                    to="/tasks"
+                    to="/testing-tasks"
                     state={{ status: 'in_progress', startDate: dateRange.startDate, endDate: dateRange.endDate }}
                 />
                 <StatCard
                     icon={ShieldCheck}
-                    label="Verified Todos"
-                    value={todoVerified}
-                    color="rgba(16,185,129,0.15)"
-                    to="/testing-queue"
-                    state={{ statusFilter: 'verified', startDate: dateRange.startDate, endDate: dateRange.endDate }}
+                    label="Verified (Passed)"
+                    value={verified}
+                    color="rgba(16,185,129,0.25)"
+                    to="/testing-tasks"
+                    state={{ status: 'verified', startDate: dateRange.startDate, endDate: dateRange.endDate }}
                 />
                 <StatCard
                     icon={AlertCircle}
-                    label="Failed Todos"
-                    value={todoFailed}
-                    color="rgba(239,68,68,0.15)"
-                    to="/testing-queue"
-                    state={{ statusFilter: 'failed', startDate: dateRange.startDate, endDate: dateRange.endDate }}
+                    label="Failed (Rejected)"
+                    value={stats.tasks_by_status?.failed ?? 0}
+                    color="rgba(239,68,68,0.25)"
+                    to="/testing-tasks"
+                    state={{ status: 'failed', startDate: dateRange.startDate, endDate: dateRange.endDate }}
                 />
+            </div>
+
+            {/* Section 3: Timesheet Todos (Quick Testing) */}
+            <div className="dashboard-section-header" style={{ marginBottom: 16 }}>
+                <h3 style={{ fontSize: 14, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--accent-light)' }}>
+                    Timesheet Todos (Quick Testing)
+                </h3>
+            </div>
+            <div className="stats-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', marginBottom: 32 }}>
                 <StatCard
                     icon={CheckCircle2}
                     label="Todos Ready"
                     value={todoDone}
                     color="rgba(79,70,229,0.15)"
-                    to="/testing-queue"
+                    to="/testing-todos"
                     state={{ statusFilter: 'done', startDate: dateRange.startDate, endDate: dateRange.endDate }}
                 />
                 <StatCard
@@ -111,16 +131,24 @@ export default function TesterDashboard({ dateRange }) {
                     label="Upcoming Todos"
                     value={(stats.timesheet_tasks_by_status?.todo || 0) + (stats.timesheet_tasks_by_status?.in_progress || 0)}
                     color="rgba(245,158,11,0.15)"
-                    to="/testing-queue"
+                    to="/testing-todos"
                     state={{ statusFilter: 'upcoming', startDate: dateRange.startDate, endDate: dateRange.endDate }}
                 />
                 <StatCard
-                    icon={Timer}
-                    label="Testing Hours"
-                    value={`${stats.total_hours_logged ?? 0}h`}
-                    color="rgba(139,92,246,0.25)"
-                    to="/timesheet"
-                    state={{ startDate: dateRange.startDate, endDate: dateRange.endDate }}
+                    icon={ShieldCheck}
+                    label="Verified Todos"
+                    value={todoVerified}
+                    color="rgba(16,185,129,0.15)"
+                    to="/testing-todos"
+                    state={{ statusFilter: 'verified', startDate: dateRange.startDate, endDate: dateRange.endDate }}
+                />
+                <StatCard
+                    icon={AlertCircle}
+                    label="Failed Todos"
+                    value={todoFailed}
+                    color="rgba(239,68,68,0.15)"
+                    to="/testing-todos"
+                    state={{ statusFilter: 'failed', startDate: dateRange.startDate, endDate: dateRange.endDate }}
                 />
             </div>
 

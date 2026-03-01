@@ -10,7 +10,7 @@ export const createProject = async (req, res) => {
 };
 
 export const getAllProjects = async (req, res) => {
-    const isAdmin = req.user.roles?.includes('super_admin') || req.user.roles?.includes('project_manager') || req.user.roles?.includes('hr');
+    const isAdmin = req.user.roles?.some(r => ['super_admin', 'project_manager', 'hr', 'tester'].includes(r.toLowerCase()));
 
     let options = {};
     if (isAdmin) {
@@ -18,6 +18,9 @@ export const getAllProjects = async (req, res) => {
     } else {
         options.memberUserId = req.user.id;
     }
+
+    if (req.query.startDate) options.startDate = req.query.startDate;
+    if (req.query.endDate) options.endDate = req.query.endDate;
 
     const data = await projectsService.getAllProjects(options);
     successResponse(res, data, 'Projects fetched');

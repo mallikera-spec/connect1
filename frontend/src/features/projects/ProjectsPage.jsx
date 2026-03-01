@@ -21,24 +21,24 @@ export default function ProjectsPage() {
     const [form, setForm] = useState({ name: '', description: '', status: 'active' })
 
     const PROJECT_STATUS = {
-        active:     { label: 'Active',      color: '#10b981' },
-        on_hold:    { label: 'On Hold',     color: '#f59e0b' },
-        completed:  { label: 'Completed',   color: '#0891b2' },
-        cancelled:  { label: 'Cancelled',   color: '#dc2626' },
-        planning:   { label: 'Planning',    color: '#7c3aed' },
+        active: { label: 'Active', color: '#10b981' },
+        on_hold: { label: 'On Hold', color: '#f59e0b' },
+        completed: { label: 'Completed', color: '#0891b2' },
+        cancelled: { label: 'Cancelled', color: '#dc2626' },
+        planning: { label: 'Planning', color: '#7c3aed' },
     }
 
     const canManage = hasPermission('manage_projects') || hasRole('super_admin') || hasRole('project_manager') || hasRole('hr')
 
-    const load = async () => {
+    const load = async (params = {}) => {
         setLoading(true)
         try {
-            // First fetch projects
-            const params = !canManage ? { memberUserId: user?.id } : {}
-            const pRes = await api.get('/projects', { params })
-            setProjects(pRes.data.data)
+            const finalParams = { ...params }
+            if (!canManage) finalParams.memberUserId = user?.id
 
-            // Try to fetch users, but don't fail if it crashes (some roles can't view users)
+            const pRes = await api.get('/projects', { params: finalParams })
+            setProjects(pRes.data.data || [])
+
             try {
                 const uRes = await api.get('/users')
                 setAllUsers(uRes.data.data)
@@ -52,12 +52,22 @@ export default function ProjectsPage() {
             setLoading(false)
         }
     }
-    useEffect(() => { load() }, [])
 
     useEffect(() => {
-        if (location.state?.openCreateModal) {
-            openCreate();
-            window.history.replaceState({}, document.title);
+        if (location.state) {
+            const params = {}
+            if (location.state.startDate) params.startDate = location.state.startDate
+            if (location.state.endDate) params.endDate = location.state.endDate
+            if (location.state.status) params.status = location.state.status
+
+            load(params)
+
+            if (location.state.openCreateModal) {
+                openCreate()
+            }
+            window.history.replaceState({}, document.title)
+        } else {
+            load()
         }
     }, [location.state])
 
@@ -105,7 +115,7 @@ export default function ProjectsPage() {
                             <th>Name</th><th>Description</th><th>Status</th><th>Members</th><th>Created By</th><th>Created</th><th>Actions</th>
                         </tr></thead>
                         <tbody>
-                            {projects.length === 0 && <tr><td colSpan={6}><div className="empty-state"><p>No projects yet</p></div></td></tr>}
+                            {(!projects || projects.length === 0) && <tr><td colSpan={7}><div className="empty-state"><p>No projects yet</p></div></td></tr>}
                             {(projects || []).map(p => (
                                 <tr key={p.id}>
                                     <td><strong>{p.name}</strong></td>

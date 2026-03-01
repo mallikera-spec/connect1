@@ -26,7 +26,7 @@ export const createTask = async (taskData) => {
 export const getAllTasks = async (filters = {}) => {
     let query = supabaseAdmin
         .from('tasks')
-        .select('id, title, description, status, priority, estimated_hours, actual_hours, start_time, end_time, created_at, project:projects(id, name), assignee:profiles!assigned_to(id, full_name, email)')
+        .select('id, title, description, status, priority, estimated_hours, actual_hours, start_time, end_time, created_at, qa_notes, developer_reply, project:projects(id, name), assignee:profiles!assigned_to(id, full_name, email)')
         .order('created_at', { ascending: false });
 
     if (filters.project_id) query = query.eq('project_id', filters.project_id);
@@ -46,7 +46,7 @@ export const getAllTasks = async (filters = {}) => {
 export const getTaskById = async (id) => {
     const { data, error } = await supabaseAdmin
         .from('tasks')
-        .select('id, title, description, status, priority, estimated_hours, actual_hours, start_time, end_time, created_at, project:projects(id, name), assignee:profiles!assigned_to(id, full_name, email)')
+        .select('id, title, description, status, priority, estimated_hours, actual_hours, start_time, end_time, created_at, qa_notes, developer_reply, project:projects(id, name), assignee:profiles!assigned_to(id, full_name, email)')
         .eq('id', id)
         .single();
     if (error) throw error;
@@ -57,7 +57,7 @@ export const updateTask = async (id, updates) => {
     // Get original task to check for assignment change
     const { data: oldTask } = await supabaseAdmin.from('tasks').select('assigned_to, title').eq('id', id).single();
 
-    const { data, error } = await supabaseAdmin.from('tasks').update(updates).eq('id', id).select().single();
+    const { data, error } = await supabaseAdmin.from('tasks').update(updates).eq('id', id).select('*, project:projects(id, name), assignee:profiles!assigned_to(id, full_name, email)').single();
     if (error) throw error;
 
     // Notify if assignment changed or updated
@@ -76,11 +76,14 @@ export const updateTask = async (id, updates) => {
     } else if (data.assigned_to) {
         // Just an update to an existing assignment
         try {
+            const isFailed = updates.status === 'failed';
             await createNotification({
                 userId: data.assigned_to,
-                type: 'TASK_UPDATED',
-                title: 'Task Updated',
-                message: `Task updated: ${data.title}`,
+                type: isFailed ? 'TASK_FAILED' : 'TASK_UPDATED',
+                title: isFailed ? 'Task Failed QA' : 'Task Updated',
+                message: isFailed
+                    ? `QA failed for: ${data.title}. Check notes.`
+                    : `Task updated: ${data.title}`,
                 data: { taskId: data.id }
             });
         } catch (err) {

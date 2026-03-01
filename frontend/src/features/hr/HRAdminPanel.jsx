@@ -16,6 +16,13 @@ export default function HRAdminPanel() {
     const [employees, setEmployees] = useState([]);
     const [empSettings, setEmpSettings] = useState({}); // { [userId]: { joining_date, base_salary } }
     const [savingEmp, setSavingEmp] = useState(null);
+    const [syncing, setSyncing] = useState(false);
+    const [generatingPayroll, setGeneratingPayroll] = useState(false);
+
+    // Filter state
+    const [empSearch, setEmpSearch] = useState('');
+    const [dateFrom, setDateFrom] = useState('');
+    const [dateTo, setDateTo] = useState('');
 
     // Approval modal state
     const [approvalModal, setApprovalModal] = useState(null);
@@ -26,6 +33,12 @@ export default function HRAdminPanel() {
     const now = new Date();
     const [payrollMonth, setPayrollMonth] = useState(now.getMonth() === 0 ? 12 : now.getMonth());
     const [payrollYear, setPayrollYear] = useState(now.getMonth() === 0 ? now.getFullYear() - 1 : now.getFullYear());
+
+    useEffect(() => {
+        if (location.state?.tab) {
+            setActiveTab(location.state.tab);
+        }
+    }, [location.state?.tab]);
 
     useEffect(() => { fetchAllData(); }, [payrollMonth, payrollYear]);
 
@@ -84,11 +97,43 @@ export default function HRAdminPanel() {
                 headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
                 body: JSON.stringify({ joining_date: settings.joining_date || null, base_salary: parseFloat(settings.base_salary) || 0 })
             });
-            toast.success('Employee settings saved');
+
+            // Trigger sync for this user specifically or all
+            await HRService.syncAllLeaveBalances();
+
+            toast.success('Employee settings saved & balance synced');
         } catch (err) {
             toast.error('Error saving settings');
         } finally {
             setSavingEmp(null);
+        }
+    };
+
+    const handleSyncAll = async () => {
+        setSyncing(true);
+        try {
+            await HRService.syncAllLeaveBalances();
+            toast.success('All leave balances synchronized');
+            fetchAllData();
+        } catch (err) {
+            toast.error('Error syncing balances');
+        } finally {
+            setSyncing(false);
+        }
+    };
+
+    const handleGeneratePayroll = async () => {
+        setGeneratingPayroll(true);
+        try {
+            await HRService.generateSalarySlips({ month: payrollMonth, year: payrollYear });
+            toast.success('Payroll generated/updated for all employees');
+            // Refresh slips for the current month/year
+            const r = await HRService.getAllSalarySlips(payrollMonth, payrollYear);
+            setSalarySlips(r.data || []);
+        } catch (err) {
+            toast.error('Error generating payroll');
+        } finally {
+            setGeneratingPayroll(false);
         }
     };
 
@@ -127,9 +172,41 @@ export default function HRAdminPanel() {
         return <span className={map[status] || 'badge'}>{status}</span>;
     };
 
-    const { sorted: sortedAttendance, sortKey: attSK, sortDir: attSD, toggleSort: attSort } = useSortable(pendingAttendance, 'date', 'desc');
-    const { sorted: sortedLeaves, sortKey: lvSK, sortDir: lvSD, toggleSort: lvSort } = useSortable(pendingLeaves, 'start_date', 'asc');
-    const { sorted: sortedEmployees, sortKey: empSK, sortDir: empSD, toggleSort: empSort } = useSortable(employees, 'full_name', 'asc');
+    // --- Filtering Logic ---
+    const filterByEmployee = (item) => {
+        if (!empSearch) return true;
+        const name = (item.user?.full_name || item.full_name || '').toLowerCase();
+        const email = (item.user?.email || item.email || '').toLowerCase();
+        const search = empSearch.toLowerCase();
+        return name.includes(search) || email.includes(search);
+    };
+
+    const filterByDate = (dateVal) => {
+        if (!dateVal) return true;
+        const d = new Date(dateVal);
+        d.setHours(0, 0, 0, 0);
+        if (dateFrom) {
+            const from = new Date(dateFrom);
+            from.setHours(0, 0, 0, 0);
+            if (d < from) return false;
+        }
+        if (dateTo) {
+            const to = new Date(dateTo);
+            to.setHours(0, 0, 0, 0);
+            if (d > to) return false;
+        }
+        return true;
+    };
+
+    const filteredAttendance = pendingAttendance.filter(r => filterByEmployee(r) && filterByDate(r.date));
+    const filteredLeaves = pendingLeaves.filter(r => filterByEmployee(r) && (filterByDate(r.start_date) || filterByDate(r.end_date)));
+    const filteredSlips = salarySlips.filter(r => filterByEmployee(r)); // Slips already filtered by Month/Year select
+    const filteredEmployees = employees.filter(r => filterByEmployee(r) && filterByDate(r.joining_date || r.date_of_joining));
+
+    const { sorted: sortedAttendance, sortKey: attSK, sortDir: attSD, toggleSort: attSort } = useSortable(filteredAttendance, 'date', 'desc');
+    const { sorted: sortedLeaves, sortKey: lvSK, sortDir: lvSD, toggleSort: lvSort } = useSortable(filteredLeaves, 'start_date', 'asc');
+    const { sorted: sortedEmployees, sortKey: empSK, sortDir: empSD, toggleSort: empSort } = useSortable(filteredEmployees, 'full_name', 'asc');
+    const sortedSlips = filteredSlips; // Keep current order
 
     const tabs = [
         { key: 'attendance', label: 'Pending Attendance', icon: Clock, count: pendingAttendance.length },
@@ -178,6 +255,43 @@ export default function HRAdminPanel() {
                         )}
                     </button>
                 ))}
+            </div>
+
+            {/* Global Filters */}
+            <div className="glass-card" style={{ padding: '16px', marginBottom: '24px', display: 'flex', gap: '16px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
+                <div className="form-group" style={{ flex: '1 1 240px' }}>
+                    <label className="form-label" style={{ fontSize: '11px' }}>Search Employee</label>
+                    <input
+                        type="text"
+                        placeholder="Name or email..."
+                        className="form-input"
+                        value={empSearch}
+                        onChange={e => setEmpSearch(e.target.value)}
+                    />
+                </div>
+                <div className="form-group">
+                    <label className="form-label" style={{ fontSize: '11px' }}>From Date</label>
+                    <input
+                        type="date"
+                        className="form-input"
+                        value={dateFrom}
+                        onChange={e => setDateFrom(e.target.value)}
+                    />
+                </div>
+                <div className="form-group">
+                    <label className="form-label" style={{ fontSize: '11px' }}>To Date</label>
+                    <input
+                        type="date"
+                        className="form-input"
+                        value={dateTo}
+                        onChange={e => setDateTo(e.target.value)}
+                    />
+                </div>
+                {(empSearch || dateFrom || dateTo) && (
+                    <button className="btn btn-ghost" onClick={() => { setEmpSearch(''); setDateFrom(''); setDateTo(''); }} style={{ height: '38px' }}>
+                        Clear
+                    </button>
+                )}
             </div>
 
             {/* Attendance Tab */}
@@ -260,7 +374,12 @@ export default function HRAdminPanel() {
                             {sortedLeaves.length > 0 ? sortedLeaves.map(req => (
                                 <tr key={req.id}>
                                     <td><strong>{req.user?.full_name || '—'}</strong></td>
-                                    <td><span className="badge badge-purple">{req.type}</span></td>
+                                    <td>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                            <span className="badge badge-purple">{req.type}</span>
+                                            {req.leave_type && <span style={{ fontSize: 10, color: 'var(--text-dim)', fontWeight: 600 }}>Policy: {req.leave_type.name}</span>}
+                                        </div>
+                                    </td>
                                     <td style={{ color: 'var(--text-muted)', fontSize: 13 }}>{new Date(req.start_date).toLocaleDateString()}</td>
                                     <td style={{ color: 'var(--text-muted)', fontSize: 13 }}>{new Date(req.end_date).toLocaleDateString()}</td>
                                     <td style={{ color: 'var(--text-muted)', fontSize: 13, maxWidth: 200 }} title={req.reason}>{req.reason}</td>
@@ -291,8 +410,14 @@ export default function HRAdminPanel() {
                 <div className="table-wrapper">
                     <div className="table-toolbar">
                         <h2 style={{ fontSize: 15, fontWeight: 600 }}>Salary Slips</h2>
-                        <div style={{ display: 'flex', gap: 8 }}>
-                            <select className="form-select" style={{ height: 36, fontSize: 13 }}
+                        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                            <button className="btn btn-primary btn-sm"
+                                onClick={handleGeneratePayroll}
+                                disabled={generatingPayroll}
+                                style={{ marginRight: 8 }}>
+                                {generatingPayroll ? <span className="spinner" style={{ width: 14, height: 14 }} /> : 'Generate Payroll'}
+                            </button>
+                            <select className="form-select" style={{ height: 36, fontSize: 13, width: 120 }}
                                 value={payrollMonth} onChange={e => setPayrollMonth(e.target.value)}>
                                 {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
                                     <option key={m} value={m}>
@@ -300,7 +425,7 @@ export default function HRAdminPanel() {
                                     </option>
                                 ))}
                             </select>
-                            <select className="form-select" style={{ height: 36, fontSize: 13 }}
+                            <select className="form-select" style={{ height: 36, fontSize: 13, width: 90 }}
                                 value={payrollYear} onChange={e => setPayrollYear(e.target.value)}>
                                 {[now.getFullYear() - 1, now.getFullYear(), now.getFullYear() + 1].map(y => (
                                     <option key={y} value={y}>{y}</option>
@@ -320,7 +445,7 @@ export default function HRAdminPanel() {
                             </tr>
                         </thead>
                         <tbody>
-                            {salarySlips.length > 0 ? salarySlips.map(slip => (
+                            {sortedSlips.length > 0 ? sortedSlips.map(slip => (
                                 <tr key={slip.id}>
                                     <td><strong>{slip.user?.full_name || '—'}</strong></td>
                                     <td style={{ color: 'var(--text-muted)', fontSize: 13 }}>{slip.month}/{slip.year}</td>
@@ -342,7 +467,17 @@ export default function HRAdminPanel() {
                 <div className="table-wrapper">
                     <div className="table-toolbar">
                         <h2 style={{ fontSize: 15, fontWeight: 600 }}>Employee HR Settings</h2>
-                        <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Set joining date & base salary to calculate correct leave balance</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                            <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Set joining date & base salary to calculate correct leave balance</span>
+                            <button className="btn btn-ghost btn-sm"
+                                onClick={handleSyncAll}
+                                disabled={syncing}
+                                style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--accent-light)', border: '1px solid var(--accent-transparent)' }}
+                            >
+                                {syncing ? <span className="spinner" style={{ width: 12, height: 12 }} /> : <Clock size={14} />}
+                                Sync All Balances
+                            </button>
+                        </div>
                     </div>
                     <table>
                         <thead>

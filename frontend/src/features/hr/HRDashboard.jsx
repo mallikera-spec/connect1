@@ -9,12 +9,13 @@ export default function HRDashboard() {
     const { user } = useAuth();
     const [loading, setLoading] = useState(true);
 
-    const [leaveBalance, setLeaveBalance] = useState({ totalAccrued: 0, used: 0, balance: 0 });
+    const [leaveBalance, setLeaveBalance] = useState({ totalAccrued: 0, used: 0, balance: 0, breakdown: [] });
+    const [leaveTypes, setLeaveTypes] = useState([]);
     const [myLeaves, setMyLeaves] = useState([]);
     const [mySlips, setMySlips] = useState([]);
 
     const [isLeaveModalOpen, setIsLeaveModalOpen] = useState(false);
-    const [leaveForm, setLeaveForm] = useState({ start_date: '', end_date: '', type: 'Paid Leave', reason: '' });
+    const [leaveForm, setLeaveForm] = useState({ start_date: '', end_date: '', type: 'Sick Leave', leave_type_id: '', reason: '' });
     const [submitting, setSubmitting] = useState(false);
 
     useEffect(() => {
@@ -28,15 +29,22 @@ export default function HRDashboard() {
             const month = now.getMonth() + 1;
             const year = now.getFullYear();
 
-            const [balanceRes, leavesRes, slipsRes] = await Promise.all([
-                HRService.getLeaveBalance().catch(() => ({ data: { totalAccrued: 0, used: 0, balance: 0 } })),
+            const [balanceRes, leavesRes, slipsRes, typesRes] = await Promise.all([
+                HRService.getLeaveBalance().catch(() => ({ data: { totalAccrued: 0, used: 0, balance: 0, breakdown: [] } })),
                 HRService.getMyLeaves().catch(() => ({ data: [] })),
                 HRService.getMySalarySlips().catch(() => ({ data: [] })),
+                HRService.getLeaveTypes().catch(() => ({ data: [] }))
             ]);
 
-            setLeaveBalance(balanceRes.data || { totalAccrued: 0, used: 0, balance: 0 });
+            setLeaveBalance(balanceRes.data || { totalAccrued: 0, used: 0, balance: 0, breakdown: [] });
             setMyLeaves(leavesRes.data || []);
             setMySlips(slipsRes.data || []);
+            setLeaveTypes(typesRes.data || []);
+
+            // Set default leave type if none selected
+            if (typesRes.data?.length > 0) {
+                setLeaveForm(p => ({ ...p, leave_type_id: typesRes.data[0].id, type: typesRes.data[0].name }));
+            }
         } catch (err) {
             console.error(err);
         } finally {
@@ -54,7 +62,13 @@ export default function HRDashboard() {
             await HRService.submitLeaveRequest(leaveForm);
             toast.success('Leave request submitted');
             setIsLeaveModalOpen(false);
-            setLeaveForm({ start_date: '', end_date: '', type: 'Paid Leave', reason: '' });
+            setLeaveForm({
+                start_date: '',
+                end_date: '',
+                type: leaveTypes[0]?.name || 'Sick Leave',
+                leave_type_id: leaveTypes[0]?.id || '',
+                reason: ''
+            });
             fetchDashboardData();
         } catch (err) {
             toast.error(err.message || 'Error submitting leave');
@@ -103,11 +117,11 @@ export default function HRDashboard() {
                             {Number(leaveBalance.balance).toFixed(1)}
                         </div>
                         <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 12 }}>days available</div>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                            {[['Accrued', Number(leaveBalance.totalAccrued).toFixed(1)], ['Used', leaveBalance.used]].map(([label, val]) => (
-                                <div key={label} style={{ background: 'rgba(255,255,255,0.04)', borderRadius: 8, padding: '8px 10px', border: '1px solid var(--border)' }}>
-                                    <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{label}</div>
-                                    <div style={{ fontWeight: 600 }}>{val}</div>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8 }}>
+                            {(leaveBalance.breakdown || []).map(b => (
+                                <div key={b.leave_type?.id} style={{ background: 'rgba(255,255,255,0.04)', borderRadius: 8, padding: '8px 10px', border: '1px solid var(--border)', textAlign: 'left' }}>
+                                    <div style={{ fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.5 }}>{b.leave_type?.name}</div>
+                                    <div style={{ fontWeight: 700, fontSize: 13 }}>{Number(b.balance).toFixed(1)} <span style={{ fontWeight: 400, fontSize: 11, color: 'var(--text-dim)' }}>rem.</span></div>
                                 </div>
                             ))}
                         </div>
@@ -210,11 +224,17 @@ export default function HRDashboard() {
                                 </div>
                                 <div className="form-group">
                                     <label className="form-label">Leave Type</label>
-                                    <select className="form-select" value={leaveForm.type}
-                                        onChange={e => setLeaveForm(p => ({ ...p, type: e.target.value }))}>
-                                        <option value="Paid Leave">Paid Leave ({Number(leaveBalance.balance).toFixed(1)} days available)</option>
-                                        <option value="Unpaid Leave">Unpaid Leave</option>
-                                        <option value="Sick Leave">Sick Leave</option>
+                                    <select className="form-select"
+                                        value={leaveForm.leave_type_id}
+                                        onChange={e => {
+                                            const selected = leaveTypes.find(t => t.id === e.target.value);
+                                            setLeaveForm(p => ({ ...p, leave_type_id: e.target.value, type: selected?.name || '' }));
+                                        }}>
+                                        {leaveTypes.map(t => (
+                                            <option key={t.id} value={t.id}>
+                                                {t.name} ({leaveBalance.breakdown?.find(b => b.leave_type.id === t.id)?.balance || 0} left)
+                                            </option>
+                                        ))}
                                     </select>
                                 </div>
                                 <div className="form-group">

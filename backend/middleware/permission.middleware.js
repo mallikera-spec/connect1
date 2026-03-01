@@ -7,7 +7,7 @@ import { StatusCodes } from 'http-status-codes';
  *
  * ✅ Super-admin bypass: users with role 'super_admin' skip all permission checks.
  */
-export const requirePermission = (permissionName) => {
+export const requirePermission = (permissionName, allowedRoles = []) => {
     return (req, res, next) => {
         if (!req.user) {
             return res.status(StatusCodes.UNAUTHORIZED).json({
@@ -17,17 +17,24 @@ export const requirePermission = (permissionName) => {
         }
 
         // Super-admin bypasses all permission checks
-        if (req.user.roles?.includes('super_admin')) {
-            return next();
+        const isSuperAdmin = req.user.roles?.some(r => ['super_admin', 'super admin'].includes(r.toLowerCase()));
+        if (isSuperAdmin) return next();
+
+        // Check if user has explicit permission
+        const hasPerm = req.user.permissions?.includes(permissionName);
+        if (hasPerm) return next();
+
+        // Check if user has an allowed role
+        if (allowedRoles.length > 0) {
+            const hasRoleMatch = allowedRoles.some(role =>
+                req.user.roles?.some(userRole => userRole.toLowerCase() === role.toLowerCase())
+            );
+            if (hasRoleMatch) return next();
         }
 
-        if (!req.user.permissions?.includes(permissionName)) {
-            return res.status(StatusCodes.FORBIDDEN).json({
-                success: false,
-                message: `Forbidden: missing permission '${permissionName}'`,
-            });
-        }
-
-        next();
+        return res.status(StatusCodes.FORBIDDEN).json({
+            success: false,
+            message: `Forbidden: missing permission '${permissionName}'`,
+        });
     };
 };

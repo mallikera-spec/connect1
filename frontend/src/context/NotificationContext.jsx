@@ -9,28 +9,43 @@ export function NotificationProvider({ children }) {
     const [notifications, setNotifications] = useState([]);
     const [unreadCount, setUnreadCount] = useState(0);
     const [loading, setLoading] = useState(false);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [activeToast, setActiveToast] = useState(null);
 
-    const loadNotifications = useCallback(async () => {
+    const loadNotifications = useCallback(async (isInitial = false) => {
         if (!user) return;
-        setLoading(true);
+        if (isInitial) setLoading(true);
         try {
             const res = await api.get('/notifications');
-            setNotifications(res.data.data);
-            setUnreadCount(res.data.data.filter(n => !n.is_read).length);
+            const newNotifications = res.data.data;
+            const newUnreadCount = newNotifications.filter(n => !n.is_read).length;
+
+            // Detect new incoming notifications for the toast (if not initial load)
+            if (!isInitial && newNotifications.length > 0 && notifications.length > 0) {
+                const latestOld = notifications[0];
+                const incoming = newNotifications.filter(n => !n.is_read && n.created_at > latestOld.created_at);
+                if (incoming.length > 0) {
+                    setActiveToast(incoming[0]); // Show the most recent one
+                    // Auto-hide toast after 5 seconds
+                    setTimeout(() => setActiveToast(null), 5000);
+                }
+            }
+
+            setNotifications(newNotifications);
+            setUnreadCount(newUnreadCount);
         } catch (err) {
             console.error('Failed to load notifications:', err);
         } finally {
-            setLoading(false);
+            if (isInitial) setLoading(false);
         }
-    }, [user]);
+    }, [user, notifications]);
 
     useEffect(() => {
-        loadNotifications();
+        loadNotifications(true);
 
-        // Poll every 20 seconds for new notifications
-        const interval = setInterval(loadNotifications, 20000);
+        const interval = setInterval(() => loadNotifications(false), 20000);
         return () => clearInterval(interval);
-    }, [loadNotifications]);
+    }, [user]); // Only depend on user to avoid infinite loops with notifications
 
     const markAsRead = async (id) => {
         try {
@@ -59,9 +74,13 @@ export function NotificationProvider({ children }) {
             notifications,
             unreadCount,
             loading,
+            isModalOpen,
+            setIsModalOpen,
+            activeToast,
+            setActiveToast,
             markAsRead,
             markAllRead,
-            refresh: loadNotifications
+            refresh: () => loadNotifications(false)
         }}>
             {children}
         </NotificationContext.Provider>

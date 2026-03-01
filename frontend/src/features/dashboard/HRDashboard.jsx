@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Users, Building2, UserPlus } from 'lucide-react';
 import api from '../../lib/api';
-import { StatCard } from './DashboardComponents';
+import { StatCard, NotificationCard } from './DashboardComponents';
 
 export default function HRDashboard({ dateRange }) {
     const [stats, setStats] = useState(null);
@@ -44,6 +44,10 @@ export default function HRDashboard({ dateRange }) {
                     color="rgba(34,197,94,0.25)"
                     to="/users"
                 />
+            </div>
+
+            <div style={{ marginTop: '24px' }}>
+                <NotificationCard />
             </div>
 
             <div className="card polished-card" style={{ marginTop: '24px' }}>

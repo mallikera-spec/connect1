@@ -32,11 +32,36 @@ export const getAllProjects = async (options = {}) => {
         const projectIds = memberOf?.map(m => m.project_id) || [];
 
         if (projectIds.length > 0) {
-            // Filter: Created by user OR in member projects
             query = query.or(`created_by.eq.${options.memberUserId},id.in.(${projectIds.join(',')})`);
         } else {
-            // Filter: Only created by user
             query = query.eq('created_by', options.memberUserId);
+        }
+    }
+
+    if (options.startDate && options.endDate) {
+        // Filter projects that have tasks or timesheet entries in the date range
+        const { data: activeTasks } = await supabaseAdmin
+            .from('tasks')
+            .select('project_id')
+            .gte('created_at', options.startDate)
+            .lte('created_at', options.endDate + ' 23:59:59');
+
+        const { data: activeEntries } = await supabaseAdmin
+            .from('timesheet_entries')
+            .select('project_id, timesheet:timesheets!inner(work_date)')
+            .gte('timesheet.work_date', options.startDate)
+            .lte('timesheet.work_date', options.endDate);
+
+        const activeProjectIds = new Set([
+            ...(activeTasks?.map(t => t.project_id) || []),
+            ...(activeEntries?.map(e => e.project_id) || [])
+        ].filter(Boolean));
+
+        if (activeProjectIds.size > 0) {
+            query = query.in('id', Array.from(activeProjectIds));
+        } else {
+            // No activity in range means no projects should be shown if filtered by date
+            return [];
         }
     }
 

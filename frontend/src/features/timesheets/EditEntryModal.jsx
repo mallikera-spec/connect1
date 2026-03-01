@@ -8,6 +8,7 @@ export default function EditEntryModal({ entry, myProjects, onClose, onSaved }) 
     const [projectId, setProjectId] = useState(entry.project_id || '')
     const [time, setTime] = useState(entry.hours_spent || '00:00')
     const [notes, setNotes] = useState(entry.notes || '')
+    const [developerReply, setDeveloperReply] = useState(entry.developer_reply || '')
     const [saving, setSaving] = useState(false)
 
     const handleSave = async (e) => {
@@ -22,7 +23,9 @@ export default function EditEntryModal({ entry, myProjects, onClose, onSaved }) 
                 title: title.trim(),
                 project_id: projectId,
                 hours_spent: time,
-                notes: notes.trim()
+                notes: notes.trim(),
+                developer_reply: developerReply.trim(),
+                status: entry.status === 'failed' ? 'done' : entry.status
             })
             toast.success('Activity updated!')
             onSaved(res.data.data)
@@ -113,6 +116,27 @@ export default function EditEntryModal({ entry, myProjects, onClose, onSaved }) 
                                 <p style={{ fontSize: 13, color: entry.status === 'failed' ? '#ef4444' : '#10b981', fontWeight: 600, margin: 0 }}>
                                     🚩 {entry.qa_notes}
                                 </p>
+                            )}
+                            {entry.status === 'failed' && (
+                                <div style={{ marginTop: 12 }}>
+                                    <label className="form-label" style={{ fontSize: 11, marginBottom: 4 }}>Your Reply to QA</label>
+                                    <textarea
+                                        className="form-textarea"
+                                        value={developerReply}
+                                        onChange={e => setDeveloperReply(e.target.value)}
+                                        rows={2}
+                                        placeholder="Explain the fix or reply to the tester..."
+                                        style={{ fontSize: 13 }}
+                                    />
+                                    <p style={{ fontSize: 10, color: 'var(--text-dim)', marginTop: 4 }}>
+                                        💡 Saving will mark this as "DONE" for re-testing.
+                                    </p>
+                                </div>
+                            )}
+                            {developerReply && entry.status !== 'failed' && (
+                                <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px dashed rgba(0,0,0,0.1)' }}>
+                                    <p style={{ fontSize: 12, margin: 0 }}><strong>Your Reply:</strong> {developerReply}</p>
+                                </div>
                             )}
                         </div>
                     )}

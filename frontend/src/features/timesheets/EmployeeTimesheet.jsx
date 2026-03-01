@@ -332,6 +332,12 @@ export default function EmployeeTimesheet() {
                                     <option value="">ALL PROJECTS</option>
                                     {myProjects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                                 </select>
+                                <select className="form-select" style={{ width: 'auto', padding: '4px 12px', fontSize: 12 }} value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
+                                    <option value="">ALL STATUS</option>
+                                    {['todo', 'in_progress', 'done', 'blocked', 'verified', 'failed'].map(s => (
+                                        <option key={s} value={s}>{s.toUpperCase()}</option>
+                                    ))}
+                                </select>
                                 <div className="btn-group">
                                     <button className="btn btn-ghost" style={{ padding: '4px 10px', fontSize: 11 }} onClick={handleExportCSV}>CSV</button>
                                     <button className="btn btn-ghost" style={{ padding: '4px 10px', fontSize: 11 }} onClick={handleExportExcel}>EXCEL</button>

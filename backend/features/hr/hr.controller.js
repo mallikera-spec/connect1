@@ -50,6 +50,16 @@ export const approveAttendanceRecord = async (req, res, next) => {
     }
 };
 
+// --- Leave Policies ---
+export const getLeaveTypes = async (req, res, next) => {
+    try {
+        const data = await hrService.getLeaveTypes();
+        res.json({ success: true, data });
+    } catch (error) {
+        next(error);
+    }
+};
+
 // --- Leaves ---
 export const submitLeaveRequest = async (req, res, next) => {
     try {

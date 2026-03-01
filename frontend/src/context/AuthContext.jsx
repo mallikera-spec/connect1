@@ -47,8 +47,11 @@ export function AuthProvider({ children }) {
     // Helper: check if the user has at least one of the given permissions
     const hasAnyPermission = (...perms) => perms.some(p => hasPermission(p))
 
-    // Helper: check if user has a specific role
-    const hasRole = (role) => user?.roles?.includes(role) ?? false
+    // Helper: check if user has a specific role (case-insensitive)
+    const hasRole = (role) => {
+        if (!user || !user.roles) return false
+        return user.roles.some(r => r.toLowerCase() === role.toLowerCase())
+    }
 
     return (
         <AuthContext.Provider value={{ session, user, loading, login, logout, hasPermission, hasAnyPermission, hasRole }}>

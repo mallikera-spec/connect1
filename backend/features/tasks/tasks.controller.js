@@ -5,7 +5,7 @@ import { successResponse } from '../../utils/apiResponse.js';
 import { StatusCodes } from 'http-status-codes';
 
 export const createTask = async (req, res) => {
-    const isAdmin = req.user.roles?.some(r => ['super_admin', 'project_manager', 'hr'].includes(r));
+    const isAdmin = req.user.roles?.some(r => ['super_admin', 'project_manager', 'hr', 'tester'].includes(r.toLowerCase()));
 
     const body = createTaskSchema.parse(req.body);
 
@@ -39,7 +39,12 @@ export const getTaskById = async (req, res) => {
     successResponse(res, data, 'Task fetched');
 };
 
+import fs from 'fs';
+
 export const updateTask = async (req, res) => {
+    const logMsg = `[${new Date().toISOString()}] UPDATE TASK ${req.params.id}: ${JSON.stringify(req.body)}\n`;
+    fs.appendFileSync('c:/Users/malli/Argosmob_Projects/Dev/debug.log', logMsg);
+
     const body = updateTaskSchema.parse(req.body);
     const data = await tasksService.updateTask(req.params.id, body);
     successResponse(res, data, 'Task updated');

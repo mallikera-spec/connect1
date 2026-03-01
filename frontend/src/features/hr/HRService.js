@@ -62,12 +62,20 @@ export const HRService = {
         const response = await hrApi.get('/hr/leaves/pending');
         return response.data;
     },
+    getLeaveTypes: async () => {
+        const response = await hrApi.get('/hr/leaves/types');
+        return response.data;
+    },
     updateLeaveStatus: async (id, status, adminComment) => {
         const response = await hrApi.patch(`/hr/leaves/${id}/status`, { status, admin_comment: adminComment });
         return response.data;
     },
     getLeaveBalance: async (userId) => {
         const response = await hrApi.get('/hr/leaves/balance', { params: { userId } });
+        return response.data;
+    },
+    syncAllLeaveBalances: async () => {
+        const response = await hrApi.post('/hr/leaves/sync');
         return response.data;
     },
 

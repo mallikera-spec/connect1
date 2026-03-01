@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../lib/api';
-import { EmployeeCard, StatCard } from './DashboardComponents';
+import { EmployeeCard, StatCard, NotificationCard } from './DashboardComponents';
 import { HRService } from '../hr/HRService';
-import { Clock, Calendar, ArrowRight, DollarSign, TrendingUp, FileText, CheckCircle } from 'lucide-react';
+import { Clock, Calendar, ArrowRight, DollarSign, TrendingUp, FileText, CheckCircle, IndianRupee } from 'lucide-react';
 
 export default function AdminDashboard({ dateRange }) {
     const navigate = useNavigate();
@@ -55,7 +55,7 @@ export default function AdminDashboard({ dateRange }) {
                 <StatCard
                     label="Deal Wins"
                     value={`Rs ${(salesStats?.wonValue || 0).toLocaleString()}`}
-                    icon={DollarSign}
+                    icon={IndianRupee}
                     color="#10b981"
                     to="/leads"
                     state={{ status: 'Won', ...dateRange }}
@@ -201,6 +201,8 @@ export default function AdminDashboard({ dateRange }) {
                 </div>
             </div>
 
+            <NotificationCard />
+
             {/* HR Approvals */}
             <div style={{ marginTop: 24, background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: '16px 20px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
@@ -215,7 +217,7 @@ export default function AdminDashboard({ dateRange }) {
                         onClick={() => navigate('/hr-admin', { state: { tab: 'attendance' } })}
                         style={{ background: hrStats.pendingAttendance > 0 ? 'var(--warning-bg)' : 'rgba(255,255,255,0.03)', border: '1px solid var(--border)', borderRadius: 8, padding: '14px 16px', cursor: 'pointer', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 12 }}
                     >
-                        <Clock size={20} style={{ color: hrStats.pendingAttendance > 0 ? 'var(--warning)' : 'var(--text-muted)' }} />
+                        <Clock size={20} strokeWidth={2.5} fill="currentColor" style={{ color: hrStats.pendingAttendance > 0 ? 'var(--warning)' : 'var(--text-muted)' }} />
                         <div>
                             <div style={{ fontSize: 22, fontWeight: 700, color: hrStats.pendingAttendance > 0 ? 'var(--warning)' : 'var(--text)', lineHeight: 1 }}>{hrStats.pendingAttendance}</div>
                             <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>Pending Attendance</div>
@@ -225,7 +227,7 @@ export default function AdminDashboard({ dateRange }) {
                         onClick={() => navigate('/hr-admin', { state: { tab: 'leaves' } })}
                         style={{ background: hrStats.pendingLeaves > 0 ? 'var(--info-bg)' : 'rgba(255,255,255,0.03)', border: '1px solid var(--border)', borderRadius: 8, padding: '14px 16px', cursor: 'pointer', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 12 }}
                     >
-                        <Calendar size={20} style={{ color: hrStats.pendingLeaves > 0 ? 'var(--info)' : 'var(--text-muted)' }} />
+                        <Calendar size={20} strokeWidth={2.5} fill="currentColor" style={{ color: hrStats.pendingLeaves > 0 ? 'var(--info)' : 'var(--text-muted)' }} />
                         <div>
                             <div style={{ fontSize: 22, fontWeight: 700, color: hrStats.pendingLeaves > 0 ? 'var(--info)' : 'var(--text)', lineHeight: 1 }}>{hrStats.pendingLeaves}</div>
                             <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>Pending Leaves</div>

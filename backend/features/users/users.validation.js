@@ -15,4 +15,7 @@ export const updateUserSchema = z.object({
     department: z.string().optional(),
     designation: z.string().optional(),
     date_of_joining: z.string().transform(v => v === '' ? null : v).optional(),
+    joining_date: z.string().transform(v => v === '' ? null : v).optional(),
+    base_salary: z.number().optional(),
+    ctc: z.number().optional(),
 });

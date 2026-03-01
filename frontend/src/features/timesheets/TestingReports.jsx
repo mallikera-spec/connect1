@@ -137,7 +137,7 @@ export default function TestingReports() {
                         <input
                             type="text"
                             className="form-control"
-                            placeholder="Search activities..."
+                            placeholder="Search todos..."
                             value={searchTerm}
                             onChange={e => setSearchTerm(e.target.value)}
                         />
@@ -190,7 +190,7 @@ export default function TestingReports() {
                                 <th style={{ width: 100 }}>Date</th>
                                 <th style={{ width: 130 }}>Developer</th>
                                 <th style={{ width: 120 }}>Project</th>
-                                <th>Activity Details</th>
+                                <th>Todo Details</th>
                                 <th style={{ width: 60 }}>Hrs</th>
                                 <th style={{ width: 100 }}>Result</th>
                                 <th style={{ width: 200 }}>QA Notes</th>

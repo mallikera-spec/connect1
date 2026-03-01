@@ -80,8 +80,13 @@ export const getUserById = async (id) => {
 
 export const updateUser = async (id, updates) => {
     const payload = { ...updates };
+
+    // Bidirectional sync for redundant fields
     if (payload.ctc !== undefined) payload.base_salary = payload.ctc;
+    else if (payload.base_salary !== undefined) payload.ctc = payload.base_salary;
+
     if (payload.date_of_joining !== undefined) payload.joining_date = payload.date_of_joining;
+    else if (payload.joining_date !== undefined) payload.date_of_joining = payload.joining_date;
 
     // 1. Try update by id first
     const { data: updateData, error: updateError } = await supabaseAdmin
@@ -120,7 +125,7 @@ export const updateUser = async (id, updates) => {
             })
             .select()
             .single();
-        
+
         if (insertError) throw insertError;
         return insertData;
     }

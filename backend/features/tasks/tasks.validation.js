@@ -11,6 +11,8 @@ export const createTaskSchema = z.object({
     estimated_hours: z.number().positive().optional(),
     actual_hours: z.number().nonnegative().optional(),
     end_time: z.string().optional(),
+    qa_notes: z.string().optional(),
+    developer_reply: z.string().optional(),
 });
 
 export const updateTaskSchema = z.object({
@@ -22,4 +24,6 @@ export const updateTaskSchema = z.object({
     estimated_hours: z.number().positive().optional(),
     actual_hours: z.number().nonnegative().optional(),
     end_time: z.string().optional(),
+    qa_notes: z.string().optional(),
+    developer_reply: z.string().optional(),
 });

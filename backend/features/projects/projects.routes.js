@@ -10,9 +10,9 @@ import { requirePermission } from '../../middleware/permission.middleware.js';
 const router = Router();
 router.use(authMiddleware);
 
-router.post('/', requirePermission('create_project'), createProject);
-router.get('/', requirePermission('view_projects'), getAllProjects);
-router.get('/:id', requirePermission('view_projects'), getProjectById);
+router.post('/', requirePermission('create_project', ['tester']), createProject);
+router.get('/', requirePermission('view_projects', ['tester']), getAllProjects);
+router.get('/:id', requirePermission('view_projects', ['tester']), getProjectById);
 router.patch('/:id', requirePermission('edit_project'), updateProject);
 router.delete('/:id', requirePermission('delete_project'), deleteProject);
 

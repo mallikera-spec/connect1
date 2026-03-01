@@ -21,6 +21,7 @@ router.patch('/attendance/:id/approve', requirePermission('view_employees'), hrC
 // --- Leaves ---
 router.post('/leaves', hrController.submitLeaveRequest);
 router.get('/leaves/my', hrController.getMyLeaves);
+router.get('/leaves/types', hrController.getLeaveTypes);
 router.get('/leaves/balance', hrController.getLeaveBalance);
 
 // Admin / Manager Leaves Management

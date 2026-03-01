@@ -67,12 +67,12 @@ export default function LoginPage() {
                         </div>
 
                         <div className="form-group">
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            {/* <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                 <label className="form-label">Password</label>
                                 <Link to="/forgot-password" style={{ fontSize: '13px', color: 'var(--accent-light)', textDecoration: 'none', fontWeight: 600 }}>
                                     Forgot password?
                                 </Link>
-                            </div>
+                            </div> */}
                             <input
                                 type="password"
                                 className="form-input"
@@ -94,11 +94,11 @@ export default function LoginPage() {
                             ) : 'Sign in to Dashboard'}
                         </button>
 
-                        <div style={{ textAlign: 'center', marginTop: '24px' }}>
+                        {/* <div style={{ textAlign: 'center', marginTop: '24px' }}>
                             <p style={{ fontSize: '14px', color: 'var(--text-dim)' }}>
                                 New here? <Link to="/register" style={{ color: 'var(--accent-light)', textDecoration: 'none', fontWeight: 600 }}>Create an account</Link>
                             </p>
-                        </div>
+                        </div> */}
                     </form>
                 </div>
             </div>

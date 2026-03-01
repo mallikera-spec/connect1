@@ -1,5 +1,7 @@
 import Sidebar from './Sidebar'
 import Header from './Header'
+import NotificationModal from '../notifications/NotificationModal'
+import NotificationToast from '../notifications/NotificationToast'
 
 export default function DashboardLayout({ children }) {
     return (
@@ -11,6 +13,10 @@ export default function DashboardLayout({ children }) {
                     {children}
                 </main>
             </div>
+
+            {/* Global Components */}
+            <NotificationModal />
+            <NotificationToast />
         </div>
     )
 }
