@@ -19,6 +19,9 @@ export const createUser = async (userData) => {
             department: userData.department ?? null,
             designation: userData.designation ?? null,
             date_of_joining: userData.date_of_joining ?? null,
+            joining_date: userData.date_of_joining ?? null,
+            ctc: userData.ctc ?? 0,
+            base_salary: userData.ctc ?? 0,
         })
         .select()
         .single();
@@ -76,14 +79,54 @@ export const getUserById = async (id) => {
 };
 
 export const updateUser = async (id, updates) => {
-    const { data, error } = await supabaseAdmin
+    const payload = { ...updates };
+    if (payload.ctc !== undefined) payload.base_salary = payload.ctc;
+    if (payload.date_of_joining !== undefined) payload.joining_date = payload.date_of_joining;
+
+    // 1. Try update by id first
+    const { data: updateData, error: updateError } = await supabaseAdmin
         .from('profiles')
-        .update(updates)
+        .update(payload)
         .eq('id', id)
         .select()
         .single();
-    if (error) throw error;
-    return data;
+
+    if (updateError && updateError.code === 'PGRST116') {
+        // 2. Fetch from Auth to get email/name
+        const { data: authUser, error: authErr } = await supabaseAdmin.auth.admin.getUserById(id);
+        if (authErr) throw authErr;
+
+        const email = authUser.user.email;
+        const fullNameFromAuth = authUser.user.user_metadata?.full_name || email.split('@')[0];
+
+        // 3. Try update orphaned row by email
+        const { data: emailUpdateData, error: emailUpdateError } = await supabaseAdmin
+            .from('profiles')
+            .update({ id, ...payload })
+            .eq('email', email)
+            .select()
+            .single();
+
+        if (!emailUpdateError) return emailUpdateData;
+
+        // 4. Finally, insert fresh
+        const { data: insertData, error: insertError } = await supabaseAdmin
+            .from('profiles')
+            .insert({
+                id,
+                email,
+                full_name: payload.full_name || fullNameFromAuth,
+                ...payload
+            })
+            .select()
+            .single();
+        
+        if (insertError) throw insertError;
+        return insertData;
+    }
+
+    if (updateError) throw updateError;
+    return updateData;
 };
 
 export const deleteUser = async (id) => {

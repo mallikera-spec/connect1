@@ -6,6 +6,7 @@ export const createUserSchema = z.object({
     full_name: z.string().min(1),
     department: z.string().optional(),
     designation: z.string().optional(),
+    date_of_joining: z.string().transform(v => v === '' ? null : v).optional(),
 });
 
 export const updateUserSchema = z.object({
@@ -13,4 +14,5 @@ export const updateUserSchema = z.object({
     email: z.string().email().optional(),
     department: z.string().optional(),
     designation: z.string().optional(),
+    date_of_joining: z.string().transform(v => v === '' ? null : v).optional(),
 });

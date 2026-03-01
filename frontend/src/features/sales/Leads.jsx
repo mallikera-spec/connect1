@@ -8,7 +8,7 @@ import BulkUploadModal from './BulkUploadModal';
 import api from '../../lib/api';
 import toast from 'react-hot-toast';
 import { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useLocation } from 'react-router-dom';
 import LeadLifecycleBoard from './LeadLifecycleBoard';
 
 /**
@@ -17,6 +17,7 @@ import LeadLifecycleBoard from './LeadLifecycleBoard';
 export default function Leads() {
     const { user: currentUser, hasPermission } = useAuth();
     const [searchParams, setSearchParams] = useSearchParams();
+    const location = useLocation();
     const [leads, setLeads] = useState([]);
     const [loading, setLoading] = useState(true);
     const [viewMode, setViewMode] = useState('board'); // 'list' or 'board'
@@ -26,21 +27,21 @@ export default function Leads() {
     const [limit, setLimit] = useState(50);
     const [totalLeads, setTotalLeads] = useState(0);
 
-    // Filters State - initialized from URL search params
+    // Filters State - initialized from URL search params OR location state (from Dashboard)
     const [search, setSearch] = useState('');
-    const [statusFilter, setStatusFilter] = useState(searchParams.get('status') || '');
+    const [statusFilter, setStatusFilter] = useState(location.state?.status || searchParams.get('status') || '');
     const [sourceFilter, setSourceFilter] = useState('');
-    const [assigned_agent_id, setAssignedAgentId] = useState(searchParams.get('agent') || '');
+    const [assigned_agent_id, setAssignedAgentId] = useState(location.state?.agent || searchParams.get('agent') || '');
     const [dateRange, setDateRange] = useState({
-        start: searchParams.get('startDate') || new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0],
-        end: searchParams.get('endDate') || new Date().toISOString().split('T')[0]
+        start: location.state?.startDate || searchParams.get('startDate') || new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0],
+        end: location.state?.endDate || searchParams.get('endDate') || new Date().toISOString().split('T')[0]
     });
     const [sortBy, setSortBy] = useState('created_at');
     const [sortOrder, setSortOrder] = useState('desc');
 
     // Role Checks
-    const userRoles = currentUser?.roles?.map(r => r.toLowerCase()) || [];
-    const isAdmin = userRoles.some(r => r.includes('admin') || r.includes('manager') || r.includes('lead')) ||
+    const userRoles = currentUser?.roles?.map(r => typeof r === 'string' ? r.toLowerCase() : r.name?.toLowerCase()).filter(Boolean) || [];
+    const isAdmin = userRoles.some(r => r && (r.includes('admin') || r.includes('manager') || r.includes('lead'))) ||
         (hasPermission && (hasPermission('manage_leads') || hasPermission('admin')));
 
     // Modals State
@@ -53,6 +54,23 @@ export default function Leads() {
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [isBulkUploadModalOpen, setIsBulkUploadModalOpen] = useState(false);
     const [allAgents, setAllAgents] = useState([]);
+
+    useEffect(() => {
+        if (location.state) {
+            if (location.state.status !== undefined) setStatusFilter(location.state.status || '');
+            if (location.state.agent !== undefined) setAssignedAgentId(location.state.agent || '');
+            if (location.state.startDate || location.state.endDate) {
+                setDateRange({
+                    start: location.state.startDate || dateRange.start,
+                    end: location.state.endDate || dateRange.end
+                });
+            }
+            if (location.state.leadId) {
+                setSelectedLeadId(location.state.leadId);
+            }
+            setPage(1);
+        }
+    }, [location.state]);
 
     useEffect(() => {
         setPage(1); // Reset to page 1 when filters change natively
@@ -401,7 +419,7 @@ export default function Leads() {
                                         </td>
                                         <td>
                                             <div style={{ fontWeight: 700, color: 'var(--text)' }}>
-                                                ${parseFloat(lead.deal_value || 0).toLocaleString()}
+                                                Rs {parseFloat(lead.deal_value || 0).toLocaleString()}
                                             </div>
                                         </td>
                                         <td style={{ fontSize: '13px' }}>
@@ -431,7 +449,7 @@ export default function Leads() {
                                 )}
                             </tbody>
                         </table>
-                        
+
                         {/* Pagination Footer */}
                         {totalLeads > 0 && viewMode === 'list' && (
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 20px', borderTop: '1px solid var(--border)' }}>
@@ -439,10 +457,10 @@ export default function Leads() {
                                     Showing {((page - 1) * limit) + 1} to {Math.min(page * limit, totalLeads)} of {totalLeads} leads
                                 </div>
                                 <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                                    <select 
-                                        className="form-select-minimal" 
+                                    <select
+                                        className="form-select-minimal"
                                         style={{ width: '85px', marginRight: '16px' }}
-                                        value={limit} 
+                                        value={limit}
                                         onChange={(e) => { setLimit(Number(e.target.value)); setPage(1); }}
                                     >
                                         <option value="10">10 / page</option>
@@ -450,11 +468,11 @@ export default function Leads() {
                                         <option value="100">100 / page</option>
                                         <option value="500">500 / page</option>
                                     </select>
-                                    
-                                    <button 
-                                        className="btn-icon" 
+
+                                    <button
+                                        className="btn-icon"
                                         style={{ border: '1px solid var(--border)', background: 'var(--bg-app)' }}
-                                        disabled={page === 1} 
+                                        disabled={page === 1}
                                         onClick={() => setPage(p => Math.max(1, p - 1))}
                                     >
                                         <ChevronLeft size={16} />
@@ -462,10 +480,10 @@ export default function Leads() {
                                     <span style={{ fontSize: '13px', fontWeight: 600, minWidth: '30px', textAlign: 'center' }}>
                                         {page}
                                     </span>
-                                    <button 
-                                        className="btn-icon" 
+                                    <button
+                                        className="btn-icon"
                                         style={{ border: '1px solid var(--border)', background: 'var(--bg-app)' }}
-                                        disabled={page * limit >= totalLeads} 
+                                        disabled={page * limit >= totalLeads}
                                         onClick={() => setPage(p => p + 1)}
                                     >
                                         <ChevronRight size={16} />
@@ -494,7 +512,7 @@ export default function Leads() {
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255,255,255,0.03)', padding: '4px 8px', borderRadius: '8px', border: '1px solid var(--border)' }}>
                                 <select className="form-select-minimal" style={{ width: '150px', height: '32px' }} value={bulkAgentId} onChange={(e) => setBulkAgentId(e.target.value)}>
-                                    <option value="">Assign BDM...</option>
+                                    <option value="">Assign BDM..</option>
                                     <option value="unassigned">Unassigned</option>
                                     {allAgents.map(a => <option key={a.id} value={a.id}>{a.full_name}</option>)}
                                 </select>

@@ -15,7 +15,11 @@ export const getUserReport = async (req, res) => {
 
 export const getMyReport = async (req, res) => {
     const { startDate, endDate } = req.query;
-    const data = await reportsService.getUserReport(req.user.id, { startDate, endDate });
+    const data = await reportsService.getUserReport(req.user.id, {
+        startDate,
+        endDate,
+        roles: req.user.roles
+    });
     successResponse(res, data, 'My report generated');
 };
 

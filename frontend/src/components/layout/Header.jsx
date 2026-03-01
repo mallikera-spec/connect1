@@ -123,7 +123,13 @@ export default function Header() {
                 </div>
 
                 <div className="user-chip">
-                    <div className="user-avatar">{initials}</div>
+                    <div className="user-avatar" style={{ overflow: 'hidden', padding: 0 }}>
+                        {user?.avatar_url ? (
+                            <img src={user.avatar_url} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        ) : (
+                            initials
+                        )}
+                    </div>
                     <span>{user?.email || 'Admin'}</span>
                 </div>
             </div>

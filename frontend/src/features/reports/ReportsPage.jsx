@@ -3,8 +3,9 @@ import { useAuth } from '../../context/AuthContext'
 import { Calendar } from 'lucide-react'
 import api from '../../lib/api'
 import toast from 'react-hot-toast'
-
+import { SalesService } from '../sales/SalesService'
 import DateRangePicker from '../../components/DateRangePicker'
+import { getISTMonthStartString, getISTTodayString } from '../../lib/dateUtils'
 
 export default function ReportsPage() {
     const { hasPermission } = useAuth()
@@ -25,8 +26,8 @@ export default function ReportsPage() {
     const overall_allowed = hasPermission('view_overall_report')
 
     const [dateRange, setDateRange] = useState({
-        startDate: new Date(new Date().setDate(new Date().getDate() - 30)).toISOString().split('T')[0],
-        endDate: new Date().toISOString().split('T')[0]
+        startDate: getISTMonthStartString(),
+        endDate: getISTTodayString()
     })
 
     const loadOverall = useCallback(() => {

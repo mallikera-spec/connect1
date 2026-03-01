@@ -6,6 +6,11 @@ export const getMilestones = async (req, res) => {
     res.json({ success: true, data });
 };
 
+export const getOverallMilestones = async (req, res) => {
+    const data = await milestonesService.getOverallMilestones();
+    res.json({ success: true, data });
+};
+
 export const createMilestone = async (req, res) => {
     const { title, description, due_date, status } = req.body;
     const data = await milestonesService.createMilestone({

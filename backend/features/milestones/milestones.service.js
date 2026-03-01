@@ -39,3 +39,12 @@ export const deleteMilestone = async (id) => {
     if (error) throw error;
     return true;
 };
+
+export const getOverallMilestones = async () => {
+    const { data, error } = await supabaseAdmin
+        .from('project_milestones')
+        .select('id, title, status, due_date, project_id, project:projects(id, name)')
+        .order('due_date', { ascending: true, nullsFirst: false });
+    if (error) throw error;
+    return data;
+};

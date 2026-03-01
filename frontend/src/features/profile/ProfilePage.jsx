@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { User, Phone, MapPin, Calendar, Heart, FileText, Tag, DollarSign, Save, Building2, Briefcase, ArrowLeft, Lock, Eye, EyeOff } from 'lucide-react'
+import { User, Phone, MapPin, Calendar, Heart, FileText, Tag, DollarSign, Save, Building2, Briefcase, ArrowLeft, Lock, Eye, EyeOff, Camera, Clock } from 'lucide-react'
 import api from '../../lib/api'
 import toast from 'react-hot-toast'
 import { useAuth } from '../../context/AuthContext'
@@ -22,6 +22,7 @@ export default function ProfilePage() {
     const [saving, setSaving] = useState(false)
     const [ctcSaving, setCtcSaving] = useState(false)
     const [report, setReport] = useState(null)
+    const [uploadingAvatar, setUploadingAvatar] = useState(false)
 
     // Change password state
     const [pwForm, setPwForm] = useState({ current: '', next: '', confirm: '' })
@@ -140,16 +141,70 @@ export default function ProfilePage() {
         }
     }
 
+    const handleAvatarChange = async (e) => {
+        const file = e.target.files?.[0]
+        if (!file) return
+
+        if (!file.type.startsWith('image/')) {
+            return toast.error('Please select a valid image file.')
+        }
+        if (file.size > 5 * 1024 * 1024) {
+            return toast.error('Image size should be less than 5MB.')
+        }
+
+        setUploadingAvatar(true)
+        const toastId = toast.loading('Uploading avatar...')
+
+        const formData = new FormData()
+        formData.append('avatar', file)
+
+        try {
+            const res = await api.post(`/users/avatar/${targetId}`, formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            })
+            setProfile(p => ({ ...p, avatar_url: res.data.data.avatar_url }))
+            toast.success('Avatar updated successfully!', { id: toastId })
+
+            // If the user updated their own profile, we should reload the whole window 
+            // so the sidebar picks up the new image context immediately
+            if (!isEditingOther) {
+                window.location.reload()
+            }
+        } catch (error) {
+            toast.error(error.message || 'Failed to upload avatar', { id: toastId })
+        } finally {
+            setUploadingAvatar(false)
+        }
+    }
+
     if (loading) return <div className="page-loader"><div className="spinner" /></div>
 
     return (
-        <div style={{ maxWidth: 720, margin: '0 auto', paddingBottom: 64 }}>
+        <div style={{ width: '100%', paddingBottom: 64 }}>
             <div className="page-header" style={{ alignItems: 'center', gap: 12 }}>
                 {isEditingOther && (
                     <button className="btn btn-ghost btn-sm btn-icon" onClick={() => navigate('/users')} style={{ marginRight: 8 }}>
                         <ArrowLeft size={18} />
                     </button>
                 )}
+
+                <div style={{ position: 'relative', width: 64, height: 64, borderRadius: '50%', background: 'linear-gradient(135deg, var(--accent) 0%, var(--accent-light) 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 24, fontWeight: 'bold', flexShrink: 0, overflow: 'hidden' }}>
+                    {profile?.avatar_url ? (
+                        <img src={profile.avatar_url} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    ) : (
+                        profile?.full_name?.charAt(0).toUpperCase() || 'U'
+                    )}
+
+                    {/* Hover Overlay for Upload */}
+                    <label style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0, cursor: uploadingAvatar ? 'wait' : 'pointer', transition: 'opacity 0.2s', className: 'avatar-hover-overlay' }}
+                        onMouseEnter={(e) => e.currentTarget.style.opacity = 1}
+                        onMouseLeave={(e) => e.currentTarget.style.opacity = 0}
+                    >
+                        <Camera size={20} color="#fff" />
+                        <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handleAvatarChange} disabled={uploadingAvatar} />
+                    </label>
+                </div>
+
                 <div>
                     <h1>{isEditingOther ? `Edit Profile: ${profile?.full_name}` : 'My Profile'}</h1>
                     <p>{isEditingOther ? `Managing details for ${profile?.email}` : 'View and update your personal information'}</p>
@@ -157,24 +212,41 @@ export default function ProfilePage() {
             </div>
 
             {isAdmin && report && (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, marginBottom: 24 }}>
-                    <div className="card" style={{ padding: 16, textAlign: 'center' }}>
-                        <div style={{ fontSize: 12, color: 'var(--text-dim)', textTransform: 'uppercase', marginBottom: 4 }}>Projects</div>
-                        <div style={{ fontSize: 24, fontWeight: 600, color: 'var(--accent)' }}>{report.total_projects}</div>
+                <div className="stats-grid">
+                    <div className="stat-card">
+                        <div>
+                            <div className="stat-label">Projects</div>
+                            <div className="stat-value" style={{ color: 'var(--accent)' }}>{report.total_projects}</div>
+                        </div>
+                        <div className="stat-icon" style={{ background: 'rgba(var(--accent-rgb), 0.1)', color: 'var(--accent)' }}>
+                            <Briefcase size={24} />
+                        </div>
                     </div>
-                    <div className="card" style={{ padding: 16, textAlign: 'center' }}>
-                        <div style={{ fontSize: 12, color: 'var(--text-dim)', textTransform: 'uppercase', marginBottom: 4 }}>Total Tasks</div>
-                        <div style={{ fontSize: 24, fontWeight: 600, color: 'var(--accent)' }}>{report.total_tasks}</div>
+                    <div className="stat-card">
+                        <div>
+                            <div className="stat-label">Total Tasks</div>
+                            <div className="stat-value" style={{ color: 'var(--info)' }}>{report.total_tasks}</div>
+                        </div>
+                        <div className="stat-icon" style={{ background: 'var(--info-bg)', color: 'var(--info)' }}>
+                            <FileText size={24} />
+                        </div>
                     </div>
-                    <div className="card" style={{ padding: 16, textAlign: 'center' }}>
-                        <div style={{ fontSize: 12, color: 'var(--text-dim)', textTransform: 'uppercase', marginBottom: 4 }}>Hours Logged</div>
-                        <div style={{ fontSize: 24, fontWeight: 600, color: 'var(--accent)' }}>{report.total_hours_logged}h</div>
+                    <div className="stat-card">
+                        <div>
+                            <div className="stat-label">Hours Logged</div>
+                            <div className="stat-value" style={{ color: 'var(--success)' }}>{report.total_hours_logged}h</div>
+                        </div>
+                        <div className="stat-icon" style={{ background: 'var(--success-bg)', color: 'var(--success)' }}>
+                            <Clock size={24} />
+                        </div>
                     </div>
                     {isEditingOther && (
-                        <div className="card" style={{ padding: 16, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', background: 'rgba(var(--accent-rgb), 0.05)', border: '1px dashed var(--accent)' }}>
-                            <button className="btn btn-ghost btn-sm" onClick={() => navigate(`/timesheets?userId=${userId}`)}>
-                                <Calendar size={14} style={{ marginRight: 6 }} /> View Timesheets
-                            </button>
+                        <div className="stat-card" style={{ cursor: 'pointer', border: '1px dashed var(--accent)', background: 'rgba(var(--accent-rgb), 0.05)' }}
+                            onClick={() => navigate(`/timesheet?userId=${userId}`)}>
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%', gap: 8 }}>
+                                <Calendar size={20} style={{ color: 'var(--accent)' }} />
+                                <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--accent)' }}>View Timesheets</span>
+                            </div>
                         </div>
                     )}
                 </div>
@@ -182,29 +254,29 @@ export default function ProfilePage() {
 
             <form onSubmit={handleSave}>
                 {/* Personal Info */}
-                <div className="card shadow-sm glass-card" style={{ marginBottom: 24 }}>
+                <div className="card glass-card" style={{ marginBottom: 24 }}>
                     <div className="card-header-premium">
                         <User size={18} />
                         <h3>Personal Information</h3>
                     </div>
-                    <div className="card-body" style={{ padding: 20 }}>
+                    <div className="card-body" style={{ padding: 24 }}>
                         <div className="form-row">
                             <div className="form-group">
-                                <label className="form-label">FULL NAME</label>
+                                <label className="form-label">Full Name</label>
                                 <input className="form-input" value={form.full_name} onChange={f('full_name')} required />
                             </div>
                             <div className="form-group">
-                                <label className="form-label"><Phone size={13} style={{ marginRight: 4 }} /> PRIMARY PHONE</label>
+                                <label className="form-label"><Phone size={13} style={{ marginRight: 4 }} /> Primary Phone</label>
                                 <input className="form-input" type="tel" value={form.phone} onChange={f('phone')} placeholder="+91 0000000000" />
                             </div>
                         </div>
                         <div className="form-row">
                             <div className="form-group">
-                                <label className="form-label">ALTERNATE PHONE</label>
+                                <label className="form-label">Alternate Phone</label>
                                 <input className="form-input" type="tel" value={form.alternate_phone} onChange={f('alternate_phone')} placeholder="+91 0000000000" />
                             </div>
                             <div className="form-group">
-                                <label className="form-label">BLOOD GROUP</label>
+                                <label className="form-label">Blood Group</label>
                                 <select className="form-select" value={form.blood_group} onChange={f('blood_group')}>
                                     <option value="">Select...</option>
                                     {['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-'].map(bg => <option key={bg} value={bg}>{bg}</option>)}
@@ -212,16 +284,16 @@ export default function ProfilePage() {
                             </div>
                         </div>
                         <div className="form-group">
-                            <label className="form-label"><MapPin size={13} style={{ marginRight: 4 }} />RESIDENTIAL ADDRESS</label>
+                            <label className="form-label"><MapPin size={13} style={{ marginRight: 4 }} />Residential Address</label>
                             <textarea className="form-textarea" rows={2} value={form.address} onChange={f('address')} style={{ resize: 'vertical' }} />
                         </div>
                         <div className="form-row">
                             <div className="form-group">
-                                <label className="form-label"><Calendar size={13} style={{ marginRight: 4 }} />DATE OF BIRTH</label>
+                                <label className="form-label"><Calendar size={13} style={{ marginRight: 4 }} />Date of Birth</label>
                                 <input className="form-input" type="date" value={form.date_of_birth} onChange={f('date_of_birth')} />
                             </div>
                             <div className="form-group">
-                                <label className="form-label"><Heart size={13} style={{ marginRight: 4 }} />EMERGENCY CONTACT</label>
+                                <label className="form-label"><Heart size={13} style={{ marginRight: 4 }} />Emergency Contact</label>
                                 <input className="form-input" value={form.emergency_contact} onChange={f('emergency_contact')} placeholder="Name — Relation — Phone" />
                             </div>
                         </div>
@@ -229,23 +301,23 @@ export default function ProfilePage() {
                 </div>
 
                 {/* Educational Details */}
-                <div className="card shadow-sm glass-card" style={{ marginBottom: 24 }}>
+                <div className="card glass-card" style={{ marginBottom: 24 }}>
                     <div className="card-header-premium">
                         <Briefcase size={18} />
                         <h3>Educational Background</h3>
                     </div>
-                    <div className="card-body" style={{ padding: 20 }}>
+                    <div className="card-body" style={{ padding: 24 }}>
                         <div className="form-group">
-                            <label className="form-label">HIGHEST QUALIFICATION</label>
+                            <label className="form-label">Highest Qualification</label>
                             <input className="form-input" value={form.education_qualification} onChange={f('education_qualification')} placeholder="e.g. B.Tech in Computer Science" />
                         </div>
                         <div className="form-row">
                             <div className="form-group">
-                                <label className="form-label">X (10TH) PASSING YEAR</label>
+                                <label className="form-label">X (10TH) Passing Year</label>
                                 <input className="form-input" type="number" value={form.x_year} onChange={f('x_year')} placeholder="e.g. 2012" />
                             </div>
                             <div className="form-group">
-                                <label className="form-label">XII (12TH) PASSING YEAR</label>
+                                <label className="form-label">XII (12TH) Passing Year</label>
                                 <input className="form-input" type="number" value={form.xii_year} onChange={f('xii_year')} placeholder="e.g. 2014" />
                             </div>
                         </div>
@@ -253,46 +325,46 @@ export default function ProfilePage() {
                 </div>
 
                 {/* Banking & Identity */}
-                <div className="card shadow-sm glass-card" style={{ marginBottom: 24 }}>
+                <div className="card glass-card" style={{ marginBottom: 24 }}>
                     <div className="card-header-premium">
                         <DollarSign size={18} />
                         <h3>Banking & Identity Details</h3>
                     </div>
-                    <div className="card-body" style={{ padding: 20 }}>
+                    <div className="card-body" style={{ padding: 24 }}>
                         <div className="form-row">
                             <div className="form-group">
-                                <label className="form-label">BANK NAME</label>
+                                <label className="form-label">Bank Name</label>
                                 <input className="form-input" value={form.bank_name} onChange={f('bank_name')} placeholder="e.g. HDFC Bank" />
                             </div>
                             <div className="form-group">
-                                <label className="form-label">ACCOUNT NUMBER</label>
+                                <label className="form-label">Account Number</label>
                                 <input className="form-input" value={form.bank_account_no} onChange={f('bank_account_no')} placeholder="0000 0000 0000" />
                             </div>
                         </div>
                         <div className="form-row">
                             <div className="form-group">
-                                <label className="form-label">IFSC CODE</label>
+                                <label className="form-label">IFSC Code</label>
                                 <input className="form-input" value={form.bank_ifsc} onChange={f('bank_ifsc')} placeholder="IFSC000001" style={{ textTransform: 'uppercase' }} />
                             </div>
                             <div className="form-group">
-                                <label className="form-label">PAN NUMBER</label>
+                                <label className="form-label">PAN Number</label>
                                 <input className="form-input" value={form.pan_number} onChange={f('pan_number')} placeholder="ABCDE1234F" style={{ textTransform: 'uppercase' }} />
                             </div>
                         </div>
                         <div className="form-group">
-                            <label className="form-label">AADHAR NUMBER</label>
+                            <label className="form-label">Aadhar Number</label>
                             <input className="form-input" value={form.aadhar_number} onChange={f('aadhar_number')} placeholder="0000 0000 0000" />
                         </div>
                     </div>
                 </div>
 
                 {/* Professional Info */}
-                <div className="card" style={{ marginBottom: 24 }}>
-                    <div className="card-header" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '16px 20px', borderBottom: '1px solid var(--border)' }}>
-                        <FileText size={18} style={{ color: 'var(--accent)' }} />
-                        <h3 style={{ margin: 0, fontSize: 15 }}>Professional Summary</h3>
+                <div className="card glass-card" style={{ marginBottom: 24 }}>
+                    <div className="card-header-premium">
+                        <FileText size={18} />
+                        <h3>Professional Summary</h3>
                     </div>
-                    <div className="card-body" style={{ padding: 20 }}>
+                    <div className="card-body" style={{ padding: 24 }}>
                         <div className="form-group">
                             <label className="form-label">Bio</label>
                             <textarea className="form-textarea" rows={4} value={form.bio} onChange={f('bio')} placeholder="A short bio about yourself…" style={{ resize: 'vertical' }} />
@@ -306,12 +378,12 @@ export default function ProfilePage() {
                 </div>
 
                 {/* Employment Info */}
-                <div className="card" style={{ marginBottom: 24 }}>
-                    <div className="card-header" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '16px 20px', borderBottom: '1px solid var(--border)' }}>
-                        <Building2 size={18} style={{ color: 'var(--accent)' }} />
-                        <h3 style={{ margin: 0, fontSize: 15 }}>Employment Details</h3>
+                <div className="card glass-card" style={{ marginBottom: 24 }}>
+                    <div className="card-header-premium">
+                        <Building2 size={18} />
+                        <h3>Employment Details</h3>
                     </div>
-                    <div className="card-body" style={{ padding: 20 }}>
+                    <div className="card-body" style={{ padding: 24 }}>
                         {isAdmin ? (
                             <>
                                 <div className="form-row">
@@ -343,7 +415,7 @@ export default function ProfilePage() {
                                         </div>
                                     )}
                                 </div>
-                                {isEditingOther && <p style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: -8, marginBottom: 12 }}>Joining date and CTC are only visible to admins.</p>}
+                                {isEditingOther && <p style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 4, marginBottom: 12 }}>Joining date and CTC are only visible to admins.</p>}
                             </>
                         ) : (
                             <div className="form-row">
@@ -361,7 +433,7 @@ export default function ProfilePage() {
                                 </div>
                             </div>
                         )}
-                        <div className="form-group">
+                        <div className="form-group" style={{ marginTop: isAdmin ? 14 : 0 }}>
                             <label className="form-label">Email</label>
                             <input className="form-input" value={profile?.email || ''} readOnly style={{ background: 'var(--surface-alt)', cursor: 'not-allowed' }} />
                         </div>
@@ -378,16 +450,16 @@ export default function ProfilePage() {
 
             {/* Admin: CTC Setting (Only show if on own profile) */}
             {isAdmin && !isEditingOther && (
-                <div className="card" style={{ marginTop: 32, border: '1px solid var(--warning, #f59e0b)' }}>
-                    <div className="card-header" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '16px 20px', borderBottom: '1px solid var(--border)', background: 'rgba(245,158,11,0.07)' }}>
+                <div className="card glass-card" style={{ marginTop: 32, border: '1px solid var(--warning, #f59e0b)' }}>
+                    <div className="card-header-premium" style={{ background: 'rgba(245,158,11,0.07)', borderBottomColor: 'rgba(245,158,11,0.2)' }}>
                         <DollarSign size={18} style={{ color: '#f59e0b' }} />
-                        <h3 style={{ margin: 0, fontSize: 15, color: '#f59e0b' }}>Admin: Quick Set Employee CTC</h3>
+                        <h3 style={{ color: '#f59e0b' }}>Admin: Quick Set Employee CTC</h3>
                     </div>
-                    <div className="card-body" style={{ padding: 20 }}>
-                        <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 16 }}>
+                    <div className="card-body" style={{ padding: 24 }}>
+                        <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 20 }}>
                             Quickly update CTC for any employee. For full profile edits, use the Employee list.
                         </p>
-                        <form onSubmit={handleCTCSave} style={{ display: 'flex', gap: 12, alignItems: 'flex-end' }}>
+                        <form onSubmit={handleCTCSave} style={{ display: 'flex', gap: 16, alignItems: 'flex-end' }}>
                             <div className="form-group" style={{ flex: 2 }}>
                                 <label className="form-label">Employee</label>
                                 <select className="form-select" value={ctcTarget.userId} onChange={e => setCtcTarget(p => ({ ...p, userId: e.target.value }))}>
@@ -395,12 +467,12 @@ export default function ProfilePage() {
                                     {allUsers.map(u => <option key={u.id} value={u.id}>{u.full_name} — {u.email}</option>)}
                                 </select>
                             </div>
-                            {/* <div className="form-group" style={{ flex: 1 }}>
+                            <div className="form-group" style={{ flex: 1 }}>
                                 <label className="form-label">Annual CTC (₹)</label>
                                 <input type="number" min="0" step="1000" className="form-input" placeholder="e.g. 1200000"
                                     value={ctcTarget.ctc} onChange={e => setCtcTarget(p => ({ ...p, ctc: e.target.value }))} />
-                            </div> */}
-                            <button type="submit" className="btn btn-primary" disabled={ctcSaving || !ctcTarget.userId || !ctcTarget.ctc} style={{ marginBottom: 1 }}>
+                            </div>
+                            <button type="submit" className="btn btn-primary" disabled={ctcSaving || !ctcTarget.userId || !ctcTarget.ctc} style={{ height: 42 }}>
                                 {ctcSaving ? <span className="spinner" style={{ width: 16, height: 16 }} /> : <><Save size={14} />Set CTC</>}
                             </button>
                         </form>
@@ -410,12 +482,12 @@ export default function ProfilePage() {
 
             {/* Change Password — only on own profile */}
             {!isEditingOther && (
-                <div className="card shadow-sm" style={{ marginTop: 32, border: '1px solid var(--border)' }}>
-                    <div className="card-header" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '16px 20px', borderBottom: '1px solid var(--border)' }}>
-                        <Lock size={18} style={{ color: 'var(--accent)' }} />
-                        <h3 style={{ margin: 0, fontSize: 15 }}>Change Password</h3>
+                <div className="card glass-card" style={{ marginTop: 32 }}>
+                    <div className="card-header-premium">
+                        <Lock size={18} />
+                        <h3>Change Password</h3>
                     </div>
-                    <div className="card-body" style={{ padding: 20 }}>
+                    <div className="card-body" style={{ padding: 24 }}>
                         <form onSubmit={handleChangePassword}>
                             <div className="form-row">
                                 <div className="form-group" style={{ position: 'relative' }}>
@@ -463,7 +535,7 @@ export default function ProfilePage() {
                                     )}
                                 </div>
                             </div>
-                            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
+                            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 12 }}>
                                 <button type="submit" className="btn btn-primary"
                                     disabled={pwSaving || (pwForm.confirm && pwForm.confirm !== pwForm.next)}>
                                     {pwSaving ? <span className="spinner" style={{ width: 16, height: 16 }} /> : <><Lock size={14} /> Change Password</>}

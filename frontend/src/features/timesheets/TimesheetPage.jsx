@@ -6,8 +6,8 @@ export default function TimesheetPage() {
     const { hasPermission, hasRole } = useAuth()
 
     const isDev = hasRole('developer')
-    const canViewAll = hasPermission('view_timesheets') || hasPermission('manage_employees')
+    const isAdminView = hasPermission('view_timesheets') || hasPermission('manage_employees') || hasRole('Tester') || hasRole('super_admin')
 
-    if (isDev) return <EmployeeTimesheet />
-    return canViewAll ? <AdminTimesheet /> : <EmployeeTimesheet />
+    if (isDev && !hasRole('Tester') && !hasRole('super_admin')) return <EmployeeTimesheet />
+    return isAdminView ? <AdminTimesheet /> : <EmployeeTimesheet />
 }

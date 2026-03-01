@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { FolderKanban, ListTodo, CheckCircle2, Clock, AlertCircle, Timer } from 'lucide-react';
 import api from '../../lib/api';
-import { StatCard } from './DashboardComponents';
+import { StatCard, AttendanceWidget } from './DashboardComponents';
 
 export default function DeveloperDashboard({ dateRange }) {
     const [stats, setStats] = useState(null);
@@ -28,6 +28,7 @@ export default function DeveloperDashboard({ dateRange }) {
     return (
         <div>
             <div className="stats-grid">
+                <AttendanceWidget />
                 <StatCard
                     icon={FolderKanban}
                     label="My Projects"
@@ -69,6 +70,22 @@ export default function DeveloperDashboard({ dateRange }) {
                     state={{ status: 'done', startDate: dateRange.startDate, endDate: dateRange.endDate }}
                 />
                 <StatCard
+                    icon={AlertCircle}
+                    label="Failed (Need Fix)"
+                    value={stats.tasks_by_status?.failed ?? 0}
+                    color="rgba(239,68,68,0.25)"
+                    to="/tasks"
+                    state={{ status: 'failed', startDate: dateRange.startDate, endDate: dateRange.endDate }}
+                />
+                <StatCard
+                    icon={AlertCircle}
+                    label="Failed Todos"
+                    value={stats.timesheet_tasks_by_status?.failed ?? 0}
+                    color="rgba(239,68,68,0.2)"
+                    to="/timesheet"
+                    state={{ statusFilter: 'failed', startDate: dateRange.startDate, endDate: dateRange.endDate }}
+                />
+                <StatCard
                     icon={Timer}
                     label="Hours Logged"
                     value={`${stats.total_hours_logged ?? 0}h`}
@@ -83,15 +100,17 @@ export default function DeveloperDashboard({ dateRange }) {
                 <div className="card" style={{ padding: '16px 20px', marginTop: 20 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, fontSize: 13 }}>
                         <span style={{ fontWeight: 600 }}>Task Completion</span>
-                        <span style={{ color: 'var(--accent)', fontWeight: 700 }}>{Math.round((done / total) * 100)}%</span>
+                        <span style={{ color: 'var(--accent)', fontWeight: 700 }}>{Math.round(((done + (stats.tasks_by_status?.verified || 0)) / total) * 100)}%</span>
                     </div>
                     <div style={{ height: 8, borderRadius: 99, background: 'var(--border)', overflow: 'hidden', display: 'flex' }}>
-                        <div style={{ width: `${(done / total) * 100}%`, background: '#10b981', transition: 'width 0.5s' }} />
+                        <div style={{ width: `${((done + (stats.tasks_by_status?.verified || 0)) / total) * 100}%`, background: '#10b981', transition: 'width 0.5s' }} />
                         <div style={{ width: `${(inProgress / total) * 100}%`, background: '#f59e0b', transition: 'width 0.5s' }} />
+                        <div style={{ width: `${((stats.tasks_by_status?.failed || 0) / total) * 100}%`, background: '#ef4444', transition: 'width 0.5s' }} />
                     </div>
                     <div style={{ display: 'flex', gap: 16, marginTop: 8, fontSize: 11, color: 'var(--text-muted)' }}>
-                        <span style={{ color: '#10b981', fontWeight: 600 }}>✅ {done} done</span>
+                        <span style={{ color: '#10b981', fontWeight: 600 }}>✅ {done + (stats.tasks_by_status?.verified || 0)} done</span>
                         <span style={{ color: '#f59e0b', fontWeight: 600 }}>🔄 {inProgress} in progress</span>
+                        <span style={{ color: '#ef4444', fontWeight: 600 }}>❌ {stats.tasks_by_status?.failed || 0} failed</span>
                         <span style={{ fontWeight: 600 }}>⏳ {pending} pending</span>
                     </div>
                 </div>

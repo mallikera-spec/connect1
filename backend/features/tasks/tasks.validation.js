@@ -9,6 +9,8 @@ export const createTaskSchema = z.object({
     status: z.string().default('pending'),
     priority: z.enum(['low', 'medium', 'high']).default('medium'),
     estimated_hours: z.number().positive().optional(),
+    actual_hours: z.number().nonnegative().optional(),
+    end_time: z.string().optional(),
 });
 
 export const updateTaskSchema = z.object({
@@ -18,4 +20,6 @@ export const updateTaskSchema = z.object({
     status: z.string().optional(),
     priority: z.enum(['low', 'medium', 'high']).optional(),
     estimated_hours: z.number().positive().optional(),
+    actual_hours: z.number().nonnegative().optional(),
+    end_time: z.string().optional(),
 });

@@ -9,6 +9,8 @@ import { SalesService } from './SalesService';
 import api from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
 import DateRangePicker from '../../components/DateRangePicker';
+import { getISTMonthStartString, getISTTodayString } from '../../lib/dateUtils';
+import { EmployeeCard, AttendanceWidget } from '../dashboard/DashboardComponents';
 
 /**
  * SalesDashboard — High-level strategic overview of sales pipeline and agent performance.
@@ -20,12 +22,12 @@ export default function SalesDashboard() {
     const [bdmStats, setBdmStats] = useState([]);
     const [loading, setLoading] = useState(true);
     const [dateRange, setDateRange] = useState({
-        startDate: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0],
-        endDate: new Date().toISOString().split('T')[0]
+        startDate: getISTMonthStartString(),
+        endDate: getISTTodayString()
     });
 
-    const userRoles = currentUser?.roles?.map(r => r.toLowerCase()) || [];
-    const isAdmin = userRoles.some(r => r.includes('admin') || r.includes('manager') || r.includes('lead'));
+    const userRoles = currentUser?.roles?.map(r => typeof r === 'string' ? r.toLowerCase() : r.name?.toLowerCase()).filter(Boolean) || [];
+    const isAdmin = userRoles.some(r => r && (r.includes('admin') || r.includes('manager') || r.includes('lead')));
 
     useEffect(() => {
         fetchData();
@@ -43,20 +45,19 @@ export default function SalesDashboard() {
             const metricsRes = await SalesService.getMetrics(params);
             setOverallMetrics(metricsRes.data);
 
-            // 2. Fetch all BDMs to create individual scorecards
-            const agentsRes = await api.get('/users', { params: { role: 'BDM' } });
-            const bdms = agentsRes.data.data;
+            // 2. Fetch Employee Overview (includes pre-aggregated BDM stats)
+            const overviewRes = await api.get('/reports/employee-overview', { params });
+            const allDeptData = overviewRes.data.data || {};
 
-            // 3. Fetch metrics for each BDM
-            const bdmData = await Promise.all(bdms.map(async (bdm) => {
-                const res = await SalesService.getMetrics({ ...params, assigned_agent_id: bdm.id });
-                return {
-                    ...bdm,
-                    metrics: res.data
-                };
-            }));
+            // Extract all BDMs from all departments
+            const bdms = [];
+            Object.values(allDeptData).forEach(users => {
+                users.forEach(u => {
+                    if (u.sales_stats) bdms.push(u);
+                });
+            });
 
-            setBdmStats(bdmData);
+            setBdmStats(bdms);
         } catch (err) {
             console.error('Failed to fetch dashboard data:', err);
         } finally {
@@ -92,6 +93,7 @@ export default function SalesDashboard() {
 
             {/* Global Metrics Row */}
             <div className="stats-grid" style={{ marginBottom: '40px' }}>
+                <AttendanceWidget />
                 <div className="card polished-card stat-card-dashboard" onClick={() => handleStatClick('status', 'Proposal')}>
                     <div className="stat-icon-box" style={{ background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6' }}>
                         <Target size={24} />
@@ -131,6 +133,19 @@ export default function SalesDashboard() {
                     </div>
                 </div>
 
+                <div className="card polished-card stat-card-dashboard" onClick={() => navigate('/leads')}>
+                    <div className="stat-icon-box" style={{ background: 'rgba(99, 102, 241, 0.1)', color: '#6366f1' }}>
+                        <Users size={24} />
+                    </div>
+                    <div className="stat-content">
+                        <label>Total Leads</label>
+                        <h3>{overallMetrics?.total || 0}</h3>
+                        <div className="stat-footer">
+                            <span style={{ color: 'var(--text-dim)' }}>In Sales Database</span>
+                        </div>
+                    </div>
+                </div>
+
                 <div className="card polished-card stat-card-dashboard">
                     <div className="stat-icon-box" style={{ background: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b' }}>
                         <Briefcase size={24} />
@@ -166,7 +181,7 @@ export default function SalesDashboard() {
                                     <div
                                         key={fu.id}
                                         className="followup-item clickable-row"
-                                        onClick={() => navigate(`/leads?search=${encodeURIComponent(fu.lead?.name || fu.lead?.company || '')}`)}
+                                        onClick={() => navigate('/leads', { state: { leadId: fu.lead?.id } })}
                                         style={{ display: 'flex', alignItems: 'flex-start', gap: '16px', padding: '16px 20px', borderBottom: '1px solid var(--border)' }}
                                     >
                                         <div style={{
@@ -210,46 +225,12 @@ export default function SalesDashboard() {
 
             <div className="bdm-grid">
                 {bdmStats.map(bdm => (
-                    <div key={bdm.id} className="card polished-card bdm-scorecard" onClick={() => handleStatClick('agent', bdm.id)}>
-                        <div className="bdm-header">
-                            <div className="bdm-info">
-                                <div className="bdm-avatar">{bdm.full_name[0]}</div>
-                                <div>
-                                    <h4>{bdm.full_name}</h4>
-                                    <p>{bdm.email}</p>
-                                </div>
-                            </div>
-                            <ChevronRight size={18} color="var(--text-dim)" />
-                        </div>
-
-                        <div className="bdm-metrics">
-                            <div className="bdm-stat">
-                                <label>Pipeline</label>
-                                <span>${(bdm.metrics?.pipelineValue || 0).toLocaleString()}</span>
-                            </div>
-                            <div className="bdm-stat">
-                                <label>Won</label>
-                                <span style={{ color: 'var(--success)' }}>${(bdm.metrics?.wonValue || 0).toLocaleString()}</span>
-                            </div>
-                            <div className="bdm-stat">
-                                <label>Conv.</label>
-                                <span>{bdm.metrics?.total ? Math.round(((bdm.metrics?.Won || 0) / bdm.metrics.total) * 100) : 0}%</span>
-                            </div>
-                        </div>
-
-                        <div className="bdm-progress">
-                            <div className="progress-label">
-                                <span>Targets Achieved</span>
-                                <span>{bdm.metrics?.Won || 0} / 10</span>
-                            </div>
-                            <div className="progress-bar-bg">
-                                <div
-                                    className="progress-bar-fill"
-                                    style={{ width: `${Math.min(((bdm.metrics?.Won || 0) / 10) * 100, 100)}%` }}
-                                />
-                            </div>
-                        </div>
-                    </div>
+                    <EmployeeCard
+                        key={bdm.id}
+                        employee={bdm}
+                        isAdminView={true}
+                        currentRange={dateRange}
+                    />
                 ))}
             </div>
 
@@ -305,87 +286,8 @@ export default function SalesDashboard() {
 
                 .bdm-grid {
                     display: grid;
-                    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-                    gap: 20px;
-                }
-                .bdm-scorecard {
-                    padding: 24px;
-                    cursor: pointer;
-                    transition: all 0.2s;
-                }
-                .bdm-scorecard:hover {
-                    transform: scale(1.02);
-                    box-shadow: 0 12px 30px rgba(0,0,0,0.2);
-                    border-color: var(--accent);
-                }
-                .bdm-header {
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: flex-start;
-                    margin-bottom: 24px;
-                }
-                .bdm-info {
-                    display: flex;
-                    gap: 12px;
-                    align-items: center;
-                }
-                .bdm-avatar {
-                    width: 44px;
-                    height: 44px;
-                    background: var(--accent);
-                    color: white;
-                    border-radius: 50%;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    font-weight: 700;
-                    font-size: 18px;
-                }
-                .bdm-info h4 { font-size: 16px; font-weight: 700; margin: 0; }
-                .bdm-info p { font-size: 12px; color: var(--text-dim); margin: 0; }
-
-                .bdm-metrics {
-                    display: grid;
-                    grid-template-columns: 1fr 1fr 1fr;
-                    gap: 12px;
-                    margin-bottom: 24px;
-                    padding: 16px;
-                    background: var(--bg-app);
-                    border-radius: 12px;
-                }
-                .bdm-stat label {
-                    display: block;
-                    font-size: 10px;
-                    text-transform: uppercase;
-                    color: var(--text-dim);
-                    margin-bottom: 4px;
-                }
-                .bdm-stat span {
-                    font-size: 14px;
-                    font-weight: 700;
-                }
-
-                .bdm-progress {
-                    margin-top: 16px;
-                }
-                .progress-label {
-                    display: flex;
-                    justify-content: space-between;
-                    font-size: 11px;
-                    color: var(--text-dim);
-                    margin-bottom: 8px;
-                }
-                .progress-bar-bg {
-                    height: 6px;
-                    background: var(--bg-app);
-                    border-radius: 3px;
-                    overflow: hidden;
-                }
-                .progress-bar-fill {
-                    height: 100%;
-                    background: var(--accent);
-                    border-radius: 3px;
-                    transition: width 1s ease-out;
+                    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+                    gap: 24px;
                 }
             `}</style>
         </div>

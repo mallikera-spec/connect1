@@ -332,7 +332,7 @@ export const bulkUploadLeads = async (leadsData, ownerId, defaultAssignedAgentId
     const preparedLeads = leadsData.map(lead => {
         let assigned_agent_id = defaultAssignedAgentId;
         let bdmKey = null;
-        
+
         // If CSV provided a BDM name or email, try to resolve it
         if (lead.assigned_bdm && lead.assigned_bdm.trim()) {
             bdmKey = lead.assigned_bdm.toLowerCase().trim();
@@ -375,13 +375,13 @@ export const bulkUploadLeads = async (leadsData, ownerId, defaultAssignedAgentId
 
     // 5. Create Follow-up records for leads that had notes
     const followUpsToInsert = [];
-    
+
     // We assume the returned `insertedLeads` array matches the order of `preparedLeads`.
     // (Usually true for bulk inserts, but we map by index just in case)
     insertedLeads.forEach((leadRow, index) => {
         const correspondingTemp = preparedLeads[index];
         if (correspondingTemp && correspondingTemp._temp_note && correspondingTemp._temp_note.trim() !== '') {
-            
+
             // Validate and parse the date, fallback to current time if invalid
             let historicalDate = new Date().toISOString();
             if (correspondingTemp._temp_note_date) {
@@ -405,7 +405,7 @@ export const bulkUploadLeads = async (leadsData, ownerId, defaultAssignedAgentId
         const { error: followUpError } = await supabaseAdmin
             .from('follow_ups')
             .insert(followUpsToInsert);
-            
+
         if (followUpError) {
             console.error('Failed to insert historical notes as follow_ups:', followUpError);
             // We do not throw here to prevent failing the entire lead upload if only notes failed
@@ -508,8 +508,8 @@ export const getSalesMetrics = async (filters = {}) => {
         totalValue: 0
     });
 
-    // Also get quotation count (from leads that reached Proposal or Won)
-    stats.quotationCount = data.filter(l => ['Proposal', 'Won'].includes(l.status)).length;
+    // Calculate conversion rate: (Won / Total) * 100
+    stats.conversionRate = stats.total > 0 ? ((stats.Won || 0) / stats.total) * 100 : 0;
 
     // Fetch pending follow-ups
     let followUpQuery = supabaseAdmin

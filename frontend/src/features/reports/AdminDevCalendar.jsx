@@ -1,10 +1,11 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Users, Briefcase, Clock, Calendar, Filter, X, BarChart2, ChevronDown, ChevronRight } from 'lucide-react';
 import api from '../../lib/api';
 import DateRangePicker from '../../components/DateRangePicker';
 import toast from 'react-hot-toast';
 
-const COLORS = ['#7c3aed','#2563eb','#059669','#d97706','#dc2626','#0891b2','#7c3aed','#be185d'];
+const COLORS = ['#7c3aed', '#2563eb', '#059669', '#d97706', '#dc2626', '#0891b2', '#7c3aed', '#be185d'];
 
 const firstOfMonth = () => new Date(new Date().setDate(1)).toISOString().slice(0, 10);
 const today = () => new Date().toISOString().slice(0, 10);
@@ -22,6 +23,7 @@ function Avatar({ name, color }) {
 }
 
 export default function AdminDevCalendar() {
+    const navigate = useNavigate();
     const [loading, setLoading] = useState(true);
     const [startDate, setStartDate] = useState(firstOfMonth());
     const [endDate, setEndDate] = useState(today());
@@ -107,13 +109,24 @@ export default function AdminDevCalendar() {
     const toggleDay = (date) => setExpandedDays(p => ({ ...p, [date]: !p[date] }));
     const toggleUser = (uid) => setSelectedUserIds(p => p.includes(uid) ? p.filter(x => x !== uid) : [...p, uid]);
 
+    const developers = useMemo(() => {
+        if (!allUsers || !Array.isArray(allUsers)) return [];
+        const activeIds = new Set(entries.map(e => e.userId));
+        return allUsers.filter(u => {
+            const roles = (u.roles || []).map(r => typeof r === 'string' ? r.toLowerCase() : r.name?.toLowerCase()).filter(Boolean);
+            const isDev = roles.some(r => r.includes('dev') || r.includes('developer'));
+            const isAdmin = roles.some(r => r.includes('admin') || r.includes('manager'));
+            return (isDev || activeIds.has(u.id)) && !isAdmin;
+        });
+    }, [allUsers, entries]);
+
     const getUserColor = (userId) => COLORS[allUsers.findIndex(u => u.id === userId) % COLORS.length] || '#7c3aed';
 
     const fmtDate = (d) => new Date(d).toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' });
     const fmtH = (h) => `${Math.floor(h)}h ${Math.round((h % 1) * 60)}m`;
 
     return (
-        <div style={{ maxWidth: 1400, margin: '0 auto' }}>
+        <div style={{ width: '100%', margin: '0 auto' }}>
             {/* Header */}
             <div className="page-header" style={{ alignItems: 'flex-start' }}>
                 <div>
@@ -155,13 +168,15 @@ export default function AdminDevCalendar() {
                             {selectedUserIds.length > 0 && <span style={{ marginLeft: 8, color: 'var(--accent)', fontSize: 11 }}>({selectedUserIds.length} selected)</span>}
                         </label>
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, padding: '8px 12px', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border)', borderRadius: 8 }}>
-                            {allUsers.map(u => {
+                            {developers.map(u => {
                                 const isActive = selectedUserIds.includes(u.id);
                                 const color = getUserColor(u.id);
                                 return (
                                     <label key={u.id} onClick={() => toggleUser(u.id)}
-                                        style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px', borderRadius: 99, fontSize: 12, cursor: 'pointer', userSelect: 'none',
-                                            background: isActive ? color + '22' : 'var(--bg-card)', border: `1px solid ${isActive ? color : 'var(--border)'}`, color: isActive ? color : 'var(--text-muted)', fontWeight: isActive ? 600 : 400 }}>
+                                        style={{
+                                            display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px', borderRadius: 99, fontSize: 12, cursor: 'pointer', userSelect: 'none',
+                                            background: isActive ? color + '22' : 'var(--bg-card)', border: `1px solid ${isActive ? color : 'var(--border)'}`, color: isActive ? color : 'var(--text-muted)', fontWeight: isActive ? 600 : 400
+                                        }}>
                                         {u.full_name}
                                     </label>
                                 );
@@ -215,14 +230,33 @@ export default function AdminDevCalendar() {
                                     </div>
                                 </button>
 
-                                {/* Expanded developer rows */}
                                 {isOpen && (
                                     <div style={{ borderTop: '1px solid var(--border)' }}>
                                         {Object.values(devMap).map((dev) => {
                                             const color = getUserColor(dev.userId);
                                             const projectList = Object.values(dev.projects);
                                             return (
-                                                <div key={dev.userId} style={{ display: 'grid', gridTemplateColumns: '220px 1fr auto', gap: 0, padding: '12px 18px 12px 40px', borderBottom: '1px solid var(--border)', alignItems: 'start' }}>
+                                                <div
+                                                    key={dev.userId}
+                                                    onClick={() => navigate('/timesheet', {
+                                                        state: {
+                                                            viewUserId: dev.userId,
+                                                            startDate: date,
+                                                            endDate: date
+                                                        }
+                                                    })}
+                                                    style={{
+                                                        display: 'grid',
+                                                        gridTemplateColumns: '220px 1fr auto',
+                                                        gap: 0,
+                                                        padding: '12px 18px 12px 40px',
+                                                        borderBottom: '1px solid var(--border)',
+                                                        alignItems: 'start',
+                                                        cursor: 'pointer',
+                                                        transition: 'background 0.2s'
+                                                    }}
+                                                    className="dev-calendar-row"
+                                                >
                                                     {/* Dev name */}
                                                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                                                         <Avatar name={dev.userName} color={color} />

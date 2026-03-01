@@ -5,24 +5,26 @@ import { z } from 'zod';
 
 const entrySchema = z.object({
     title: z.string().min(1),
-    status: z.enum(['todo', 'in_progress', 'done', 'blocked']).default('todo'),
+    status: z.enum(['todo', 'in_progress', 'done', 'blocked', 'verified', 'failed']).default('todo'),
     hours_spent: z.string().regex(/^([0-9]{1,2}):([0-5][0-9])$/, 'Invalid time format (hh:mm)').default('00:00'),
     notes: z.string().optional(),
     task_id: z.string().uuid().optional(),
     project_id: z.string().uuid().optional(),
     admin_feedback: z.string().optional(),
     developer_reply: z.string().optional(),
+    qa_notes: z.string().optional(),
 });
 
 const updateEntrySchema = z.object({
     title: z.string().min(1).optional(),
-    status: z.enum(['todo', 'in_progress', 'done', 'blocked']).optional(),
+    status: z.enum(['todo', 'in_progress', 'done', 'blocked', 'verified', 'failed']).optional(),
     hours_spent: z.string().regex(/^([0-9]{1,2}):([0-5][0-9])$/, 'Invalid time format (hh:mm)').optional(),
     notes: z.string().optional(),
     task_id: z.string().uuid().optional(),
     project_id: z.string().uuid().optional(),
     admin_feedback: z.string().optional(),
     developer_reply: z.string().optional(),
+    qa_notes: z.string().optional(),
 });
 
 // GET /timesheets/me?date=YYYY-MM-DD
@@ -37,6 +39,12 @@ export const getMyHistory = async (req, res) => {
     const { startDate, endDate } = req.query;
     const data = await svc.getMyTimesheets(req.user.id, { startDate, endDate });
     successResponse(res, data, 'Timesheet history fetched');
+};
+
+// GET /timesheets/project/:projectId
+export const getProjectTimesheets = async (req, res) => {
+    const data = await svc.getEntriesByProject(req.params.projectId);
+    successResponse(res, data, 'Project timesheets fetched');
 };
 
 // GET /timesheets  (admin — all users)

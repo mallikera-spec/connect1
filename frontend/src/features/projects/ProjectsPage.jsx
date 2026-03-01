@@ -18,7 +18,15 @@ export default function ProjectsPage() {
     const [saving, setSaving] = useState(false)
     const [modal, setModal] = useState(null)
     const [selected, setSelected] = useState(null)
-    const [form, setForm] = useState({ name: '', description: '' })
+    const [form, setForm] = useState({ name: '', description: '', status: 'active' })
+
+    const PROJECT_STATUS = {
+        active:     { label: 'Active',      color: '#10b981' },
+        on_hold:    { label: 'On Hold',     color: '#f59e0b' },
+        completed:  { label: 'Completed',   color: '#0891b2' },
+        cancelled:  { label: 'Cancelled',   color: '#dc2626' },
+        planning:   { label: 'Planning',    color: '#7c3aed' },
+    }
 
     const canManage = hasPermission('manage_projects') || hasRole('super_admin') || hasRole('project_manager') || hasRole('hr')
 
@@ -53,8 +61,8 @@ export default function ProjectsPage() {
         }
     }, [location.state])
 
-    const openCreate = () => { setForm({ name: '', description: '' }); setModal('create') }
-    const openEdit = (p) => { setSelected(p); setForm({ name: p.name, description: p.description || '' }); setModal('edit') }
+    const openCreate = () => { setForm({ name: '', description: '', status: 'active' }); setModal('create') }
+    const openEdit = (p) => { setSelected(p); setForm({ name: p.name, description: p.description || '', status: p.status || 'active' }); setModal('edit') }
     const openDetails = (p) => navigate(`/projects/${p.id}`)
     const openDelete = (p) => { setSelected(p); setModal('delete') }
     const closeModal = () => { setModal(null); setSelected(null) }
@@ -94,14 +102,24 @@ export default function ProjectsPage() {
                 {loading ? <div className="page-loader"><div className="spinner" /></div> : (
                     <table>
                         <thead><tr>
-                            <th>Name</th><th>Description</th><th>Members</th><th>Created By</th><th>Created</th><th>Actions</th>
+                            <th>Name</th><th>Description</th><th>Status</th><th>Members</th><th>Created By</th><th>Created</th><th>Actions</th>
                         </tr></thead>
                         <tbody>
                             {projects.length === 0 && <tr><td colSpan={6}><div className="empty-state"><p>No projects yet</p></div></td></tr>}
                             {(projects || []).map(p => (
                                 <tr key={p.id}>
                                     <td><strong>{p.name}</strong></td>
-                                    <td style={{ color: 'var(--text-muted)', fontSize: 13, maxWidth: 220 }}>{p.description || '—'}</td>
+                                    <td style={{ color: 'var(--text-muted)', fontSize: 13, maxWidth: 200 }}>{p.description || '—'}</td>
+                                    <td>
+                                        {(() => {
+                                            const s = PROJECT_STATUS[p.status] || PROJECT_STATUS.active
+                                            return (
+                                                <span style={{ background: s.color + '22', color: s.color, fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 99, whiteSpace: 'nowrap' }}>
+                                                    {s.label}
+                                                </span>
+                                            )
+                                        })()}
+                                    </td>
                                     <td>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                                             <div style={{ display: 'flex' }}>
@@ -149,6 +167,16 @@ export default function ProjectsPage() {
                             <div className="modal-body">
                                 <div className="form-group"><label className="form-label">Project Name</label><input className="form-input" value={form.name} onChange={f('name')} required /></div>
                                 <div className="form-group"><label className="form-label">Description</label><textarea className="form-textarea" rows={3} value={form.description} onChange={f('description')} style={{ resize: 'vertical' }} /></div>
+                                <div className="form-group">
+                                    <label className="form-label">Status</label>
+                                    <select className="form-select" value={form.status} onChange={f('status')}>
+                                        <option value="planning">Planning</option>
+                                        <option value="active">Active</option>
+                                        <option value="on_hold">On Hold</option>
+                                        <option value="completed">Completed</option>
+                                        <option value="cancelled">Cancelled</option>
+                                    </select>
+                                </div>
                             </div>
                             <div className="modal-footer">
                                 <button type="button" className="btn btn-ghost" onClick={closeModal}>Cancel</button>
@@ -167,6 +195,16 @@ export default function ProjectsPage() {
                             <div className="modal-body">
                                 <div className="form-group"><label className="form-label">Project Name</label><input className="form-input" value={form.name} onChange={f('name')} required /></div>
                                 <div className="form-group"><label className="form-label">Description</label><textarea className="form-textarea" rows={3} value={form.description} onChange={f('description')} style={{ resize: 'vertical' }} /></div>
+                                <div className="form-group">
+                                    <label className="form-label">Status</label>
+                                    <select className="form-select" value={form.status} onChange={f('status')}>
+                                        <option value="planning">Planning</option>
+                                        <option value="active">Active</option>
+                                        <option value="on_hold">On Hold</option>
+                                        <option value="completed">Completed</option>
+                                        <option value="cancelled">Cancelled</option>
+                                    </select>
+                                </div>
                             </div>
                             <div className="modal-footer">
                                 <button type="button" className="btn btn-ghost" onClick={closeModal}>Cancel</button>

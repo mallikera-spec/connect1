@@ -1,15 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { HRService } from './HRService';
-import { Clock, Calendar, FileText, CheckCircle, AlertCircle, X } from 'lucide-react';
+import { Clock, Calendar, FileText, AlertCircle, X } from 'lucide-react';
+import { AttendanceWidget } from '../dashboard/DashboardComponents';
 import toast from 'react-hot-toast';
 
 export default function HRDashboard() {
     const { user } = useAuth();
     const [loading, setLoading] = useState(true);
-
-    const [todayAttendance, setTodayAttendance] = useState(null);
-    const [currentTime, setCurrentTime] = useState(new Date());
 
     const [leaveBalance, setLeaveBalance] = useState({ totalAccrued: 0, used: 0, balance: 0 });
     const [myLeaves, setMyLeaves] = useState([]);
@@ -21,8 +19,6 @@ export default function HRDashboard() {
 
     useEffect(() => {
         fetchDashboardData();
-        const timer = setInterval(() => setCurrentTime(new Date()), 1000);
-        return () => clearInterval(timer);
     }, []);
 
     const fetchDashboardData = async () => {
@@ -32,16 +28,11 @@ export default function HRDashboard() {
             const month = now.getMonth() + 1;
             const year = now.getFullYear();
 
-            const [attendanceRes, balanceRes, leavesRes, slipsRes] = await Promise.all([
-                HRService.getMyAttendance(month, year).catch(() => ({ data: [] })),
+            const [balanceRes, leavesRes, slipsRes] = await Promise.all([
                 HRService.getLeaveBalance().catch(() => ({ data: { totalAccrued: 0, used: 0, balance: 0 } })),
                 HRService.getMyLeaves().catch(() => ({ data: [] })),
                 HRService.getMySalarySlips().catch(() => ({ data: [] })),
             ]);
-
-            const records = attendanceRes.data || [];
-            const todayStr = new Date().toISOString().split('T')[0];
-            setTodayAttendance(records.find(r => r.date === todayStr) || null);
 
             setLeaveBalance(balanceRes.data || { totalAccrued: 0, used: 0, balance: 0 });
             setMyLeaves(leavesRes.data || []);
@@ -50,29 +41,6 @@ export default function HRDashboard() {
             console.error(err);
         } finally {
             setLoading(false);
-        }
-    };
-
-
-    const handleClockIn = async () => {
-        try {
-            const todayStr = new Date().toISOString().split('T')[0];
-            await HRService.clockIn({ date: todayStr, time: new Date().toISOString() });
-            toast.success('Clocked in!');
-            fetchDashboardData();
-        } catch (err) {
-            toast.error(err.message || 'Error clocking in');
-        }
-    };
-
-    const handleClockOut = async () => {
-        try {
-            const todayStr = new Date().toISOString().split('T')[0];
-            await HRService.clockOut({ date: todayStr, time: new Date().toISOString() });
-            toast.success('Clocked out!');
-            fetchDashboardData();
-        } catch (err) {
-            toast.error(err.message || 'Error clocking out');
         }
     };
 
@@ -94,13 +62,6 @@ export default function HRDashboard() {
             setSubmitting(false);
         }
     };
-
-    let hoursWorkedToday = 0;
-    if (todayAttendance?.check_in_time) {
-        const start = new Date(todayAttendance.check_in_time);
-        const end = todayAttendance.check_out_time ? new Date(todayAttendance.check_out_time) : currentTime;
-        hoursWorkedToday = (end - start) / (1000 * 60 * 60);
-    }
 
     if (loading) return <div className="page-loader"><div className="spinner" /></div>;
 
@@ -127,49 +88,7 @@ export default function HRDashboard() {
             {/* KPI Cards */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 24 }}>
 
-                {/* Clock Card */}
-                <div className="stat-card" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                    <div className="stat-header">
-                        <span className="stat-label">Today's Attendance</span>
-                        <div className="stat-icon" style={{ background: 'var(--info-bg)', color: 'var(--info)', flexShrink: 0 }}>
-                            <Clock size={18} />
-                        </div>
-                    </div>
-                    <div style={{ textAlign: 'center' }}>
-                        <div style={{ fontFamily: 'monospace', fontSize: 26, fontWeight: 700 }}>
-                            {currentTime.toLocaleTimeString()}
-                        </div>
-                        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 12 }}>
-                            {currentTime.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}
-                        </div>
-
-                        {!todayAttendance ? (
-                            <button className="btn btn-primary" style={{ width: '100%' }} onClick={handleClockIn}>
-                                Clock In
-                            </button>
-                        ) : !todayAttendance.check_out_time ? (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                                <div style={{ fontSize: 12, color: 'var(--info)', background: 'var(--info-bg)', padding: '6px 10px', borderRadius: 6 }}>
-                                    In since {new Date(todayAttendance.check_in_time).toLocaleTimeString()} — {hoursWorkedToday.toFixed(2)}h worked
-                                </div>
-                                <button className="btn btn-danger" style={{ width: '100%' }} onClick={handleClockOut}>
-                                    Clock Out
-                                </button>
-                            </div>
-                        ) : (
-                            <div style={{ background: 'var(--success-bg)', color: 'var(--success)', padding: '10px 16px', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, fontSize: 13 }}>
-                                <CheckCircle size={15} />
-                                Shift done — {hoursWorkedToday.toFixed(2)}h
-                            </div>
-                        )}
-                    </div>
-                    {todayAttendance && (
-                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--text-muted)', borderTop: '1px solid var(--border)', paddingTop: 8 }}>
-                            <span>Approval Status</span>
-                            {statusBadge(todayAttendance.status)}
-                        </div>
-                    )}
-                </div>
+                <AttendanceWidget />
 
                 {/* Leave Balance Card */}
                 <div className="stat-card" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -215,7 +134,7 @@ export default function HRDashboard() {
                                 ${parseFloat(latestSlip.net_salary).toLocaleString()}
                             </div>
                             {[['Base Salary', `$${parseFloat(latestSlip.base_salary).toLocaleString()}`, false],
-                              ['Deductions', `-$${parseFloat(latestSlip.deductions).toLocaleString()}`, true]].map(([label, val, isDanger]) => (
+                            ['Deductions', `-$${parseFloat(latestSlip.deductions).toLocaleString()}`, true]].map(([label, val, isDanger]) => (
                                 <div key={label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, borderTop: '1px solid var(--border)', paddingTop: 6 }}>
                                     <span style={{ color: 'var(--text-muted)' }}>{label}</span>
                                     <span style={{ color: isDanger ? 'var(--danger)' : 'inherit' }}>{val}</span>

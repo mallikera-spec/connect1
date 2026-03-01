@@ -33,7 +33,10 @@ export const getAllTasks = async (filters = {}) => {
     if (filters.assigned_to) query = query.eq('assigned_to', filters.assigned_to);
     if (filters.status) query = query.eq('status', filters.status);
     if (filters.startDate) query = query.gte('created_at', filters.startDate);
-    if (filters.endDate) query = query.lte('created_at', filters.endDate);
+    if (filters.endDate) {
+        const end = filters.endDate.includes('T') ? filters.endDate : `${filters.endDate} 23:59:59.999`;
+        query = query.lte('created_at', end);
+    }
 
     const { data, error } = await query;
     if (error) throw error;

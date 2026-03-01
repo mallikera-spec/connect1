@@ -1,4 +1,5 @@
 import { getAuthUser, fetchUserPermissions } from './auth.service.js';
+import { getQuoteOfTheDay } from './quote.service.js';
 import { successResponse } from '../../utils/apiResponse.js';
 
 export const getMe = async (req, res) => {
@@ -9,4 +10,9 @@ export const getMe = async (req, res) => {
 export const refreshPermissions = async (req, res) => {
     const data = await fetchUserPermissions(req.user.id);
     successResponse(res, data, 'Permissions refreshed');
+};
+
+export const getDailyQuote = async (req, res) => {
+    const data = await getQuoteOfTheDay();
+    successResponse(res, data, 'Daily quote fetched');
 };

@@ -100,7 +100,7 @@ export const addEntry = async (timesheetId, entryData) => {
 };
 
 export const updateEntry = async (entryId, updates) => {
-    const allowed = ['title', 'status', 'hours_spent', 'notes', 'task_id', 'admin_feedback', 'project_id', 'developer_reply'];
+    const allowed = ['title', 'status', 'hours_spent', 'notes', 'task_id', 'admin_feedback', 'project_id', 'developer_reply', 'qa_notes'];
     const filtered = Object.fromEntries(Object.entries(updates).filter(([k]) => allowed.includes(k)));
     const { data, error } = await supabaseAdmin
         .from('timesheet_entries')
@@ -120,4 +120,44 @@ export const deleteEntry = async (entryId) => {
     const { error } = await supabaseAdmin.from('timesheet_entries').delete().eq('id', entryId);
     if (error) throw error;
     return { id: entryId };
+};
+
+// ── Project Timesheets ────────────────────────────────────────────────
+
+export const getEntriesByProject = async (projectId) => {
+    // 1. Fetch all task IDs for this project
+    const { data: projectTasks, error: tasksErr } = await supabaseAdmin
+        .from('tasks')
+        .select('id')
+        .eq('project_id', projectId);
+
+    if (tasksErr) throw tasksErr;
+
+    const taskIds = projectTasks.map(t => t.id);
+
+    // 2. Build the query to fetch timesheet entries
+    // Either directly linked to the project, OR linked to one of the project's tasks
+    let query = supabaseAdmin
+        .from('timesheet_entries')
+        .select(`
+            *,
+            timesheet:timesheets ( user_id, user:profiles(id, full_name, email) ),
+            task:tasks!left ( id, title, project_id, end_time )
+        `);
+
+    if (taskIds.length > 0) {
+        query = query.or(`project_id.eq.${projectId},task_id.in.(${taskIds.join(',')})`);
+    } else {
+        query = query.eq('project_id', projectId);
+    }
+
+    const { data, error } = await query.order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    return data.map(e => ({
+        ...e,
+        user: e.timesheet?.user,
+        work_date: e.timesheet?.work_date
+    }));
 };

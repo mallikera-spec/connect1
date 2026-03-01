@@ -1,19 +1,19 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useLocation } from 'react-router-dom'
-import { Plus, Pencil, Trash2, X, Calendar } from 'lucide-react'
+import { Plus, Pencil, Trash2, X, Calendar, ShieldCheck, AlertCircle } from 'lucide-react'
 import api from '../../lib/api'
 import toast from 'react-hot-toast'
 import { useAuth } from '../../context/AuthContext'
 
 const PRIORITY_BADGE = { low: 'badge-blue', medium: 'badge-yellow', high: 'badge-red' }
-const STATUS_BADGE = { pending: 'badge-gray', in_progress: 'badge-yellow', done: 'badge-green' }
+const STATUS_BADGE = { pending: 'badge-gray', in_progress: 'badge-yellow', done: 'badge-green', verified: 'badge-purple', failed: 'badge-red' }
 
-const EMPTY_FORM = { project_id: '', title: '', description: '', assigned_to: '', status: 'pending', priority: 'medium', estimated_hours: '', actual_hours: '', end_time: '' }
+const EMPTY_FORM = { project_id: '', title: '', description: '', assigned_to: '', status: 'pending', priority: 'medium', estimated_hours: '', actual_hours: '', end_time: '', qa_notes: '' }
 
 import DateRangePicker from '../../components/DateRangePicker'
 
 export default function TasksPage() {
-    const { hasPermission, user } = useAuth()
+    const { hasPermission, hasRole, user } = useAuth()
     const canCreate = hasPermission('assign_task')
     const canUpdate = hasPermission('update_task')
     const canDelete = hasPermission('delete_task')
@@ -35,6 +35,7 @@ export default function TasksPage() {
         startDate: location.state?.startDate || '',
         endDate: location.state?.endDate || ''
     })
+    const [qaReport, setQaReport] = useState({ status: '', notes: '' })
 
     const load = useCallback(() => {
         setLoading(true)
@@ -66,11 +67,25 @@ export default function TasksPage() {
     useEffect(() => { load() }, [filters])
 
     useEffect(() => {
-        if (location.state?.openCreateModal) {
-            openCreate();
+        if (location.state) {
+            const newState = {
+                project_id: location.state.project_id || '',
+                status: location.state.status || '',
+                assigned_to: location.state.assigned_to || '',
+                startDate: location.state.startDate || '',
+                endDate: location.state.endDate || ''
+            };
+
+            setFilters(newState);
+
+            if (location.state.openCreateModal) {
+                openCreate();
+            }
+
+            // Clear the state to avoid sticky filters on refresh or back navigation
             window.history.replaceState({}, document.title);
         }
-    }, [location.state])
+    }, [location.state]);
 
     const openCreate = () => {
         setForm({ ...EMPTY_FORM, assigned_to: isManager ? '' : user?.id })
@@ -90,6 +105,11 @@ export default function TasksPage() {
             end_time: t.end_time ? t.end_time.slice(0, 10) : '',
         })
         setModal('edit')
+    }
+    const openQaModal = (t, status) => {
+        setSelected(t)
+        setQaReport({ status, notes: t.qa_notes || '' })
+        setModal('qa_report')
     }
     const openDelete = (t) => { setSelected(t); setModal('delete') }
     const closeModal = () => { setModal(null); setSelected(null) }
@@ -134,6 +154,20 @@ export default function TasksPage() {
         setSaving(true)
         try { await api.delete(`/tasks/${selected.id}`); toast.success('Task deleted'); load(); closeModal() }
         catch (err) { toast.error(err.message) }
+        finally { setSaving(false) }
+    }
+
+    const handleQaReport = async (e) => {
+        e.preventDefault(); setSaving(true)
+        try {
+            await api.patch(`/tasks/${selected.id}`, {
+                status: qaReport.status,
+                qa_notes: qaReport.notes
+            });
+            toast.success(`Task ${qaReport.status === 'verified' ? 'verified' : 'marked as failed'}`);
+            load();
+            closeModal();
+        } catch (err) { toast.error(err.message) }
         finally { setSaving(false) }
     }
 
@@ -183,6 +217,8 @@ export default function TasksPage() {
                         <option value="pending">Pending</option>
                         <option value="in_progress">In Progress</option>
                         <option value="done">Done</option>
+                        <option value="verified">Verified</option>
+                        <option value="failed">Failed</option>
                     </select>
                 </div>
                 <div className="form-group">
@@ -231,6 +267,8 @@ export default function TasksPage() {
                             <option value="pending">Pending</option>
                             <option value="in_progress">In Progress</option>
                             <option value="done">Done</option>
+                            <option value="verified">Verified</option>
+                            <option value="failed">Failed</option>
                         </select>
                         {isManager && (
                             <select className="form-select" style={{ width: 160 }} value={filters.assigned_to} onChange={ff('assigned_to')}>
@@ -253,7 +291,7 @@ export default function TasksPage() {
                 {loading ? <div className="page-loader"><div className="spinner" /></div> : (
                     <table>
                         <thead><tr>
-                            <th>Title</th><th>Project</th><th>Assignee</th><th>Status</th><th>Priority</th><th>Est / Actual (h)</th><th>Due Date</th><th>Actions</th>
+                            <th>Title</th><th>Project</th><th>Assignee</th><th>Status</th><th>Priority</th><th>Created</th><th>Due Date</th><th>Actions</th>
                         </tr></thead>
                         <tbody>
                             {tasks.length === 0 && <tr><td colSpan={8}><div className="empty-state"><p>No tasks found</p></div></td></tr>}
@@ -265,7 +303,7 @@ export default function TasksPage() {
                                     <td><span className={`badge ${STATUS_BADGE[t.status] || 'badge-gray'}`}>{t.status?.replace('_', ' ')}</span></td>
                                     <td><span className={`badge ${PRIORITY_BADGE[t.priority] || 'badge-gray'}`}>{t.priority}</span></td>
                                     <td style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-                                        {t.estimated_hours || '—'} / {t.actual_hours?.toFixed(1) || '—'}
+                                        {t.created_at ? new Date(t.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : '—'}
                                     </td>
                                     <td>
                                         {t.end_time ? (() => {
@@ -285,6 +323,26 @@ export default function TasksPage() {
                                     </td>
                                     <td>
                                         <div className="actions-cell">
+                                            {(hasRole('Tester') || hasRole('super_admin')) && (t.status === 'done' || t.status === 'in_progress') && (
+                                                <div style={{ display: 'flex', gap: 4 }}>
+                                                    <button
+                                                        className="btn btn-ghost btn-sm btn-icon"
+                                                        style={{ color: '#10b981' }}
+                                                        onClick={() => openQaModal(t, 'verified')}
+                                                        title="Pass / Verify"
+                                                    >
+                                                        <ShieldCheck size={14} />
+                                                    </button>
+                                                    <button
+                                                        className="btn btn-ghost btn-sm btn-icon"
+                                                        style={{ color: '#ef4444' }}
+                                                        onClick={() => openQaModal(t, 'failed')}
+                                                        title="Fail / Rejected"
+                                                    >
+                                                        <AlertCircle size={14} />
+                                                    </button>
+                                                </div>
+                                            )}
                                             {canUpdate && <button className="btn btn-ghost btn-sm btn-icon" onClick={() => openEdit(t)}><Pencil size={14} /></button>}
                                             {canDelete && <button className="btn btn-danger btn-sm btn-icon" onClick={() => openDelete(t)}><Trash2 size={14} /></button>}
                                         </div>
@@ -333,6 +391,40 @@ export default function TasksPage() {
                             <button className="btn btn-ghost" onClick={closeModal}>Cancel</button>
                             <button className="btn btn-danger" onClick={handleDelete} disabled={saving}>{saving ? 'Deleting…' : 'Delete'}</button>
                         </div>
+                    </div>
+                </div>
+            )}
+            {modal === 'qa_report' && selected && (
+                <div className="modal-overlay" onClick={e => e.target === e.currentTarget && closeModal()}>
+                    <div className="modal">
+                        <div className="modal-header">
+                            <h2 className="modal-title">QA Report: {qaReport.status === 'verified' ? 'Pass' : 'Fail'}</h2>
+                            <button className="btn-icon" onClick={closeModal}><X size={18} /></button>
+                        </div>
+                        <form onSubmit={handleQaReport}>
+                            <div className="modal-body">
+                                <p style={{ fontSize: 13, marginBottom: 12, color: 'var(--text-muted)' }}>
+                                    Task: <strong>{selected.title}</strong>
+                                </p>
+                                <div className="form-group">
+                                    <label className="form-label">QA Notes / Reason</label>
+                                    <textarea
+                                        className="form-textarea"
+                                        rows={4}
+                                        value={qaReport.notes}
+                                        onChange={e => setQaReport(p => ({ ...p, notes: e.target.value }))}
+                                        placeholder={qaReport.status === 'verified' ? 'Optional: Testing notes...' : 'Required: Why did it fail?'}
+                                        required={qaReport.status === 'failed'}
+                                    />
+                                </div>
+                            </div>
+                            <div className="modal-footer">
+                                <button type="button" className="btn btn-ghost" onClick={closeModal}>Cancel</button>
+                                <button type="submit" className="btn btn-primary" disabled={saving}>
+                                    {saving ? 'Saving...' : `Submit ${qaReport.status === 'verified' ? 'Pass' : 'Fail'}`}
+                                </button>
+                            </div>
+                        </form>
                     </div>
                 </div>
             )}

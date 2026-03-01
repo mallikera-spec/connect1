@@ -10,12 +10,15 @@ import { useAuth } from '../context/AuthContext'
  *     <RolesPage />
  *   </PermissionGate>
  */
-export default function PermissionGate({ perm, children }) {
-    const { hasPermission, loading } = useAuth()
+export default function PermissionGate({ perm, allowedRoles, children }) {
+    const { hasPermission, hasRole, loading } = useAuth()
 
     if (loading) return null   // wait for auth to resolve
 
-    if (!hasPermission(perm)) {
+    const permOk = !perm || hasPermission(perm)
+    const roleOk = !allowedRoles || allowedRoles.some(r => hasRole(r))
+
+    if (!permOk || !roleOk) {
         return <Navigate to="/dashboard" replace />
     }
 

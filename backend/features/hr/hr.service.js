@@ -21,7 +21,7 @@ export const clockIn = async (userId, date, checkInTime) => {
         .insert({ user_id: userId, date, check_in_time: checkInTime, status: 'Pending' })
         .select()
         .single();
-    
+
     if (error) throw error;
     return data;
 };
@@ -58,7 +58,7 @@ export const clockOut = async (userId, date, checkOutTime) => {
 
 export const getMyAttendance = async (userId, month, year) => {
     let query = supabaseAdmin.from('attendance').select('*').eq('user_id', userId);
-    
+
     if (month && year) {
         const startDate = new Date(year, month - 1, 1).toISOString();
         const endDate = new Date(year, month, 0, 23, 59, 59).toISOString();
@@ -136,7 +136,7 @@ export const submitLeaveRequest = async (userId, payload) => {
                 title: 'New Leave Request',
                 message: `${submitter?.full_name || 'An employee'} has submitted a ${type} request from ${start_date} to ${end_date}.`,
                 data: { leave_id: data.id, user_id: userId }
-            }).catch(() => {})
+            }).catch(() => { })
         ));
     } catch (_) { /* non-blocking */ }
 
@@ -190,9 +190,8 @@ export const updateLeaveStatus = async (id, status, adminId, adminComment) => {
             userId: data.user_id,
             type: 'leave_status',
             title: `Leave ${status}`,
-            message: `${emoji} Your leave request (${data.start_date} → ${data.end_date}) has been ${status.toLowerCase()}.${
-                adminComment ? ` Note: ${adminComment}` : ''
-            }`,
+            message: `${emoji} Your leave request (${data.start_date} → ${data.end_date}) has been ${status.toLowerCase()}.${adminComment ? ` Note: ${adminComment}` : ''
+                }`,
             data: { leave_id: id, status }
         });
     } catch (_) { /* non-blocking */ }
@@ -207,14 +206,14 @@ export const calculateAvailableLeaves = async (userId) => {
         .select('joining_date, created_at')
         .eq('id', userId)
         .single();
-        
+
     if (pErr || !profile) return { totalAccrued: 0, used: 0, balance: 0 };
 
     // Use joining_date; fallback to created_at if not set or if set to today
     let joiningDate = profile.joining_date ? new Date(profile.joining_date) : null;
     const today = new Date();
-    today.setHours(0,0,0,0);
-    
+    today.setHours(0, 0, 0, 0);
+
     if (!joiningDate || joiningDate.getTime() >= today.getTime()) {
         // Fall back to account creation date
         joiningDate = profile.created_at ? new Date(profile.created_at) : null;
@@ -246,7 +245,7 @@ export const calculateAvailableLeaves = async (userId) => {
         .eq('user_id', userId)
         .eq('status', 'Approved')
         .eq('type', 'Paid Leave');
-        
+
     let usedLeaves = 0;
     if (leaves) {
         leaves.forEach(l => {
@@ -277,7 +276,7 @@ export const generateSalarySlip = async (userId, month, year, adminId) => {
         .select('base_salary')
         .eq('id', userId)
         .single();
-        
+
     const baseSalary = parseFloat(profile?.base_salary || 0);
 
     // 2. Fetch Unapproved/Absent tracking for deductions
@@ -291,7 +290,7 @@ export const generateSalarySlip = async (userId, month, year, adminId) => {
         .gte('date', startDate)
         .lte('date', endDate)
         .in('status', ['Absent', 'Half Day']);
-        
+
     let deductions = 0;
     let absentDays = 0;
     let halfDays = 0;
@@ -310,7 +309,7 @@ export const generateSalarySlip = async (userId, month, year, adminId) => {
             }
         });
     }
-    
+
     // Also include Unpaid leaves approved
     const { data: leaves } = await supabaseAdmin
         .from('leave_requests')
@@ -320,7 +319,7 @@ export const generateSalarySlip = async (userId, month, year, adminId) => {
         .eq('type', 'Unpaid Leave')
         .gte('start_date', startDate)
         .lte('start_date', endDate); // Simplification: assumes leave starts in this month
-        
+
     let unpaidLeaveDays = 0;
     if (leaves) {
         leaves.forEach(l => {
@@ -373,7 +372,7 @@ export const generateSalarySlip = async (userId, month, year, adminId) => {
         if (error) throw error;
         result = data;
     }
-    
+
     return result;
 };
 
@@ -392,12 +391,50 @@ export const getMySalarySlips = async (userId) => {
 export const getAllSalarySlips = async (month, year) => {
     let query = supabaseAdmin
         .from('salary_slips')
-        .select('*, user:profiles(full_name, email)');
+        .select('*');
 
     if (month) query = query.eq('month', month);
     if (year) query = query.eq('year', year);
 
-    const { data, error } = await query.order('year', { ascending: false }).order('month', { ascending: false });
+    const { data: slips, error } = await query.order('year', { ascending: false }).order('month', { ascending: false });
     if (error) throw error;
-    return data;
+
+    if (!slips || slips.length === 0) return [];
+
+    // Enrich with profile data manually since relationship might not be detected
+    const userIds = [...new Set(slips.map(s => s.user_id))];
+    const { data: profiles } = await supabaseAdmin
+        .from('profiles')
+        .select('id, full_name, email')
+        .in('id', userIds);
+
+    const profileMap = Object.fromEntries((profiles || []).map(p => [p.id, p]));
+    return slips.map(s => ({ ...s, user: profileMap[s.user_id] || null }));
+};
+
+// --- Attendance Report ---
+export const getAttendanceReport = async ({ userId, startDate, endDate, status }) => {
+    let query = supabaseAdmin
+        .from('attendance')
+        .select('*');
+
+    if (userId) query = query.eq('user_id', userId);
+    if (startDate) query = query.gte('date', startDate);
+    if (endDate) query = query.lte('date', endDate);
+    if (status) query = query.eq('status', status);
+
+    const { data, error } = await query.order('date', { ascending: false });
+    if (error) throw error;
+
+    if (!data || data.length === 0) return [];
+
+    // Enrich with profile data
+    const uIds = [...new Set(data.map(r => r.user_id))];
+    const { data: profiles } = await supabaseAdmin
+        .from('profiles')
+        .select('id, full_name, email')
+        .in('id', uIds);
+
+    const profileMap = Object.fromEntries((profiles || []).map(p => [p.id, p]));
+    return data.map(r => ({ ...r, user: profileMap[r.user_id] || null }));
 };

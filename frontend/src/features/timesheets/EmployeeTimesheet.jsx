@@ -7,7 +7,14 @@ import { useAuth } from '../../context/AuthContext'
 import EditEntryModal from './EditEntryModal'
 
 const STATUS_OPTS = ['todo', 'in_progress', 'done', 'blocked']
-const STATUS_BADGE = { todo: 'badge-gray', in_progress: 'badge-yellow', done: 'badge-green', blocked: 'badge-red' }
+const STATUS_BADGE = {
+    todo: 'badge-gray',
+    in_progress: 'badge-yellow',
+    done: 'badge-green',
+    blocked: 'badge-red',
+    verified: 'badge-purple',
+    failed: 'badge-red'
+}
 
 const fmt = (d) => d ? new Date(d).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' }) : ''
 const todayISO = () => new Date().toISOString().slice(0, 10)
@@ -35,6 +42,7 @@ export default function EmployeeTimesheet() {
     const [newTitle, setNewTitle] = useState('')
     const [newTime, setNewTime] = useState('00:00')
     const [newNotes, setNewNotes] = useState('')
+    const [newStatus, setNewStatus] = useState('done') // Default to done for quick logging
     const [adding, setAdding] = useState(false)
     const [editingEntry, setEditingEntry] = useState(null)
 
@@ -91,7 +99,7 @@ export default function EmployeeTimesheet() {
 
             const payload = {
                 title: newTitle.trim(),
-                status: 'todo',
+                status: newStatus,
                 hours_spent: newTime,
                 notes: newNotes,
                 project_id: newProjectId || null
@@ -101,6 +109,7 @@ export default function EmployeeTimesheet() {
             setNewTitle('')
             setNewTime('00:00')
             setNewNotes('')
+            setNewStatus('done')
             toast.success('Activity logged!')
             load()
         } catch (err) {
@@ -126,14 +135,16 @@ export default function EmployeeTimesheet() {
     const handleExportCSV = () => {
         const entries = filteredEntries;
         if (entries.length === 0) return toast.error('No data to export');
-        const headers = ['Date', 'Project', 'Activity', 'Hours', 'Status', 'Notes'];
+        const headers = ['Date', 'Project', 'Activity', 'Hours', 'Status', 'QA Result', 'QA Notes', 'Admin Feedback'];
         const rows = entries.map(e => [
             e.date,
             e.project?.name || e.projectName || 'In-House Project',
             e.title,
             e.hours_spent,
             e.status,
-            (e.notes || '').replace(/\n/g, ' ')
+            ['verified', 'failed'].includes(e.status) ? e.status.toUpperCase() : 'PENDING',
+            (e.qa_notes || '').replace(/\n/g, ' '),
+            (e.admin_feedback || '').replace(/\n/g, ' ')
         ]);
         const csvContent = [headers, ...rows].map(r => r.join(',')).join('\n');
         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -147,14 +158,16 @@ export default function EmployeeTimesheet() {
     const handleExportExcel = () => {
         const entries = filteredEntries;
         if (entries.length === 0) return toast.error('No data to export');
-        const headers = ['Date', 'Project', 'Activity', 'Hours', 'Status', 'Notes'];
+        const headers = ['Date', 'Project', 'Activity', 'Hours', 'Status', 'QA Result', 'QA Notes', 'Admin Feedback'];
         const rows = entries.map(e => [
             e.date,
             e.project?.name || e.projectName || 'In-House Project',
             e.title,
             e.hours_spent,
             e.status,
-            (e.notes || '').replace(/\n/g, ' ')
+            ['verified', 'failed'].includes(e.status) ? e.status.toUpperCase() : 'PENDING',
+            (e.qa_notes || '').replace(/\n/g, ' '),
+            (e.admin_feedback || '').replace(/\n/g, ' ')
         ]);
         const csvContent = [headers, ...rows].map(r => r.join(',')).join('\n');
         const blob = new Blob([csvContent], { type: 'application/vnd.ms-excel;charset=utf-8;' });
@@ -203,14 +216,13 @@ export default function EmployeeTimesheet() {
     }, [allEntries, filterProjectId, statusFilter])
 
     return (
-        <div className="dev-dashboard">
-            {/* Header with Glassmorphism Effect */}
-            <div className="dashboard-header card">
-                <div className="header-info">
+        <div className="page-content">
+            <div className="page-header">
+                <div>
                     <h1>Activity Hub</h1>
                     <p>Track your flow, conquer your day.</p>
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 16, alignItems: 'flex-end' }}>
+                <div className="header-actions">
                     <DateRangePicker
                         startDate={startDate}
                         endDate={endDate}
@@ -219,197 +231,187 @@ export default function EmployeeTimesheet() {
                             setEndDate(range.endDate);
                         }}
                     />
-                    <div className="header-stats">
-                        <div className="quick-stat">
-                            <div className="stat-icon purple"><Clock size={20} /></div>
-                            <div>
-                                <div className="stat-val">{stats.totalHours}h</div>
-                                <div className="stat-label">Logged</div>
-                            </div>
-                        </div>
-                        <div className="quick-stat">
-                            <div className="stat-icon yellow"><CheckCircle2 size={20} /></div>
-                            <div>
-                                <div className="stat-val">{stats.pendingTasks}</div>
-                                <div className="stat-label">Pending Tasks</div>
-                            </div>
-                        </div>
-                        <div className="quick-stat">
-                            <div className="stat-icon green"><Target size={20} /></div>
-                            <div>
-                                <div className="stat-val" style={{ fontWeight: 900, fontSize: '24px' }}>{stats.completed}</div>
-                                <div className="stat-label" style={{ fontWeight: 700 }}>Done Today</div>
-                            </div>
-                        </div>
+                </div>
+            </div>
+
+            {/* Stats Bar */}
+            <div className="stats-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)', marginBottom: 24 }}>
+                <div className="card shadow-sm" style={{ padding: 20, display: 'flex', alignItems: 'center', gap: 16 }}>
+                    <div className="stat-icon-circle purple"><Clock size={20} /></div>
+                    <div>
+                        <div style={{ fontSize: 24, fontWeight: 800 }}>{stats.totalHours}h</div>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase' }}>Logged Today</div>
+                    </div>
+                </div>
+                <div className="card shadow-sm" style={{ padding: 20, display: 'flex', alignItems: 'center', gap: 16 }}>
+                    <div className="stat-icon-circle yellow"><CheckCircle2 size={20} /></div>
+                    <div>
+                        <div style={{ fontSize: 24, fontWeight: 800 }}>{stats.pendingTasks}</div>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase' }}>Pending Tasks</div>
+                    </div>
+                </div>
+                <div className="card shadow-sm" style={{ padding: 20, display: 'flex', alignItems: 'center', gap: 16 }}>
+                    <div className="stat-icon-circle green"><Target size={20} /></div>
+                    <div>
+                        <div style={{ fontSize: 24, fontWeight: 800 }}>{stats.completed}</div>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase' }}>Done Today</div>
                     </div>
                 </div>
             </div>
 
-            <div className="dashboard-grid">
-                {/* Left Column: Quick Plan */}
+            <div className="dashboard-grid" style={{ display: 'grid', gridTemplateColumns: '380px 1fr', gap: 24 }}>
+                {/* Left Column: Plan Activity */}
                 <div className="grid-column">
-                    <div className="card shadow-md glass-card">
-                        <div className="card-header-premium">
-                            <TrendingUp size={18} />
-                            <h3>Plan Your Activity</h3>
+                    <div className="card shadow-sm glass-card" style={{ padding: 24 }}>
+                        <div className="section-title" style={{ marginBottom: 20 }}>
+                            <TrendingUp size={18} style={{ color: 'var(--accent)' }} />
+                            <h3 style={{ margin: 0, fontSize: 16 }}>Plan Activity</h3>
                         </div>
-                        <form onSubmit={handleAddEntry} className="premium-form">
-                            <div className="form-group-compact">
-                                <label><Calendar size={12} /> Date</label>
-                                <input type="date" className="glass-input" value={newDate} onChange={e => setNewDate(e.target.value)} required />
+                        <form onSubmit={handleAddEntry} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                            <div className="form-group">
+                                <label className="form-label"><Calendar size={12} style={{ marginRight: 6 }} /> Date</label>
+                                <input type="date" className="form-control" value={newDate} onChange={e => setNewDate(e.target.value)} required />
                             </div>
 
-                            <div className="form-group-compact">
-                                <label>Project</label>
-                                <select className="glass-select" value={newProjectId} onChange={e => setNewProjectId(e.target.value)}>
+                            <div className="form-group">
+                                <label className="form-label">Project Scope</label>
+                                <select className="form-select" value={newProjectId} onChange={e => setNewProjectId(e.target.value)}>
                                     <option value="">Select Scope...</option>
                                     {myProjects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                                 </select>
                             </div>
 
-                            <div className="form-group-compact">
-                                <label>What are you working on?</label>
-                                <input className="glass-input" placeholder="e.g. Building login screen" value={newTitle} onChange={e => setNewTitle(e.target.value)} required />
+                            <div className="form-group">
+                                <label className="form-label">Task Description</label>
+                                <input className="form-control" placeholder="e.g. Building login screen" value={newTitle} onChange={e => setNewTitle(e.target.value)} required />
                             </div>
 
-
-                            <div className="form-group-compact">
-                                <label><Clock size={12} /> Time Commitment (hh:mm)</label>
-                                <input type="time" className="glass-input" value={newTime} onChange={e => setNewTime(e.target.value)} required />
+                            <div className="form-group">
+                                <label className="form-label"><Clock size={12} style={{ marginRight: 6 }} /> Time (hh:mm)</label>
+                                <input type="time" className="form-control" value={newTime} onChange={e => setNewTime(e.target.value)} required />
                             </div>
 
-                            <div className="form-group-compact">
-                                <label>Notes</label>
+                            <div className="form-group">
+                                <label className="form-label">Initial Status</label>
+                                <select className="form-select" value={newStatus} onChange={e => setNewStatus(e.target.value)}>
+                                    <option value="todo">To Do (Planned)</option>
+                                    <option value="in_progress">In Progress</option>
+                                    <option value="done">Done (Ready for QA)</option>
+                                </select>
+                            </div>
+
+                            <div className="form-group">
+                                <label className="form-label">Notes</label>
                                 <textarea
-                                    className="glass-textarea"
-                                    placeholder="Brief details..."
+                                    className="form-control"
+                                    placeholder="Brief technical details..."
                                     value={newNotes}
                                     onChange={e => setNewNotes(e.target.value)}
-                                    rows={2}
+                                    rows={3}
                                     required
                                 />
                             </div>
 
-                            <button type="submit" className="premium-btn" disabled={adding || !newTitle.trim() || !newProjectId || !newNotes.trim() || !newTime || newTime === '00:00'}>
-                                {adding ? <span className="spinner" /> : <><Plus size={18} /> Plan Activity</>}
+                            <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: 8 }} disabled={adding || !newTitle.trim() || !newProjectId || !newNotes.trim() || !newTime || newTime === '00:00'}>
+                                {adding ? <span className="spinner-sm" /> : <><Plus size={18} /> Log Activity</>}
                             </button>
                         </form>
                     </div>
                 </div>
 
-                <div className="grid-column wider">
-                    <div className="section-title">
-                        <History size={18} />
-                        <h2>Activity History</h2>
-                    </div>
-
-                    <div className="filter-panel card shadow-sm glass-card" style={{ marginBottom: 20, padding: '12px 20px', display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
-                        <div className="filter-group">
-                            <label style={{ fontSize: 10, fontWeight: 800, textTransform: 'uppercase', color: 'var(--text-dim)', display: 'block', marginBottom: 4 }}>PROJECT</label>
-                            <select className="glass-select-sm" value={filterProjectId} onChange={e => setFilterProjectId(e.target.value)}>
-                                <option value="">ALL PROJECTS</option>
-                                {myProjects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                            </select>
+                {/* Right Column: History */}
+                <div className="grid-column">
+                    <div className="card shadow-sm glass-card" style={{ padding: 0 }}>
+                        <div className="card-header" style={{ padding: '16px 24px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                <History size={18} style={{ color: 'var(--accent)' }} />
+                                <h3 style={{ margin: 0, fontSize: 16 }}>Activity History</h3>
+                            </div>
+                            <div style={{ display: 'flex', gap: 12 }}>
+                                <select className="form-select" style={{ width: 'auto', padding: '4px 12px', fontSize: 12 }} value={filterProjectId} onChange={e => setFilterProjectId(e.target.value)}>
+                                    <option value="">ALL PROJECTS</option>
+                                    {myProjects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                                </select>
+                                <div className="btn-group">
+                                    <button className="btn btn-ghost" style={{ padding: '4px 10px', fontSize: 11 }} onClick={handleExportCSV}>CSV</button>
+                                    <button className="btn btn-ghost" style={{ padding: '4px 10px', fontSize: 11 }} onClick={handleExportExcel}>EXCEL</button>
+                                    <button className="btn btn-ghost" style={{ padding: '4px 10px', fontSize: 11 }} onClick={handleExportPDF}>PDF</button>
+                                </div>
+                            </div>
                         </div>
-                        <div className="export-btns" style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
-                            <button className="export-btn csv" onClick={handleExportCSV}>CSV</button>
-                            <button className="export-btn excel" onClick={handleExportExcel}>EXCEL</button>
-                            <button className="export-btn pdf" onClick={handleExportPDF}>PDF</button>
-                        </div>
-                    </div>
 
-                    <div className="activity-table-container card shadow-sm glass-card">
-                        {loading ? <div className="page-loader"><div className="spinner" /></div> : (
-                            allEntries.length === 0 ? (
-                                <div className="empty-state-card">
-                                    <Calendar size={48} style={{ opacity: 0.2, marginBottom: 16 }} />
-                                    <h3>No activities logged yet</h3>
-                                    <p>Start by planning your first activity today.</p>
+                        <div className="table-wrapper" style={{ maxHeight: 'calc(100vh - 400px)', overflowY: 'auto' }}>
+                            {loading ? (
+                                <div className="page-loader" style={{ height: 200 }}><div className="spinner" /></div>
+                            ) : filteredEntries.length === 0 ? (
+                                <div className="empty-state-card" style={{ padding: 48 }}>
+                                    <Calendar size={48} style={{ opacity: 0.1, marginBottom: 16 }} />
+                                    <h3>No activities logged</h3>
+                                    <p>Your history for this period is empty.</p>
                                 </div>
                             ) : (
-                                <table className="activity-table">
+                                <table className="compact-table">
                                     <thead>
                                         <tr>
-                                            <th>Date</th>
-                                            <th>Project</th>
-                                            <th>Activity</th>
-                                            <th>Time</th>
-                                            <th>Status</th>
-                                            <th>Notes</th>
-                                            <th>Admin Notes</th>
-                                            <th>Actions</th>
+                                            <th style={{ width: 100 }}>Date</th>
+                                            <th style={{ width: 120 }}>Project</th>
+                                            <th>Activity Details</th>
+                                            <th style={{ width: 60 }}>Time</th>
+                                            <th style={{ width: 120 }}>Status</th>
+                                            <th style={{ width: 150 }}>QA Feedback</th>
+                                            <th style={{ width: 180 }}>Admin Feedback</th>
+                                            <th style={{ width: 80, textAlign: 'right' }}>Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {filteredEntries.map(e => (
                                             <tr key={e.id}>
-                                                <td className="col-date">{fmt(e.date)}</td>
-                                                <td className="col-project">
-                                                    <select
-                                                        className="inline-select"
-                                                        value={e.project_id || ''}
-                                                        onChange={ev => handleUpdate(e.id, { project_id: ev.target.value })}
-                                                    >
-                                                        <option value="">None</option>
-                                                        {myProjects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                                                    </select>
+                                                <td style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-dim)' }}>{fmt(e.date)}</td>
+                                                <td>
+                                                    <span className="badge-pill badge-purple" style={{ fontSize: 9 }}>
+                                                        {(e.project?.name || 'In-House').toUpperCase()}
+                                                    </span>
                                                 </td>
-                                                <td className="col-title">
-                                                    <input
-                                                        className="inline-input-bold"
-                                                        defaultValue={e.title}
-                                                        onBlur={ev => handleUpdate(e.id, { title: ev.target.value })}
-                                                    />
+                                                <td>
+                                                    <div style={{ fontWeight: 600 }}>{e.title}</div>
+                                                    {e.notes && <div style={{ fontSize: 11, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 300 }}>{e.notes}</div>}
                                                 </td>
-                                                <td className="col-time">
-                                                    <input
-                                                        type="text"
-                                                        className="inline-time-input"
-                                                        defaultValue={e.hours_spent}
-                                                        onBlur={ev => handleUpdate(e.id, { hours_spent: ev.target.value })}
-                                                    />
-                                                </td>
-                                                <td className="col-status">
-                                                    <select
-                                                        className={`status-select-badge ${STATUS_BADGE[e.status]}`}
-                                                        value={e.status}
-                                                        onChange={ev => handleUpdate(e.id, { status: ev.target.value })}
-                                                    >
-                                                        {STATUS_OPTS.map(s => <option key={s} value={s}>{s.toUpperCase()}</option>)}
-                                                    </select>
-                                                </td>
-                                                <td className="col-notes">
-                                                    <textarea
-                                                        className="inline-notes-table"
-                                                        defaultValue={e.notes || ''}
-                                                        onBlur={ev => handleUpdate(e.id, { notes: ev.target.value })}
-                                                    />
-                                                </td>
-                                                <td className="col-admin-notes" style={{ color: 'var(--text-dim)', fontSize: '12px' }}>
-                                                    {e.admin_feedback || <span style={{ opacity: 0.3 }}>—</span>}
-                                                </td>
-                                                <td className="col-actions">
-                                                    <div style={{ display: 'flex', gap: 6 }}>
-                                                        <button
-                                                            className="btn-icon-sm"
-                                                            style={{ color: 'var(--accent-light)' }}
-                                                            onClick={() => setEditingEntry(e)}
-                                                            title="Edit"
+                                                <td style={{ fontWeight: 800, color: 'var(--accent)' }}>{e.hours_spent}</td>
+                                                <td>
+                                                    {['verified', 'failed'].includes(e.status) ? (
+                                                        <span className={`badge-pill ${STATUS_BADGE[e.status]}`} style={{ width: '100%', textAlign: 'center' }}>
+                                                            {e.status.toUpperCase()}
+                                                        </span>
+                                                    ) : (
+                                                        <select
+                                                            className={`form-select-badge ${STATUS_BADGE[e.status]}`}
+                                                            value={e.status}
+                                                            onChange={ev => handleUpdate(e.id, { status: ev.target.value })}
+                                                            style={{ textTransform: 'uppercase', fontStyle: 'normal' }}
                                                         >
-                                                            <Edit size={16} />
-                                                        </button>
-                                                        <button className="delete-btn-minimal" onClick={() => handleDelete(e.id)}><Trash2 size={16} /></button>
+                                                            {STATUS_OPTS.map(s => <option key={s} value={s}>{s.toUpperCase()}</option>)}
+                                                        </select>
+                                                    )}
+                                                </td>
+                                                <td style={{ fontSize: 11, color: e.status === 'verified' ? 'var(--text-muted)' : '#ef4444', fontWeight: 600 }}>
+                                                    {e.qa_notes ? `🚩 ${e.qa_notes}` : <span style={{ opacity: 0.2 }}>—</span>}
+                                                </td>
+                                                <td style={{ fontSize: 11, color: 'var(--text-dim)' }}>
+                                                    {e.admin_feedback || <span style={{ opacity: 0.2 }}>—</span>}
+                                                </td>
+                                                <td style={{ textAlign: 'right' }}>
+                                                    <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
+                                                        <button className="btn-icon-sm" onClick={() => setEditingEntry(e)}><Edit size={14} /></button>
+                                                        <button className="btn-icon-sm danger" onClick={() => handleDelete(e.id)}><Trash2 size={14} /></button>
                                                     </div>
                                                 </td>
                                             </tr>
                                         ))}
                                     </tbody>
                                 </table>
-                            )
-                        )}
+                            )}
+                        </div>
                     </div>
-                    {/* This closing div was likely intended for the <td> or <tr>, but was misplaced. */}
-                    {/* {savingId === e.id && <div className="spinner-sm mini" />} */}
                 </div>
             </div>
 
@@ -425,184 +427,29 @@ export default function EmployeeTimesheet() {
             )}
 
             <style>{`
-                .dev-dashboard { max-width: 1600px; margin: 0 auto; color: var(--text); }
+                .stat-icon-circle { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+                .stat-icon-circle.purple { background: rgba(124, 58, 237, 0.1); color: var(--accent); }
+                .stat-icon-circle.yellow { background: rgba(245, 158, 11, 0.1); color: var(--warning); }
+                .stat-icon-circle.green { background: rgba(34, 197, 94, 0.1); color: var(--success); }
                 
-                .dashboard-header {
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                    padding: 32px;
-                    margin-bottom: 32px;
-                    background: linear-gradient(135deg, rgba(124, 58, 237, 0.1) 0%, rgba(139, 92, 246, 0.05) 100%);
-                    border: 1px solid var(--border);
-                    border-radius: 20px;
-                    backdrop-filter: blur(12px);
-                }
-                
-                .header-info h1 { 
-                    font-size: 32px; 
-                    font-weight: 800; 
-                    margin-bottom: 8px; 
-                    letter-spacing: -1px; 
-                    background: var(--accent-gradient); 
-                    -webkit-background-clip: text; 
-                    -webkit-text-fill-color: transparent; 
-                }
-                .header-info p { color: var(--text-muted); font-size: 16px; }
-                
-                .header-stats { display: flex; gap: 32px; }
-                .quick-stat { display: flex; align-items: center; gap: 12px; }
-                .stat-icon { width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; background: var(--bg-card); }
-                .stat-icon.purple { color: var(--accent-light); background: rgba(124, 58, 237, 0.15); }
-                .stat-icon.yellow { color: var(--warning); background: var(--warning-bg); }
-                .stat-icon.green { color: var(--success); background: var(--success-bg); }
-                .stat-val { font-size: 20px; font-weight: 700; line-height: 1.2; }
-                .stat-label { font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px; font-weight: 600; }
-
-                .dashboard-grid { display: grid; grid-template-columns: 380px 1fr; gap: 32px; }
-                .grid-column { display: flex; flex-direction: column; gap: 24px; }
-                
-                .glass-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; backdrop-filter: blur(10px); }
-                .card-header-premium { padding: 20px 24px; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid var(--border); background: rgba(255, 255, 255, 0.02); }
-                .card-header-premium h3 { margin: 0; font-size: 15px; font-weight: 600; color: var(--text); }
-                
-                .premium-form { padding: 24px; display: flex; flex-direction: column; gap: 18px; }
-                .form-group-compact { display: flex; flex-direction: column; gap: 6px; }
-                .form-group-compact label { font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--text-dim); display: flex; align-items: center; gap: 6px; }
-                
-                .glass-input, .glass-select, .glass-textarea { 
-                    background: rgba(255, 255, 255, 0.03); 
-                    border: 1px solid var(--border); 
-                    border-radius: 10px; 
-                    padding: 10px 14px; 
-                    color: var(--text); 
-                    font-size: 14px; 
-                    transition: all 0.2s; 
-                    font-family: inherit;
-                }
-                .glass-input:focus, .glass-select:focus, .glass-textarea:focus { border-color: var(--accent); outline: none; background: rgba(255, 255, 255, 0.06); box-shadow: 0 0 0 2px rgba(124, 58, 237, 0.1); }
-                .glass-select option { background: #12102a; color: var(--text); }
-                
-                .premium-btn { 
-                    background: var(--accent-gradient); 
-                    color: #fff; 
-                    border: none; 
-                    padding: 14px; 
-                    border-radius: 10px; 
-                    font-weight: 600; 
-                    display: flex; 
-                    align-items: center; 
-                    justify-content: center; 
-                    gap: 8px; 
-                    cursor: pointer; 
-                    transition: all 0.2s; 
-                    margin-top: 8px;
-                    box-shadow: 0 4px 15px rgba(124, 58, 237, 0.2);
-                }
-                .premium-btn:hover:not(:disabled) { transform: translateY(-2px); filter: brightness(1.1); box-shadow: 0 6px 20px rgba(124, 58, 237, 0.35); }
-                .premium-btn:active:not(:disabled) { transform: translateY(0); }
-                .premium-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-
-                .section-title { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
-                .section-title h2 { margin: 0; font-size: 18px; font-weight: 700; color: var(--text); }
-                .date-filters { margin-left: auto; display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--text-muted); }
-                .date-filters input { background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; color: var(--text); padding: 6px 10px; font-size: 12px; outline: none; transition: border-color 0.2s; }
-                .date-filters input:focus { border-color: var(--accent); }
-
-                .activity-table th { padding: 12px 14px; font-size: 11px; font-weight: 800; text-transform: uppercase; color: var(--text-dim); border-bottom: 2px solid var(--border); text-align: left; letter-spacing: 0.1em; }
-                .activity-table td { padding: 8px 14px; border-bottom: 1px solid var(--border); font-size: 13px; font-weight: 800; vertical-align: middle; }
-                
-                .inline-input-bold, .inline-select, .inline-time-input, .inline-notes-table {
-                    background: transparent;
-                    border: 1px solid transparent;
-                    color: var(--text);
-                    font-weight: 800;
-                    padding: 4px 8px;
-                    border-radius: 4px;
+                .form-select-badge {
                     width: 100%;
-                    font-family: inherit;
-                    font-size: 13px;
-                    transition: all 0.2s;
-                }
-                .inline-input-bold:hover, .inline-select:hover, .inline-time-input:hover, .inline-notes-table:hover {
-                    background: rgba(255, 255, 255, 0.04);
-                    border-color: var(--border);
-                }
-                .inline-input-bold:focus, .inline-select:focus, .inline-time-input:focus, .inline-notes-table:focus {
-                    background: rgba(124, 58, 237, 0.1);
-                    border-color: var(--accent);
-                    outline: none;
-                }
-                
-                .inline-notes-table { font-size: 12px; font-weight: 600; min-height: 24px; resize: vertical; }
-                .inline-time-input { width: 60px; text-align: center; }
-                
-                .glass-input-sm, .glass-select-sm {
-                    background: rgba(255, 255, 255, 0.05);
-                    border: 1px solid var(--border);
+                    padding: 4px 8px;
                     border-radius: 6px;
-                    padding: 6px 10px;
-                    color: var(--text);
-                    font-size: 12px;
-                    font-weight: 700;
-                    outline: none;
-                }
-                
-                .export-btn {
-                    padding: 6px 12px;
-                    border-radius: 6px;
-                    font-size: 11px;
+                    border: none;
+                    background: var(--bg-card);
+                    color: inherit;
+                    font-size: 10px;
                     font-weight: 800;
                     cursor: pointer;
-                    border: 1px solid var(--border);
-                    background: var(--bg-card);
-                    color: var(--text);
-                    transition: all 0.2s;
-                }
-                .export-btn:hover { background: var(--accent); color: white; border-color: var(--accent); }
-                .export-btn.excel { background: rgba(34, 197, 94, 0.1); color: #22c55e; border-color: rgba(34, 197, 94, 0.2); }
-                .export-btn.excel:hover { background: #22c55e; color: white; }
-
-                .status-select-badge {
-                    padding: 4px 10px;
-                    border-radius: 6px;
-                    font-size: 10px;
-                    font-weight: 900;
-                    cursor: pointer;
-                    border: none;
-                    text-transform: uppercase;
-                }
-
-                .empty-state-card { padding: 60px 40px; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--text-dim); }
-                .empty-state-card h3 { color: var(--text-muted); margin-bottom: 8px; }
-
-                .btn-icon-sm {
-                    background: transparent;
-                    border: none;
-                    cursor: pointer;
-                    padding: 4px;
-                    border-radius: 4px;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    transition: all 0.2s;
-                }
-                .btn-icon-sm:hover {
-                    background: rgba(255, 255, 255, 0.05);
+                    appearance: none;
+                    text-align: center;
                 }
                 
-                .col-admin-notes { max-width: 150px; }
+                .btn-icon-sm.danger:hover { color: var(--danger); background: var(--danger-bg); }
 
-                @media (max-width: 1100px) {
-                    .dashboard-grid { grid-template-columns: 1fr; }
-                    .grid-column.wider { order: 1; }
-                    .grid-column:not(.wider) { order: 2; }
-                }
-
-                @media (max-width: 600px) {
-                    .dashboard-header { flex-direction: column; align-items: flex-start; gap: 24px; padding: 24px; }
-                    .header-stats { width: 100%; justify-content: space-between; gap: 12px; }
-                    .quick-stat { flex-direction: column; align-items: center; text-align: center; }
+                @media (max-width: 1024px) {
+                    .dashboard-grid { grid-template-columns: 1fr !important; }
                 }
             `}</style>
         </div >

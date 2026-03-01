@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { HRService } from './HRService';
 import { Clock, Calendar, FileText, Check, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useSortable, SortableHeader } from '../../hooks/useSortable';
 
 export default function HRAdminPanel() {
+    const location = useLocation();
     const [loading, setLoading] = useState(true);
-    const [activeTab, setActiveTab] = useState('attendance');
+    const [activeTab, setActiveTab] = useState(location.state?.tab || 'attendance');
 
     const [pendingAttendance, setPendingAttendance] = useState([]);
     const [pendingLeaves, setPendingLeaves] = useState([]);

@@ -1,9 +1,23 @@
 import { useState, useEffect } from 'react'
 import { Calendar, ChevronDown } from 'lucide-react'
+import { getISTDate, getISTMonthStartString, getISTTodayString } from '../lib/dateUtils'
 
 export default function DateRangePicker({ startDate, endDate, onRangeChange }) {
     const [isShrunk, setIsShrunk] = useState(false)
     const [selectedPreset, setSelectedPreset] = useState('custom')
+
+    // Automatically detect if the current props match the MTD preset
+    useEffect(() => {
+        if (startDate === getISTMonthStartString() && endDate === getISTTodayString()) {
+            setSelectedPreset('mtd')
+        } else {
+            // If they modify the dates manually, let it fallback to custom
+            // But we only want to reset to custom if it's currently showing a preset that no longer matches
+            if (selectedPreset === 'mtd' && (startDate !== getISTMonthStartString() || endDate !== getISTTodayString())) {
+                setSelectedPreset('custom')
+            }
+        }
+    }, [startDate, endDate])
 
     useEffect(() => {
         const handleScroll = () => {
@@ -15,7 +29,7 @@ export default function DateRangePicker({ startDate, endDate, onRangeChange }) {
     }, [])
 
     const handlePresetChange = (preset) => {
-        const today = new Date()
+        const today = getISTDate()
         today.setHours(0, 0, 0, 0)
         let start = new Date(today)
         let end = new Date(today)
@@ -53,7 +67,7 @@ export default function DateRangePicker({ startDate, endDate, onRangeChange }) {
                 return
         }
 
-        const format = (d) => d.toISOString().split('T')[0]
+        const format = (d) => d.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' })
         onRangeChange({ startDate: format(start), endDate: format(end) })
         setSelectedPreset(preset)
     }

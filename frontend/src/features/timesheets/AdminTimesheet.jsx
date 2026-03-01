@@ -1,11 +1,18 @@
 import { useEffect, useState } from 'react'
-import { Link2, Clock, Calendar, Users, Filter } from 'lucide-react'
+import { Link2, Clock, Calendar, Users, Filter, ShieldCheck, AlertCircle, X } from 'lucide-react'
 import { useLocation } from 'react-router-dom'
 import api from '../../lib/api'
 import toast from 'react-hot-toast'
 import { useAuth } from '../../context/AuthContext'
 
-const STATUS_BADGE = { todo: 'badge-gray', in_progress: 'badge-yellow', done: 'badge-green', blocked: 'badge-red' }
+const STATUS_BADGE = {
+    todo: 'badge-gray',
+    in_progress: 'badge-yellow',
+    done: 'badge-green',
+    blocked: 'badge-red',
+    verified: 'badge-purple',
+    failed: 'badge-red'
+}
 
 const fmt = (d) => d ? new Date(d).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }) : ''
 const todayISO = () => new Date().toISOString().slice(0, 10)
@@ -13,7 +20,7 @@ const todayISO = () => new Date().toISOString().slice(0, 10)
 import DateRangePicker from '../../components/DateRangePicker'
 
 export default function AdminTimesheet() {
-    const { user } = useAuth()
+    const { hasRole, user } = useAuth()
     const location = useLocation()
 
     const [startDate, setStartDate] = useState(location.state?.startDate || todayISO())
@@ -29,6 +36,9 @@ export default function AdminTimesheet() {
     const [selectedProjectId, setSelectedProjectId] = useState('')
     const [loading, setLoading] = useState(true)
     const [savingId, setSavingId] = useState(null)
+    const [modal, setModal] = useState(null)
+    const [selectedEntry, setSelectedEntry] = useState(null)
+    const [qaReport, setQaReport] = useState({ status: '', notes: '' })
 
     const loadUsers = async () => {
         try {
@@ -66,13 +76,28 @@ export default function AdminTimesheet() {
                     submittedAt: ts.submitted_at
                 }))
             );
-            setAllEntries(flattened.sort((a, b) => new Date(b.date) - new Date(a.date)));
+
+            let filtered = flattened;
+            if (statusFilter) {
+                filtered = flattened.filter(e => e.status === statusFilter);
+            }
+
+            setAllEntries(filtered.sort((a, b) => new Date(b.date) - new Date(a.date)));
         } catch (err) {
             toast.error(err.message)
         } finally {
             setLoading(false)
         }
     }
+
+    useEffect(() => {
+        if (location.state) {
+            if (location.state.startDate) setStartDate(location.state.startDate);
+            if (location.state.endDate) setEndDate(location.state.endDate);
+            if (location.state.viewUserId) setViewUserIds([location.state.viewUserId]);
+            if (location.state.statusFilter !== undefined) setStatusFilter(location.state.statusFilter);
+        }
+    }, [location.state]);
 
     useEffect(() => {
         loadUsers()
@@ -95,9 +120,36 @@ export default function AdminTimesheet() {
         }
     }
 
+    const openQaModal = (entry, status) => {
+        setSelectedEntry(entry)
+        setQaReport({ status, notes: entry.qa_notes || '' })
+        setModal('qa_report')
+    }
+
+    const handleQaReport = async (e) => {
+        e.preventDefault()
+        if (!selectedEntry) return
+
+        setSavingId(selectedEntry.id)
+        try {
+            const updates = {
+                status: qaReport.status,
+                qa_notes: qaReport.notes
+            }
+            await api.patch(`/timesheets/entries/${selectedEntry.id}`, updates)
+            setAllEntries(prev => prev.map(e => e.id === selectedEntry.id ? { ...e, ...updates } : e))
+            toast.success(`Todo marked as ${qaReport.status}`)
+            setModal(null)
+        } catch (err) {
+            toast.error(err.message)
+        } finally {
+            setSavingId(null)
+        }
+    }
+
     const handleExportCSV = () => {
         if (allEntries.length === 0) return toast.error('No data to export');
-        const headers = ['Date', 'Employee', 'Plan Submitted', 'Project', 'Activity', 'Hours', 'Status', 'Notes', 'Admin Feedback'];
+        const headers = ['Date', 'Employee', 'Plan Submitted', 'Project', 'Activity', 'Hours', 'Status', 'QA Result', 'QA Notes', 'Admin Feedback'];
         const rows = allEntries.map(e => [
             e.date,
             e.userName,
@@ -106,7 +158,8 @@ export default function AdminTimesheet() {
             e.title,
             e.hours_spent,
             e.status,
-            (e.notes || '').replace(/\n/g, ' '),
+            ['verified', 'failed'].includes(e.status) ? e.status.toUpperCase() : 'PENDING',
+            (e.qa_notes || '').replace(/\n/g, ' '),
             (e.admin_feedback || '').replace(/\n/g, ' ')
         ]);
         const csvContent = [headers, ...rows].map(r => r.join(',')).join('\n');
@@ -194,7 +247,9 @@ export default function AdminTimesheet() {
                                 <th>Task / Notes</th>
                                 <th style={{ width: 90 }}>Submitted</th>
                                 <th style={{ width: 110 }}>Status</th>
-                                <th style={{ width: 220 }}>Feedback</th>
+                                <th style={{ width: 120 }}>QA Result</th>
+                                <th style={{ width: 180 }}>QA Notes</th>
+                                <th style={{ width: 200 }}>Admin Feedback</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -256,15 +311,45 @@ export default function AdminTimesheet() {
                                             </span>
                                         </td>
                                         <td>
-                                            <div style={{ position: 'relative' }}>
-                                                <input
-                                                    className="feedback-input"
-                                                    placeholder={e.admin_feedback ? '' : 'Add feedback…'}
-                                                    defaultValue={e.admin_feedback || ''}
-                                                    onBlur={ev => handleUpdate(e.id, { admin_feedback: ev.target.value })}
-                                                    title={e.admin_feedback || 'Add admin feedback'}
-                                                />
-                                                {savingId === e.id && <div className="spinner-sm" style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)' }} />}
+                                            {e.status === 'verified' && <span className="badge-pill badge-green" style={{ fontSize: '9px' }}>PASSED</span>}
+                                            {e.status === 'failed' && <span className="badge-pill badge-red" style={{ fontSize: '9px' }}>FAILED</span>}
+                                            {!['verified', 'failed'].includes(e.status) && <span style={{ opacity: 0.3 }}>—</span>}
+                                        </td>
+                                        <td style={{ fontSize: 10, color: e.status === 'verified' ? 'var(--text-muted)' : '#fb7185', fontWeight: 600 }}>
+                                            {e.qa_notes ? `🚩 ${e.qa_notes}` : <span style={{ opacity: 0.3 }}>—</span>}
+                                        </td>
+                                        <td>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                                <div style={{ position: 'relative', flex: 1 }}>
+                                                    <input
+                                                        className="feedback-input"
+                                                        placeholder={e.admin_feedback ? '' : 'Add feedback…'}
+                                                        defaultValue={e.admin_feedback || ''}
+                                                        onBlur={ev => handleUpdate(e.id, { admin_feedback: ev.target.value })}
+                                                        title={e.admin_feedback || 'Add admin feedback'}
+                                                    />
+                                                    {savingId === e.id && modal !== 'qa_report' && <div className="spinner-sm" style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)' }} />}
+                                                </div>
+
+                                                {/* Tester Actions */}
+                                                {(hasRole('Tester') || hasRole('super_admin')) && (e.status === 'done' || e.status === 'verified' || e.status === 'failed') && (
+                                                    <div style={{ display: 'flex', gap: 4 }}>
+                                                        <button
+                                                            className={`btn-icon-ts ${e.status === 'verified' ? 'active-pass' : ''}`}
+                                                            onClick={() => openQaModal(e, 'verified')}
+                                                            title="Pass / Verify"
+                                                        >
+                                                            <ShieldCheck size={16} />
+                                                        </button>
+                                                        <button
+                                                            className={`btn-icon-ts ${e.status === 'failed' ? 'active-fail' : ''}`}
+                                                            onClick={() => openQaModal(e, 'failed')}
+                                                            title="Fail / Rejected"
+                                                        >
+                                                            <AlertCircle size={16} />
+                                                        </button>
+                                                    </div>
+                                                )}
                                             </div>
                                         </td>
                                     </tr>
@@ -274,6 +359,55 @@ export default function AdminTimesheet() {
                     </table>
                 )}
             </div>
+
+            {/* QA Report Modal */}
+            {modal === 'qa_report' && selectedEntry && (
+                <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setModal(null)}>
+                    <div className="modal" style={{ maxWidth: 450 }}>
+                        <div className="modal-header">
+                            <h2 className="modal-title">QA Report: {qaReport.status === 'verified' ? 'Pass' : 'Fail'}</h2>
+                            <button className="btn-icon" onClick={() => setModal(null)}><X size={18} /></button>
+                        </div>
+                        <form onSubmit={handleQaReport}>
+                            <div className="modal-body">
+                                <p style={{ fontSize: 13, marginBottom: 12, color: 'var(--text-muted)' }}>
+                                    Todo: <strong>{selectedEntry.title}</strong>
+                                </p>
+                                <div className="form-group">
+                                    <label className="form-label">QA Notes / Reason</label>
+                                    <textarea
+                                        className="form-textarea"
+                                        style={{ width: '100%', padding: '10px', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text)' }}
+                                        rows={4}
+                                        value={qaReport.notes}
+                                        onChange={e => setQaReport(p => ({ ...p, notes: e.target.value }))}
+                                        placeholder={qaReport.status === 'verified' ? 'Optional: Testing notes...' : 'Required: Why did it fail?'}
+                                        required={qaReport.status === 'failed'}
+                                    />
+                                </div>
+                            </div>
+                            <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, padding: '16px 24px', borderTop: '1px solid var(--border)' }}>
+                                <button type="button" className="btn btn-ghost" onClick={() => setModal(null)}>Cancel</button>
+                                <button
+                                    type="submit"
+                                    className={`btn ${qaReport.status === 'verified' ? 'btn-success' : 'btn-danger'}`}
+                                    disabled={savingId === selectedEntry.id}
+                                    style={{
+                                        padding: '8px 20px',
+                                        borderRadius: 8,
+                                        fontWeight: 600,
+                                        background: qaReport.status === 'verified' ? '#10b981' : '#ef4444',
+                                        color: '#fff',
+                                        border: 'none'
+                                    }}
+                                >
+                                    {savingId === selectedEntry.id ? 'Saving...' : `Submit ${qaReport.status === 'verified' ? 'Pass' : 'Fail'}`}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
 
             <style>{`
                 .custom-multi-select {
@@ -338,6 +472,51 @@ export default function AdminTimesheet() {
                 .feedback-input:focus { border-color: var(--accent); background: rgba(124,58,237,0.08); }
                 .spinner-sm { width: 12px; height: 12px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; }
                 @keyframes spin { to { transform: rotate(360deg); } }
+
+                .btn-icon-ts {
+                    background: rgba(255, 255, 255, 0.03);
+                    border: 1px solid var(--border);
+                    color: var(--text-dim);
+                    padding: 5px;
+                    border-radius: 6px;
+                    cursor: pointer;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    transition: all 0.2s;
+                }
+                .btn-icon-ts:hover { background: rgba(255, 255, 255, 0.08); color: var(--text); border-color: var(--accent-light); }
+                .btn-icon-ts.active-pass { background: rgba(16, 185, 129, 0.2); color: #10b981; border-color: #10b981; }
+                .btn-icon-ts.active-fail { background: rgba(239, 68, 68, 0.2); color: #ef4444; border-color: #ef4444; }
+
+                .modal-overlay {
+                    position: fixed;
+                    top: 0; left: 0; right: 0; bottom: 0;
+                    background: rgba(0, 0, 0, 0.75);
+                    backdrop-filter: blur(4px);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    z-index: 1000;
+                }
+                .modal {
+                    background: #1a1635;
+                    border: 1px solid var(--border);
+                    border-radius: 16px;
+                    width: 100%;
+                    max-width: 500px;
+                    overflow: hidden;
+                }
+                .modal-header {
+                    padding: 16px 24px;
+                    border-bottom: 1px solid var(--border);
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                }
+                .modal-body { padding: 24px; }
+                .btn-icon { background: none; border: none; color: var(--text-dim); cursor: pointer; }
+                .btn-icon:hover { color: var(--text); }
             `}</style>
         </div>
     )

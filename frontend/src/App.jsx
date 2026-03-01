@@ -17,14 +17,20 @@ import TasksPage from './features/tasks/TasksPage'
 import ReportsPage from './features/reports/ReportsPage'
 import ProfilePage from './features/profile/ProfilePage'
 import TimesheetPage from './features/timesheets/TimesheetPage'
+import TestingQueue from './features/timesheets/TestingQueue'
 import DesignationsPage from './features/designations/DesignationsPage'
 import DeveloperCalendar from './features/reports/DeveloperCalendar'
 import AdminDevCalendar from './features/reports/AdminDevCalendar'
 import QuotationPage from './features/quotations/QuotationPage'
 import Leads from './features/sales/Leads'
 import SalesDashboard from './features/sales/SalesDashboard'
+import BDMPerformance from './features/reports/BDMPerformance'
 import HRDashboard from './features/hr/HRDashboard'
 import HRAdminPanel from './features/hr/HRAdminPanel'
+import PollsPage from './features/polls/PollsPage'
+import AttendanceReport from './features/reports/AttendanceReport'
+import TesterPage from './features/dashboard/TesterPage'
+import TestingReports from './features/timesheets/TestingReports'
 
 function AdminLayout({ children }) {
   return (
@@ -46,6 +52,11 @@ export default function App() {
       {/* Always accessible to any logged-in user */}
       <Route path="/dashboard" element={<AdminLayout><DashboardPage /></AdminLayout>} />
       <Route path="/profile/:userId?" element={<AdminLayout><ProfilePage /></AdminLayout>} />
+      <Route path="/polls" element={<AdminLayout><PollsPage /></AdminLayout>} />
+      <Route path="/attendance-report" element={<AdminLayout><AttendanceReport /></AdminLayout>} />
+      <Route path="/tester-dashboard" element={<AdminLayout><PermissionGate perm="view_tasks" allowedRoles={['Tester', 'super_admin']}><TesterPage /></PermissionGate></AdminLayout>} />
+      <Route path="/testing-queue" element={<AdminLayout><PermissionGate perm="view_timesheet" allowedRoles={['Tester', 'super_admin']}><TestingQueue /></PermissionGate></AdminLayout>} />
+      <Route path="/testing-reports" element={<AdminLayout><PermissionGate perm="view_timesheet" allowedRoles={['Tester', 'super_admin']}><TestingReports /></PermissionGate></AdminLayout>} />
       <Route path="/timesheet" element={<AdminLayout><PermissionGate perm="view_timesheet"><TimesheetPage /></PermissionGate></AdminLayout>} />
 
       {/* Project Management */}
@@ -105,6 +116,9 @@ export default function App() {
       } />
       <Route path="/leads" element={
         <AdminLayout><PermissionGate perm="view_leads"><Leads /></PermissionGate></AdminLayout>
+      } />
+      <Route path="/bdm-performance" element={
+        <AdminLayout><PermissionGate perm="view_leads"><BDMPerformance /></PermissionGate></AdminLayout>
       } />
 
       {/* Fallback */}

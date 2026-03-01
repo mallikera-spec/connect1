@@ -1,11 +1,19 @@
 import { supabaseAdmin } from '../../config/supabase.js';
 
 export const getAuthUser = async (user) => {
+  // Fetch profile to get avatar_url
+  const { data: profile } = await supabaseAdmin
+    .from('profiles')
+    .select('avatar_url')
+    .eq('id', user.id)
+    .single();
+
   return {
     id: user.id,
     email: user.email,
     roles: user.roles,
     permissions: user.permissions,
+    avatar_url: profile?.avatar_url || null,
   };
 };
 

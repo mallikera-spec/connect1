@@ -12,6 +12,7 @@ router.use(authMiddleware);
 router.post('/attendance/clock-in', hrController.clockIn);
 router.post('/attendance/clock-out', hrController.clockOut);
 router.get('/attendance/my', hrController.getMyAttendance);
+router.get('/attendance/report', hrController.getAttendanceReport);
 
 // Admin / Manager Attendance Management
 router.get('/attendance/pending', requirePermission('view_employees'), hrController.getPendingAttendance);

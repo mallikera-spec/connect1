@@ -1,17 +1,19 @@
 import { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import DateRangePicker from '../../components/DateRangePicker';
+import { getISTMonthStartString, getISTTodayString } from '../../lib/dateUtils';
 import AdminDashboard from './AdminDashboard';
 import DeveloperDashboard from './DeveloperDashboard';
 import HRDashboard from './HRDashboard';
 import SalesDashboard from '../sales/SalesDashboard';
+import TesterDashboard from './TesterDashboard';
 
 export default function DashboardPage() {
     const { user, hasPermission } = useAuth();
 
     const [dateRange, setDateRange] = useState({
-        startDate: new Date(new Date().setDate(new Date().getDate() - 30)).toISOString().split('T')[0],
-        endDate: new Date().toISOString().split('T')[0]
+        startDate: getISTMonthStartString(),
+        endDate: getISTTodayString()
     });
 
     const userRoles = user?.roles?.map(r => r.toLowerCase()) || [];
@@ -20,6 +22,7 @@ export default function DashboardPage() {
     const isAdmin = isSuperAdmin || hasPermission('view_overall_report') || hasPermission('manage_projects');
     const isHR = userRoles.includes('hr') || userRoles.includes('hr manager');
     const isBDM = userRoles.includes('bdm') || userRoles.includes('sales manager');
+    const isTester = userRoles.includes('tester');
 
     let DashboardComponent = DeveloperDashboard;
     let greeting = `Welcome back, ${user?.full_name || 'Employee'}`;
@@ -37,6 +40,9 @@ export default function DashboardPage() {
     } else if (isHR) {
         DashboardComponent = HRDashboard;
         greeting = "Welcome back — here is the human resources overview";
+    } else if (isTester) {
+        DashboardComponent = TesterDashboard;
+        greeting = "Welcome back — here is your QA testing overview";
     }
 
     return (
@@ -94,6 +100,8 @@ export default function DashboardPage() {
                 .status-dot.ts-in_progress { background: #fbbf24; }
                 .status-dot.ts-done { background: #34d399; }
                 .status-dot.ts-blocked { background: #ef4444; }
+                .status-dot.ts-verified { background: #a855f7; }
+                .status-dot.ts-failed { background: #f43f5e; }
 
                 .polished-action-btn {
                     border: none;

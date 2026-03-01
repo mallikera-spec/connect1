@@ -44,6 +44,10 @@ export const HRService = {
         const response = await hrApi.patch(`/hr/attendance/${id}/approve`, { status, is_approved: isApproved, admin_comment: adminComment });
         return response.data;
     },
+    getAttendanceReport: async (params) => {
+        const response = await hrApi.get('/hr/attendance/report', { params });
+        return response.data;
+    },
 
     // --- Leaves ---
     submitLeaveRequest: async (data) => {

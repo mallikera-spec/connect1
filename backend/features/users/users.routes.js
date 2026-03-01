@@ -1,9 +1,11 @@
 import { Router } from 'express';
-import { createUser, getAllUsers, getUserById, updateUser, deleteUser } from './users.controller.js';
+import multer from 'multer';
+import { createUser, getAllUsers, getUserById, updateUser, deleteUser, uploadAvatar } from './users.controller.js';
 import { authMiddleware } from '../../middleware/auth.middleware.js';
 import { requirePermission } from '../../middleware/permission.middleware.js';
 
 const router = Router();
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } }); // 5MB limit for avatars
 
 router.use(authMiddleware);
 
@@ -12,5 +14,6 @@ router.get('/', requirePermission('view_users'), getAllUsers);
 router.get('/:id', requirePermission('view_users'), getUserById);
 router.patch('/:id', requirePermission('edit_user'), updateUser);
 router.delete('/:id', requirePermission('delete_user'), deleteUser);
+router.post('/avatar/:id', upload.single('avatar'), uploadAvatar);
 
 export default router;

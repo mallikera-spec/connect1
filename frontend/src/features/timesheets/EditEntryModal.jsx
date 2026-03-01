@@ -89,6 +89,34 @@ export default function EditEntryModal({ entry, myProjects, onClose, onSaved }) 
                         />
                     </div>
 
+                    {(entry.status === 'verified' || entry.status === 'failed' || entry.qa_notes) && (
+                        <div className={`qa-feedback-section ${entry.status}`} style={{
+                            marginTop: 16,
+                            padding: 12,
+                            borderRadius: 8,
+                            background: entry.status === 'failed' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(16, 185, 129, 0.1)',
+                            border: `1px solid ${entry.status === 'failed' ? '#ef4444' : '#10b981'}`
+                        }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                                <span style={{
+                                    fontSize: 10,
+                                    fontWeight: 900,
+                                    padding: '2px 8px',
+                                    borderRadius: 4,
+                                    background: entry.status === 'failed' ? '#ef4444' : '#10b981',
+                                    color: '#fff'
+                                }}>
+                                    QA {entry.status === 'failed' ? 'FAILED' : 'PASSED'}
+                                </span>
+                            </div>
+                            {entry.qa_notes && (
+                                <p style={{ fontSize: 13, color: entry.status === 'failed' ? '#ef4444' : '#10b981', fontWeight: 600, margin: 0 }}>
+                                    🚩 {entry.qa_notes}
+                                </p>
+                            )}
+                        </div>
+                    )}
+
                     <div className="modal-footer" style={{ marginTop: 20 }}>
                         <button type="button" className="btn btn-ghost" onClick={onClose}>Cancel</button>
                         <button type="submit" className="btn btn-primary" disabled={saving}>

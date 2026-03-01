@@ -6,7 +6,7 @@ import {
     Users, ShieldCheck, Key, Building2, Briefcase,
     FolderKanban, ListTodo, BarChart3,
     ChevronLeft, ChevronRight, LogOut,
-    UserCircle, Clock, Calendar, FileText, Sparkles, TrendingUp
+    UserCircle, Clock, Calendar, FileText, Sparkles, TrendingUp, Vote
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -16,6 +16,7 @@ const NAV = [
         icon: LayoutDashboard,
         items: [
             { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+            { to: '/polls', label: 'Polls', icon: Vote },
             { to: '/profile', label: 'My Profile', icon: UserCircle },
         ]
     },
@@ -32,11 +33,22 @@ const NAV = [
         ]
     },
     {
+        section: 'Testing Module',
+        icon: ShieldCheck,
+        items: [
+            { to: '/tester-dashboard', label: 'Tester Dashboard', roles: ['Tester', 'super_admin'], icon: LayoutDashboard },
+            { to: '/testing-queue', label: 'Testing Queue', roles: ['Tester', 'super_admin'], icon: ShieldCheck },
+            { to: '/testing-reports', label: 'Testing Reports', roles: ['Tester', 'super_admin'], icon: BarChart3 },
+            { to: '/tasks', label: 'Testing Tasks', roles: ['Tester', 'super_admin'], icon: ListTodo },
+        ]
+    },
+    {
         section: 'HR & Operations',
         icon: Users,
         items: [
-            { to: '/hr-dashboard', icon: Clock, label: 'My HR' },
+            { to: '/hr-dashboard', icon: Clock, label: 'My HR', hideIfRole: ['super_admin'] },
             { to: '/hr-admin', icon: Briefcase, label: 'HR Admin', perm: 'view_employees' },
+            { to: '/attendance-report', icon: FileText, label: 'Attendance Report' },
             { to: '/departments', icon: Building2, label: 'Departments', perm: 'view_departments' },
             { to: '/designations', icon: Briefcase, label: 'Designations', perm: 'manage_designations' },
             { to: '/users', icon: Users, label: 'Employees', perm: 'view_employees' },
@@ -49,6 +61,7 @@ const NAV = [
         items: [
             { to: '/sales-dashboard', label: 'Dashboard', icon: LayoutDashboard, perm: 'view_leads' },
             { to: '/leads', label: 'Leads', icon: TrendingUp, perm: 'view_leads' },
+            { to: '/bdm-performance', label: 'BDM Performance', icon: BarChart3, perm: 'view_leads' },
             { to: '/clients', label: 'Clients', perm: 'view_clients', icon: Building2 },
             { to: '/quotations', label: 'Quotation Builder', icon: Sparkles, perm: 'generate_quotations' },
         ]
@@ -66,7 +79,7 @@ const NAV = [
 export default function Sidebar() {
     const [collapsed, setCollapsed] = useState(false)
     const [expandedGroups, setExpandedGroups] = useState(['Overview', 'Project Management'])
-    const { logout, hasPermission } = useAuth()
+    const { logout, hasPermission, hasRole } = useAuth()
     const navigate = useNavigate()
 
     const handleLogout = async () => {
@@ -90,6 +103,8 @@ export default function Sidebar() {
             items: group.items.filter(item => {
                 if (item.perm && !hasPermission(item.perm)) return false;
                 if (item.hideIfHas && hasPermission(item.hideIfHas)) return false;
+                if (item.hideIfRole && item.hideIfRole.some(r => hasRole(r))) return false;
+                if (item.roles && !item.roles.some(r => hasRole(r))) return false;
                 return true;
             }),
         }))
