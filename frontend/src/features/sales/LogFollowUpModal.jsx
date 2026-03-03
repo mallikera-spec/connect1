@@ -53,107 +53,131 @@ export default function LogFollowUpModal({ isOpen, onClose, leadId, onSuccess })
 
     const getTypeIcon = (type) => {
         switch (type) {
-            case 'Call': return <Phone size={14} />;
-            case 'Email': return <Mail size={14} />;
-            case 'Meeting': return <Users size={14} />;
-            case 'Note': return <FileText size={14} />;
-            default: return <FileText size={14} />;
+            case 'Call': return <Phone size={16} />;
+            case 'Callback': return <Phone size={16} />;
+            case 'Email': return <Mail size={16} />;
+            case 'Meeting': return <Users size={16} />;
+            case 'Note': return <FileText size={16} />;
+            default: return <FileText size={16} />;
         }
     };
 
     return (
-        <div className="modal-overlay" onClick={onClose} style={{ zIndex: 2000 }}>
-            <div className="modal-content polished-card" onClick={e => e.stopPropagation()} style={{ maxWidth: '500px' }}>
+        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+            <div className="modal modal-md">
                 <div className="modal-header">
-                    <h2>Log Follow-up Interaction</h2>
-                    <button className="btn-icon" onClick={onClose}><X size={20} /></button>
+                    <div>
+                        <h2 className="modal-title">Log Interaction</h2>
+                        <p style={{ color: 'var(--text-dim)', fontSize: '12px', marginTop: '4px' }}>Record client communication or a future callback.</p>
+                    </div>
+                    <button className="btn-icon" onClick={onClose}><X size={18} /></button>
                 </div>
 
-                <form onSubmit={handleSubmit} className="modal-body">
-                    <div className="form-group row" style={{ display: 'flex', gap: '16px', marginBottom: '16px' }}>
-                        <div style={{ flex: 1 }}>
-                            <label>Interaction Type</label>
-                            <div style={{ position: 'relative' }}>
-                                <div style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-dim)', pointerEvents: 'none', display: 'flex' }}>
-                                    {getTypeIcon(formData.type)}
+                <form onSubmit={handleSubmit}>
+                    <div className="modal-body">
+                        <div className="form-row">
+                            <div className="form-group">
+                                <label className="form-label">Interaction Type</label>
+                                <div style={{ position: 'relative' }}>
+                                    <div style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--accent-light)', pointerEvents: 'none', display: 'flex' }}>
+                                        {getTypeIcon(formData.type)}
+                                    </div>
+                                    <select
+                                        className="form-control"
+                                        style={{ paddingLeft: '36px' }}
+                                        value={formData.type}
+                                        onChange={e => setFormData({ ...formData, type: e.target.value })}
+                                    >
+                                        <option value="Call">Call</option>
+                                        <option value="Callback">Callback</option>
+                                        <option value="Email">Email</option>
+                                        <option value="Meeting">Meeting</option>
+                                        <option value="Note">Internal Note</option>
+                                    </select>
                                 </div>
+                            </div>
+
+                            <div className="form-group">
+                                <label className="form-label">Status</label>
                                 <select
                                     className="form-control"
-                                    style={{ paddingLeft: '32px' }}
-                                    value={formData.type}
-                                    onChange={e => setFormData({ ...formData, type: e.target.value })}
+                                    value={formData.status}
+                                    onChange={e => setFormData({ ...formData, status: e.target.value })}
                                 >
-                                    <option value="Call">Call</option>
-                                    <option value="Email">Email</option>
-                                    <option value="Meeting">Meeting</option>
-                                    <option value="Note">Internal Note</option>
+                                    <option value="Completed">Completed Now</option>
+                                    <option value="Scheduled">Scheduled (Future)</option>
                                 </select>
                             </div>
                         </div>
 
-                        <div style={{ flex: 1 }}>
-                            <label>Status</label>
-                            <select
-                                className="form-control"
-                                value={formData.status}
-                                onChange={e => setFormData({ ...formData, status: e.target.value })}
-                            >
-                                <option value="Completed">Completed Now</option>
-                                <option value="Scheduled">Scheduled (Future)</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    {(formData.status === 'Scheduled' || formData.status === 'Pending') && (
-                        <div className="form-group" style={{ background: 'var(--bg-app)', padding: '16px', borderRadius: '8px', marginBottom: '16px', border: '1px solid var(--border)' }}>
-                            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--accent)', fontWeight: 600 }}>
-                                <CalendarIcon size={14} /> Schedule Follow-up
-                            </label>
-                            <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
-                                <div style={{ flex: 1 }}>
-                                    <input
-                                        type="date"
-                                        className="form-control"
-                                        value={formData.scheduled_date}
-                                        onChange={e => setFormData({ ...formData, scheduled_date: e.target.value })}
-                                        min={new Date().toISOString().split('T')[0]}
-                                        required
-                                    />
-                                </div>
-                                <div style={{ flex: 1 }}>
-                                    <input
-                                        type="time"
-                                        className="form-control"
-                                        value={formData.scheduled_time}
-                                        onChange={e => setFormData({ ...formData, scheduled_time: e.target.value })}
-                                    />
+                        {(formData.status === 'Scheduled' || formData.status === 'Pending') && (
+                            <div style={{ background: 'var(--bg-app)', padding: '16px', borderRadius: '12px', border: '1px solid var(--border)', marginBottom: '8px' }}>
+                                <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--accent-light)', marginBottom: '12px', fontSize: '12px' }}>
+                                    <CalendarIcon size={14} /> Schedule Date & Time
+                                </label>
+                                <div className="form-row">
+                                    <div className="form-group">
+                                        <input
+                                            type="date"
+                                            className="form-control"
+                                            value={formData.scheduled_date}
+                                            onChange={e => setFormData({ ...formData, scheduled_date: e.target.value })}
+                                            min={new Date().toISOString().split('T')[0]}
+                                            required
+                                        />
+                                    </div>
+                                    <div className="form-group">
+                                        <input
+                                            type="time"
+                                            className="form-control"
+                                            value={formData.scheduled_time}
+                                            onChange={e => setFormData({ ...formData, scheduled_time: e.target.value })}
+                                        />
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    )}
+                        )}
 
-                    <div className="form-group mb-0">
-                        <label>Notes & Outcomes</label>
-                        <textarea
-                            className="form-control"
-                            rows={4}
-                            placeholder="What was discussed? Next steps?"
-                            value={formData.notes}
-                            onChange={e => setFormData({ ...formData, notes: e.target.value })}
-                            required
-                        ></textarea>
+                        <div className="form-group">
+                            <label className="form-label">Notes & Outcome</label>
+                            <textarea
+                                className="form-control"
+                                rows={4}
+                                style={{ resize: 'none' }}
+                                placeholder="What was discussed? Next steps?"
+                                value={formData.notes}
+                                onChange={e => setFormData({ ...formData, notes: e.target.value })}
+                                required
+                            />
+                        </div>
+                    </div>
+
+                    <div className="modal-footer" style={{ background: 'var(--bg-card)' }}>
+                        <button type="button" className="btn btn-ghost" onClick={onClose} disabled={loading}>
+                            Cancel
+                        </button>
+                        <button type="submit" className="btn btn-primary" disabled={loading} style={{ minWidth: '140px' }}>
+                            {loading ? <div className="spinner-sm" style={{ width: 16, height: 16, borderTopColor: '#fff' }} /> : (
+                                formData.status === 'Completed' ? 'Log Interaction' : 'Schedule Callback'
+                            )}
+                        </button>
                     </div>
                 </form>
-
-                <div className="modal-footer" style={{ borderTop: 'none', paddingTop: 0 }}>
-                    <button type="button" className="btn btn-secondary" onClick={onClose} disabled={loading}>
-                        Cancel
-                    </button>
-                    <button type="button" className="btn btn-primary" onClick={handleSubmit} disabled={loading}>
-                        {loading ? 'Saving...' : formData.status === 'Completed' ? 'Log Interaction' : 'Schedule Follow-up'}
-                    </button>
-                </div>
             </div>
+
+            <style>{`
+                .spinner-sm {
+                    width: 16px;
+                    height: 16px;
+                    border: 2px solid rgba(255,255,255,0.3);
+                    border-radius: 50%;
+                    border-top-color: #fff;
+                    animation: spin 0.8s linear infinite;
+                    display: inline-block;
+                    vertical-align: middle;
+                }
+                @keyframes spin { to { transform: rotate(360deg); } }
+            `}</style>
         </div>
     );
 }

@@ -24,6 +24,7 @@ router.patch('/leads/:id', salesController.updateLead);
 router.delete('/leads/:id', salesController.deleteLead);
 
 /* ── Follow-Up Routes ── */
+router.get('/follow-ups', salesController.getFollowUps);
 router.post('/leads/:id/follow-ups', salesController.createFollowUp);
 router.patch('/leads/:id/follow-ups/:fid', salesController.updateFollowUp);
 

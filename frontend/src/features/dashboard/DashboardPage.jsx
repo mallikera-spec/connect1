@@ -5,7 +5,7 @@ import { getISTMonthStartString, getISTTodayString } from '../../lib/dateUtils';
 import AdminDashboard from './AdminDashboard';
 import DeveloperDashboard from './DeveloperDashboard';
 import HRDashboard from './HRDashboard';
-import SalesDashboard from '../sales/SalesDashboard';
+import BDMDashboard from './BDMDashboard';
 import TesterDashboard from './TesterDashboard';
 
 export default function DashboardPage() {
@@ -16,12 +16,13 @@ export default function DashboardPage() {
         endDate: getISTTodayString()
     });
 
-    const userRoles = user?.roles?.map(r => r.toLowerCase()) || [];
+    const userRoles = user?.roles?.map(r => typeof r === 'string' ? r.toLowerCase() : r.name?.toLowerCase()).filter(Boolean) || [];
 
     const isSuperAdmin = userRoles.includes('super admin') || userRoles.includes('super_admin');
     const isAdmin = isSuperAdmin || hasPermission('view_overall_report') || hasPermission('manage_projects');
     const isHR = userRoles.includes('hr') || userRoles.includes('hr manager');
-    const isBDM = userRoles.includes('bdm') || userRoles.includes('sales manager');
+    const isBDM = userRoles.includes('bdm');
+    const isSalesManager = userRoles.includes('sales manager');
     const isTester = userRoles.includes('tester');
 
     let DashboardComponent = DeveloperDashboard;
@@ -30,13 +31,17 @@ export default function DashboardPage() {
     if (isSuperAdmin) {
         DashboardComponent = AdminDashboard;
         greeting = "Welcome back — here's your organization overview";
-    } else if (isAdmin && !isBDM && !isHR) {
+    } else if (isAdmin && !isBDM && !isSalesManager && !isHR) {
         // e.g., Project Manager
         DashboardComponent = AdminDashboard;
         greeting = "Welcome back — here's your management overview";
     } else if (isBDM) {
-        DashboardComponent = SalesDashboard;
+        DashboardComponent = BDMDashboard;
         greeting = "Welcome back — here is your sales performance";
+    } else if (isSalesManager) {
+        // Sales Manager might still want the global SalesDashboard overview
+        DashboardComponent = BDMDashboard; // Or keep SalesDashboard if they manage others
+        greeting = "Welcome back — here is the sales overview";
     } else if (isHR) {
         DashboardComponent = HRDashboard;
         greeting = "Welcome back — here is the human resources overview";
@@ -53,13 +58,11 @@ export default function DashboardPage() {
                     <p>{greeting}</p>
                 </div>
 
-                {DashboardComponent !== SalesDashboard && (
-                    <DateRangePicker
-                        startDate={dateRange.startDate}
-                        endDate={dateRange.endDate}
-                        onRangeChange={setDateRange}
-                    />
-                )}
+                <DateRangePicker
+                    startDate={dateRange.startDate}
+                    endDate={dateRange.endDate}
+                    onRangeChange={setDateRange}
+                />
             </div>
 
             <DashboardComponent dateRange={dateRange} />

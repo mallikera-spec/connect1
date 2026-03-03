@@ -24,6 +24,7 @@ import DeveloperCalendar from './features/reports/DeveloperCalendar'
 import AdminDevCalendar from './features/reports/AdminDevCalendar'
 import QuotationPage from './features/quotations/QuotationPage'
 import Leads from './features/sales/Leads'
+import FollowUps from './features/sales/FollowUps'
 import SalesDashboard from './features/sales/SalesDashboard'
 import BDMPerformance from './features/reports/BDMPerformance'
 import HRDashboard from './features/hr/HRDashboard'
@@ -122,6 +123,9 @@ export default function App() {
       } />
       <Route path="/leads" element={
         <AdminLayout><PermissionGate perm="view_leads"><Leads /></PermissionGate></AdminLayout>
+      } />
+      <Route path="/follow-ups" element={
+        <AdminLayout><PermissionGate perm="view_leads"><FollowUps /></PermissionGate></AdminLayout>
       } />
       <Route path="/bdm-performance" element={
         <AdminLayout><PermissionGate perm="view_leads"><BDMPerformance /></PermissionGate></AdminLayout>

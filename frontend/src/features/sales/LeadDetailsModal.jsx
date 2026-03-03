@@ -108,11 +108,12 @@ export default function LeadDetailsModal({ leadId, onClose, onSaved }) {
                                             boxShadow: '0 0 0 4px var(--bg-card)'
                                         }}>
                                             {fu.type === 'Call' && <Phone size={12} color="#fff" />}
+                                            {fu.type === 'Callback' && <Phone size={12} color="#fff" />}
                                             {fu.type === 'Email' && <Mail size={12} color="#fff" />}
                                             {fu.type === 'Meeting' && <MessageSquare size={12} color="#fff" />}
                                             {fu.type === 'Note' && <Plus size={12} color="#fff" />}
                                         </div>
-                                        <div className="card polished-card" style={{ flex: 1, padding: '14px', marginTop: '-4px' }}>
+                                        <div className="card polished-card" style={{ flex: 1, padding: '16px', marginTop: '-4px', borderLeft: (fu.type === 'Call' || fu.type === 'Callback') ? '4px solid var(--warning)' : 'none' }}>
                                             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px', alignItems: 'center' }}>
                                                 <span style={{ fontWeight: 700, fontSize: '13px', color: 'var(--text)' }}>
                                                     {fu.type} {fu.status === 'Pending' ? '(Scheduled)' : ''}

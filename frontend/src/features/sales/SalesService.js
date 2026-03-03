@@ -110,5 +110,13 @@ export const SalesService = {
     getMetrics: async (params = {}) => {
         const response = await api.get('/sales/metrics', { params });
         return response.data;
+    },
+
+    /**
+     * Fetches all follow-ups with optional filtering.
+     */
+    getFollowUps: async (params = {}) => {
+        const response = await api.get('/sales/follow-ups', { params });
+        return response.data;
     }
 };

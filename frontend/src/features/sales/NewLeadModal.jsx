@@ -102,11 +102,10 @@ export default function NewLeadModal({ onClose, onSaved }) {
                                     value={formData.source}
                                     onChange={e => setFormData(p => ({ ...p, source: e.target.value }))}
                                 >
-                                    <option value="LinkedIn">LinkedIn</option>
-                                    <option value="Referral">Referral</option>
-                                    <option value="Website">Website</option>
-                                    <option value="Cold Call">Cold Call</option>
-                                    <option value="Event">Event</option>
+                                    <option value="Organic">Organic</option>
+                                    <option value="Email">Email</option>
+                                    <option value="FB">FB</option>
+                                    <option value="Google">Google</option>
                                     <option value="Other">Other</option>
                                 </select>
                             </div>

@@ -101,45 +101,45 @@ export function EmployeeCard({ employee, isAdminView, currentRange }) {
                 </div>
             </div>
 
-            {isBDM ? (
+            {isBDM && employee.sales_stats && (
                 <div className="stats-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px', marginBottom: 0 }}>
                     <div
                         style={{ background: 'var(--bg-app)', padding: '8px', borderRadius: '8px', textAlign: 'center', cursor: 'pointer', border: '1px solid var(--border)' }}
-                        onClick={(e) => { e.stopPropagation(); navigate('/leads', { state: { agent: employee.id } }); }}
+                        onClick={(e) => { e.stopPropagation(); navigate('/leads', { state: { agent: employee.id, startDate: currentRange?.startDate, endDate: currentRange?.endDate } }); }}
                     >
-                        <div style={{ fontSize: '14px', fontWeight: 800 }}>{employee.sales_stats.total_leads}</div>
+                        <div style={{ fontSize: '14px', fontWeight: 800 }}>{employee.sales_stats.total_leads || 0}</div>
                         <div style={{ fontSize: '8px', color: 'var(--text-dim)', textTransform: 'uppercase', fontWeight: 600 }}>Leads</div>
                     </div>
                     <div
                         style={{ background: 'var(--bg-app)', padding: '8px', borderRadius: '8px', textAlign: 'center', cursor: 'pointer', border: '1px solid var(--border)' }}
-                        onClick={(e) => { e.stopPropagation(); navigate('/leads', { state: { agent: employee.id, status: 'Proposal' } }); }}
+                        onClick={(e) => { e.stopPropagation(); navigate('/leads', { state: { agent: employee.id, status: 'Proposal', startDate: currentRange?.startDate, endDate: currentRange?.endDate } }); }}
                     >
                         <div style={{ fontSize: '14px', fontWeight: 800, color: 'var(--accent-light)' }}>
-                            ₹{Math.round(employee.sales_stats.pipeline_value / 1000)}k
+                            ₹{Math.round((employee.sales_stats.pipeline_value || 0) / 1000)}k
                         </div>
                         <div style={{ fontSize: '8px', color: 'var(--text-dim)', textTransform: 'uppercase', fontWeight: 600 }}>Pipeline</div>
                     </div>
                     <div
                         style={{ background: 'var(--bg-app)', padding: '8px', borderRadius: '8px', textAlign: 'center', cursor: 'pointer', border: '1px solid var(--border)' }}
-                        onClick={(e) => { e.stopPropagation(); navigate('/leads', { state: { agent: employee.id, status: 'Won' } }); }}
+                        onClick={(e) => { e.stopPropagation(); navigate('/leads', { state: { agent: employee.id, status: 'Won', startDate: currentRange?.startDate, endDate: currentRange?.endDate } }); }}
                     >
                         <div style={{ fontSize: '14px', fontWeight: 800, color: 'var(--success)' }}>
-                            ₹{Math.round(employee.sales_stats.won_value / 1000)}k
+                            ₹{Math.round((employee.sales_stats.won_value || 0) / 1000)}k
                         </div>
                         <div style={{ fontSize: '8px', color: 'var(--text-dim)', textTransform: 'uppercase', fontWeight: 600 }}>Won Value</div>
                     </div>
                     <div
                         style={{ background: 'var(--bg-app)', padding: '8px', borderRadius: '8px', textAlign: 'center', cursor: 'pointer', border: '1px solid var(--border)', gridColumn: 'span 1' }}
-                        onClick={(e) => { e.stopPropagation(); navigate('/leads', { state: { agent: employee.id, status: 'Won' } }); }}
+                        onClick={(e) => { e.stopPropagation(); navigate('/leads', { state: { agent: employee.id, status: 'Won', startDate: currentRange?.startDate, endDate: currentRange?.endDate } }); }}
                     >
                         <div style={{ fontSize: '14px', fontWeight: 800, color: '#f59e0b' }}>
-                            {employee.sales_stats.conversion_rate.toFixed(1)}%
+                            {(employee.sales_stats.conversion_rate || 0).toFixed(1)}%
                         </div>
                         <div style={{ fontSize: '8px', color: 'var(--text-dim)', textTransform: 'uppercase', fontWeight: 600 }}>Conv. Rate</div>
                     </div>
                     <div
                         style={{ background: 'var(--bg-app)', padding: '8px', borderRadius: '8px', textAlign: 'center', cursor: 'pointer', border: '1px solid var(--border)', gridColumn: 'span 2' }}
-                        onClick={(e) => { e.stopPropagation(); navigate('/leads', { state: { agent: employee.id } }); }}
+                        onClick={(e) => { e.stopPropagation(); navigate('/leads', { state: { agent: employee.id, startDate: currentRange?.startDate, endDate: currentRange?.endDate } }); }}
                     >
                         <div style={{ fontSize: '14px', fontWeight: 800, color: 'var(--info)' }}>
                             {employee.sales_stats.quotation_count}
@@ -147,7 +147,9 @@ export function EmployeeCard({ employee, isAdminView, currentRange }) {
                         <div style={{ fontSize: '8px', color: 'var(--text-dim)', textTransform: 'uppercase', fontWeight: 600 }}>Quotations (Req)</div>
                     </div>
                 </div>
-            ) : !hideTaskMetrics && (
+            )}
+
+            {!isBDM && !hideTaskMetrics && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                     {/* Tasks Row */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -189,36 +191,38 @@ export function EmployeeCard({ employee, isAdminView, currentRange }) {
                         </div>
                     </div>
 
-                    {employee.metrics && (
-                        <>
-                            <div style={{ height: '1px', background: 'var(--border)', opacity: 0.5, margin: '4px 0' }} />
+                    {
+                        employee.metrics && (
+                            <>
+                                <div style={{ height: '1px', background: 'var(--border)', opacity: 0.5, margin: '4px 0' }} />
 
-                            {/* Quality/Performance Row */}
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                <div style={{ fontSize: '10px', fontWeight: 800, color: 'var(--text-dim)', textTransform: 'uppercase', minWidth: '40px' }}>Perf.</div>
-                                <div className="stats-grid" style={{ flex: 1, gridTemplateColumns: 'repeat(3, 1fr)', gap: '4px', marginBottom: 0 }}>
-                                    <div className="metric-box" style={{ cursor: 'default' }} onClick={(e) => e.stopPropagation()}>
-                                        <div className="metric-val" style={{ color: employee.metrics.qa_pass_rate >= 90 ? 'var(--success)' : (employee.metrics.qa_pass_rate >= 70 ? 'var(--warning)' : '#ef4444') }}>
-                                            {employee.metrics.qa_pass_rate.toFixed(0)}%
+                                {/* Quality/Performance Row */}
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                    <div style={{ fontSize: '10px', fontWeight: 800, color: 'var(--text-dim)', textTransform: 'uppercase', minWidth: '40px' }}>Perf.</div>
+                                    <div className="stats-grid" style={{ flex: 1, gridTemplateColumns: 'repeat(3, 1fr)', gap: '4px', marginBottom: 0 }}>
+                                        <div className="metric-box" style={{ cursor: 'default' }} onClick={(e) => e.stopPropagation()}>
+                                            <div className="metric-val" style={{ color: employee.metrics.qa_pass_rate >= 90 ? 'var(--success)' : (employee.metrics.qa_pass_rate >= 70 ? 'var(--warning)' : '#ef4444') }}>
+                                                {employee.metrics.qa_pass_rate.toFixed(0)}%
+                                            </div>
+                                            <div className="metric-lbl">QA Pass</div>
                                         </div>
-                                        <div className="metric-lbl">QA Pass</div>
-                                    </div>
-                                    <div className="metric-box" style={{ cursor: 'default' }} onClick={(e) => e.stopPropagation()}>
-                                        <div className="metric-val" style={{ color: employee.metrics.estimation_accuracy > 0 && employee.metrics.estimation_accuracy <= 110 ? 'var(--success)' : 'var(--warning)' }}>
-                                            {employee.metrics.estimation_accuracy > 0 ? employee.metrics.estimation_accuracy.toFixed(0) + '%' : '—'}
+                                        <div className="metric-box" style={{ cursor: 'default' }} onClick={(e) => e.stopPropagation()}>
+                                            <div className="metric-val" style={{ color: employee.metrics.estimation_accuracy > 0 && employee.metrics.estimation_accuracy <= 110 ? 'var(--success)' : 'var(--warning)' }}>
+                                                {employee.metrics.estimation_accuracy > 0 ? employee.metrics.estimation_accuracy.toFixed(0) + '%' : '—'}
+                                            </div>
+                                            <div className="metric-lbl">Est. Acc.</div>
                                         </div>
-                                        <div className="metric-lbl">Est. Acc.</div>
-                                    </div>
-                                    <div className="metric-box" style={{ cursor: 'default' }} onClick={(e) => e.stopPropagation()}>
-                                        <div className="metric-val" style={{ color: employee.metrics.blocker_frequency > 15 ? '#ef4444' : 'var(--text)' }}>
-                                            {employee.metrics.blocker_frequency.toFixed(0)}%
+                                        <div className="metric-box" style={{ cursor: 'default' }} onClick={(e) => e.stopPropagation()}>
+                                            <div className="metric-val" style={{ color: employee.metrics.blocker_frequency > 15 ? '#ef4444' : 'var(--text)' }}>
+                                                {employee.metrics.blocker_frequency.toFixed(0)}%
+                                            </div>
+                                            <div className="metric-lbl">Blocked</div>
                                         </div>
-                                        <div className="metric-lbl">Blocked</div>
                                     </div>
                                 </div>
-                            </div>
-                        </>
-                    )}
+                            </>
+                        )
+                    }
                 </div>
             )}
 

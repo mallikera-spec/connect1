@@ -33,8 +33,8 @@ export const getLeads = async (req, res, next) => {
         }
 
         const result = await salesService.getAllLeads(filters);
-        res.json({ 
-            success: true, 
+        res.json({
+            success: true,
             data: result.leads,
             pagination: {
                 total: result.total,
@@ -143,6 +143,30 @@ export const getMetrics = async (req, res, next) => {
 
         const metrics = await salesService.getSalesMetrics(filters);
         res.json({ success: true, data: metrics });
+    } catch (error) {
+        next(error);
+    }
+};
+
+/**
+ * Controller to list all follow-ups with filters.
+ */
+export const getFollowUps = async (req, res, next) => {
+    try {
+        const filters = { ...req.query };
+        const adminRoles = ['Super Admin', 'super_admin', 'Admin', 'Sales Manager'];
+        const hasAdminRole = req.user.roles?.some(role => adminRoles.includes(role));
+        const hasPermission = req.user.permissions?.includes('manage_leads') || req.user.permissions?.includes('admin');
+
+        const canManage = hasAdminRole || hasPermission;
+        const isRestricted = !canManage;
+
+        if (isRestricted) {
+            filters.agent_id = req.user.id;
+        }
+
+        const data = await salesService.getAllFollowUps(filters);
+        res.json({ success: true, data });
     } catch (error) {
         next(error);
     }

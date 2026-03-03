@@ -60,8 +60,9 @@ const NAV = [
         icon: FileText,
         sectionPerm: 'view_leads',
         items: [
-            { to: '/sales-dashboard', label: 'Dashboard', icon: LayoutDashboard, perm: 'view_leads' },
+            { to: '/sales-dashboard', label: 'Dashboard', icon: LayoutDashboard, perm: 'view_leads', hideIfRole: ['bdm', 'sales manager'] },
             { to: '/leads', label: 'Leads', icon: TrendingUp, perm: 'view_leads' },
+            { to: '/follow-ups', label: 'Follow-ups', icon: Clock, perm: 'view_leads' },
             { to: '/bdm-performance', label: 'BDM Performance', icon: BarChart3, perm: 'view_leads' },
             { to: '/clients', label: 'Clients', perm: 'view_clients', icon: Building2 },
             { to: '/quotations', label: 'Quotation Builder', icon: Sparkles, perm: 'generate_quotations' },
@@ -156,16 +157,19 @@ export default function Sidebar() {
 
                             {isExpanded && !collapsed && (
                                 <div className="sidebar-sub-menu">
-                                    {group.items.map(({ to, icon: Icon, label }) => (
-                                        <NavLink
-                                            key={`${group.section}-${label}`}
-                                            to={to}
-                                            className={({ isActive }) => `nav-item sub-item${isActive ? ' active' : ''}`}
-                                        >
-                                            {Icon && <Icon size={16} />}
-                                            <span>{label}</span>
-                                        </NavLink>
-                                    ))}
+                                    {group.items.map(({ to, icon: Icon, label }) => {
+                                        const displayLabel = (label === 'BDM Performance' && hasRole('bdm')) ? 'My Performance' : label;
+                                        return (
+                                            <NavLink
+                                                key={`${group.section}-${label}`}
+                                                to={to}
+                                                className={({ isActive }) => `nav-item sub-item${isActive ? ' active' : ''}`}
+                                            >
+                                                {Icon && <Icon size={16} />}
+                                                <span>{displayLabel}</span>
+                                            </NavLink>
+                                        );
+                                    })}
                                 </div>
                             )}
                         </div>

@@ -420,7 +420,8 @@ export const getEmployeeOverview = async ({ startDate, endDate } = {}) => {
     const userMetrics = {};
     filteredProfiles.forEach(p => {
         const roles = p.user_roles?.map(ur => ur.role?.name.toLowerCase()) || [];
-        const isTester = roles.includes('tester');
+        const isTester = roles.includes('tester') || roles.includes('qa');
+        const isBDM = roles.includes('bdm');
 
         userMetrics[p.id] = {
             id: p.id,
@@ -435,7 +436,12 @@ export const getEmployeeOverview = async ({ startDate, endDate } = {}) => {
             todos: { total: 0, verified: 0, failed: 0 },
             total_hours: 0,
             timesheet_items: [],
-            sales_stats: null
+            sales_stats: null,
+            metrics: {
+                qa_pass_rate: 100,
+                estimation_accuracy: 100,
+                blocker_frequency: 0
+            }
         };
     });
 
@@ -538,6 +544,13 @@ export const getEmployeeOverview = async ({ startDate, endDate } = {}) => {
     Object.values(userMetrics).forEach(m => {
         if (m.sales_stats && m.sales_stats.total_leads > 0) {
             m.sales_stats.conversion_rate = (m.sales_stats.won_count / m.sales_stats.total_leads) * 100;
+        }
+
+        // Calculate Quality Metrics for Developers/Testers
+        const totalVerdict = m.tasks.verified + m.tasks.failed + m.todos.verified + m.todos.failed;
+        if (totalVerdict > 0) {
+            const pass = m.tasks.verified + m.todos.verified;
+            m.metrics.qa_pass_rate = (pass / totalVerdict) * 100;
         }
     });
 

@@ -433,6 +433,37 @@ export const createFollowUp = async (followUpData) => {
 };
 
 /**
+ * Fetches all follow-ups with optional filtering (Admin sees all, BDM sees assigned).
+ * @param {Object} filters - Filter by agent, status, date range.
+ * @returns {Promise<Array>} List of follow-ups.
+ */
+export const getAllFollowUps = async (filters = {}) => {
+    let query = supabaseAdmin
+        .from('follow_ups')
+        .select(`
+            *,
+            lead:leads(id, name, company, status, phone, email),
+            agent:profiles(id, full_name, email)
+        `);
+
+    if (filters.agent_id) query = query.eq('agent_id', filters.agent_id);
+    if (filters.status) query = query.eq('status', filters.status);
+
+    // Scheduled Date Range
+    if (filters.startDate) query = query.gte('scheduled_at', filters.startDate);
+    if (filters.endDate) {
+        const end = filters.endDate.includes('T') ? filters.endDate : `${filters.endDate} 23:59:59.999`;
+        query = query.lte('scheduled_at', end);
+    }
+
+    query = query.order('scheduled_at', { ascending: true });
+
+    const { data, error } = await query;
+    if (error) throw error;
+    return data;
+};
+
+/**
  * Fetches follow-ups for a specific lead.
  * @param {string} leadId - Lead UUID.
  * @returns {Promise<Array>} List of follow-ups.

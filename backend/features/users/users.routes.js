@@ -10,8 +10,8 @@ const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 *
 router.use(authMiddleware);
 
 router.post('/', requirePermission('create_user'), createUser);
-router.get('/', requirePermission('view_users', ['tester']), getAllUsers);
-router.get('/:id', requirePermission('view_users'), getUserById);
+router.get('/', requirePermission('view_users', ['tester', 'bdm', 'sales manager']), getAllUsers);
+router.get('/:id', requirePermission('view_users', ['bdm', 'sales manager']), getUserById);
 router.patch('/:id', requirePermission('edit_user'), updateUser);
 router.delete('/:id', requirePermission('delete_user'), deleteUser);
 router.post('/avatar/:id', upload.single('avatar'), uploadAvatar);

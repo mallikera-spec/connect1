@@ -163,15 +163,20 @@ export default function SalesDashboard() {
             {/* Pending Follow-ups Section */}
             {(overallMetrics?.pendingFollowUps?.length > 0) && (
                 <div style={{ marginBottom: '40px' }}>
-                    <div className="section-header" style={{ marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        <CalendarClock size={20} color="var(--warning)" />
-                        <h2 style={{ fontSize: '18px', fontWeight: 700 }}>Upcoming Callbacks & Follow-ups</h2>
+                    <div className="section-header" style={{ marginBottom: '20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                            <CalendarClock size={20} color="var(--warning)" />
+                            <h2 style={{ fontSize: '18px', fontWeight: 700 }}>Upcoming Callbacks & Follow-ups</h2>
+                        </div>
+                        <button className="btn btn-ghost btn-sm" onClick={() => navigate('/follow-ups')} style={{ color: 'var(--accent)' }}>
+                            View All <ChevronRight size={14} />
+                        </button>
                     </div>
                     <div className="card polished-card" style={{ overflow: 'hidden' }}>
                         <div className="followup-list">
                             {overallMetrics.pendingFollowUps.map(fu => {
                                 let Icon = FileText;
-                                if (fu.type === 'Call') Icon = PhoneCall;
+                                if (fu.type === 'Call' || fu.type === 'Callback') Icon = PhoneCall;
                                 if (fu.type === 'Email') Icon = Mail;
                                 if (fu.type === 'Meeting') Icon = Presentation;
 
