@@ -186,13 +186,17 @@ export default function AttendanceReport() {
                                         <td style={{ fontFamily: 'monospace' }}>{calculateWorkedHours(record.check_in_time, record.check_out_time)}</td>
                                         <td>{statusBadge(record.status)}</td>
                                         <td>
-                                            {record.is_approved ? (
+                                            {record.status === 'Pending' ? (
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--warning)', fontSize: 12 }}>
+                                                    <Clock size={14} /> Pending
+                                                </div>
+                                            ) : record.is_approved ? (
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--success)', fontSize: 12 }}>
                                                     <CheckCircle size={14} /> Approved
                                                 </div>
                                             ) : (
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--warning)', fontSize: 12 }}>
-                                                    <Clock size={14} /> Pending
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--danger)', fontSize: 12 }}>
+                                                    <XCircle size={14} /> Rejected
                                                 </div>
                                             )}
                                         </td>

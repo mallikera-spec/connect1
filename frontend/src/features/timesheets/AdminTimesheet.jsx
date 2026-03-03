@@ -34,6 +34,7 @@ export default function AdminTimesheet() {
     const [allUsers, setAllUsers] = useState([])
     const [allProjects, setAllProjects] = useState([])
     const [selectedProjectId, setSelectedProjectId] = useState('')
+    const [qaFilter, setQaFilter] = useState('')
     const [loading, setLoading] = useState(true)
     const [savingId, setSavingId] = useState(null)
     const [modal, setModal] = useState(null)
@@ -77,12 +78,7 @@ export default function AdminTimesheet() {
                 }))
             );
 
-            let filtered = flattened;
-            if (statusFilter) {
-                filtered = flattened.filter(e => e.status === statusFilter);
-            }
-
-            setAllEntries(filtered.sort((a, b) => new Date(b.date) - new Date(a.date)));
+            setAllEntries(flattened.sort((a, b) => new Date(b.date) - new Date(a.date)));
         } catch (err) {
             toast.error(err.message)
         } finally {
@@ -239,6 +235,19 @@ export default function AdminTimesheet() {
                             ))}
                         </select>
                     </div>
+
+                    <div className="form-group" style={{ flex: 1, minWidth: 150, marginBottom: 0 }}>
+                        <label className="form-label">
+                            <ShieldCheck size={14} style={{ marginRight: 6 }} />
+                            <strong>QA RESULT</strong>
+                        </label>
+                        <select className="form-select" value={qaFilter} onChange={e => setQaFilter(e.target.value)}>
+                            <option value="">All QA Results</option>
+                            <option value="passed">PASSED</option>
+                            <option value="failed">FAILED</option>
+                            <option value="pending">PENDING</option>
+                        </select>
+                    </div>
                 </div>
 
                 <div className="export-btns">
@@ -249,182 +258,191 @@ export default function AdminTimesheet() {
 
             {/* Main Table */}
             <div className="table-wrapper shadow-sm">
-        {loading ? <div className="page-loader"><div className="spinner" /></div> : (
-            <table className="compact-ts-table">
-                <thead>
-                    <tr>
-                        <th style={{ width: 100 }}>Date</th>
-                        <th style={{ width: 60 }}>Hrs</th>
-                        <th style={{ width: 130 }}>Employee</th>
-                        <th style={{ width: 120 }}>Project</th>
-                        <th>Task / Notes</th>
-                        <th style={{ width: 90 }}>Submitted</th>
-                        <th style={{ width: 110 }}>Status</th>
-                        <th style={{ width: 120 }}>QA Result</th>
-                        <th style={{ width: 180 }}>QA Notes</th>
-                        <th style={{ width: 200 }}>Admin Feedback</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {(() => {
-                        let filtered = allEntries;
-                        if (selectedProjectId) {
-                            filtered = filtered.filter(e =>
-                                e.project_id === selectedProjectId ||
-                                e.task?.project_id === selectedProjectId
-                            );
-                        }
-                        if (statusFilter) {
-                            filtered = filtered.filter(e => e.status === statusFilter);
-                        }
-
-                        if (filtered.length === 0) {
-                            return <tr><td colSpan={8}><div className="empty-state">No entries found for criteria</div></td></tr>;
-                        }
-
-                        return filtered.map(e => (
-                            <tr key={e.id}>
-                                <td>
-                                    <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)' }}>
-                                        {new Date(e.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
-                                    </div>
-                                    <div style={{ fontSize: 10, color: 'var(--text-dim)' }}>
-                                        {new Date(e.date).toLocaleDateString('en-IN', { weekday: 'short' })}
-                                    </div>
-                                </td>
-                                <td>
-                                    <span style={{ fontWeight: 800, color: 'var(--accent)', fontSize: 15 }}>{e.hours_spent}</span>
-                                    <span style={{ fontSize: 9, color: 'var(--text-dim)', marginLeft: 2 }}>h</span>
-                                </td>
-                                <td style={{ fontSize: 12, fontWeight: 600 }}>{e.userName}</td>
-                                <td>
-                                    <span className="badge-pill badge-purple" style={{ fontSize: 9, padding: '2px 7px', fontWeight: 700 }}>
-                                        {(e.project?.name || e.task?.project?.name || 'In-House').toUpperCase()}
-                                    </span>
-                                </td>
-                                <td>
-                                    <div style={{ fontWeight: 600, fontSize: 13 }}>{e.title}</div>
-                                    {e.notes && (
-                                        <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2, maxWidth: 360, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                            {e.notes}
-                                        </div>
-                                    )}
-                                    {e.developer_reply && (
-                                        <div style={{ fontSize: 10, color: '#34d399', marginTop: 2, fontWeight: 600 }}>
-                                            ↩ {e.developer_reply}
-                                        </div>
-                                    )}
-                                </td>
-                                <td style={{ fontSize: 11, color: e.created_at ? 'var(--success)' : 'var(--text-dim)', fontWeight: 600 }}>
-                                    {e.created_at ? new Date(e.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : '—'}
-                                </td>
-                                <td>
-                                    <span className={`badge-pill ${STATUS_BADGE[e.status]}`} style={{ fontSize: 10, padding: '3px 9px', fontWeight: 700 }}>
-                                        {e.status?.replace('_', ' ').toUpperCase()}
-                                    </span>
-                                </td>
-                                <td>
-                                    {e.status === 'verified' && <span className="badge-pill badge-green" style={{ fontSize: '9px' }}>PASSED</span>}
-                                    {e.status === 'failed' && <span className="badge-pill badge-red" style={{ fontSize: '9px' }}>FAILED</span>}
-                                    {!['verified', 'failed'].includes(e.status) && <span style={{ opacity: 0.3 }}>—</span>}
-                                </td>
-                                <td style={{ fontSize: 10, color: e.status === 'verified' ? 'var(--text-muted)' : '#fb7185', fontWeight: 600 }}>
-                                    {e.qa_notes ? `🚩 ${e.qa_notes}` : <span style={{ opacity: 0.3 }}>—</span>}
-                                </td>
-                                <td>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                        <div style={{ position: 'relative', flex: 1 }}>
-                                            <input
-                                                className="feedback-input"
-                                                placeholder={e.admin_feedback ? '' : 'Add feedback…'}
-                                                defaultValue={e.admin_feedback || ''}
-                                                onBlur={ev => handleUpdate(e.id, { admin_feedback: ev.target.value })}
-                                                title={e.admin_feedback || 'Add admin feedback'}
-                                            />
-                                            {savingId === e.id && modal !== 'qa_report' && <div className="spinner-sm" style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)' }} />}
-                                        </div>
-
-                                        {/* Tester Actions */}
-                                        {(hasRole('Tester') || hasRole('super_admin')) && (e.status === 'done' || e.status === 'verified' || e.status === 'failed') && (
-                                            <div style={{ display: 'flex', gap: 4 }}>
-                                                <button
-                                                    className={`btn-icon-ts ${e.status === 'verified' ? 'active-pass' : ''}`}
-                                                    onClick={() => openQaModal(e, 'verified')}
-                                                    title="Pass / Verify"
-                                                >
-                                                    <ShieldCheck size={16} />
-                                                </button>
-                                                <button
-                                                    className={`btn-icon-ts ${e.status === 'failed' ? 'active-fail' : ''}`}
-                                                    onClick={() => openQaModal(e, 'failed')}
-                                                    title="Fail / Rejected"
-                                                >
-                                                    <AlertCircle size={16} />
-                                                </button>
-                                            </div>
-                                        )}
-                                    </div>
-                                </td>
+                {loading ? <div className="page-loader"><div className="spinner" /></div> : (
+                    <table className="compact-ts-table">
+                        <thead>
+                            <tr>
+                                <th style={{ width: 100 }}>Date</th>
+                                <th style={{ width: 60 }}>Hrs</th>
+                                <th style={{ width: 130 }}>Employee</th>
+                                <th style={{ width: 120 }}>Project</th>
+                                <th>Task / Notes</th>
+                                <th style={{ width: 90 }}>Submitted</th>
+                                <th style={{ width: 110 }}>Status</th>
+                                <th style={{ width: 120 }}>QA Result</th>
+                                <th style={{ width: 180 }}>QA Notes</th>
+                                <th style={{ width: 200 }}>Admin Feedback</th>
                             </tr>
-                        ))
-                    })()}
-                </tbody>
-            </table>
-        )}
-    </div>
+                        </thead>
+                        <tbody>
+                            {(() => {
+                                let filtered = allEntries;
+                                if (selectedProjectId) {
+                                    filtered = filtered.filter(e =>
+                                        e.project_id === selectedProjectId ||
+                                        e.task?.project_id === selectedProjectId
+                                    );
+                                }
+                                if (statusFilter) {
+                                    filtered = filtered.filter(e => e.status === statusFilter);
+                                }
+                                if (qaFilter) {
+                                    if (qaFilter === 'passed') {
+                                        filtered = filtered.filter(e => e.status === 'verified');
+                                    } else if (qaFilter === 'failed') {
+                                        filtered = filtered.filter(e => e.status === 'failed');
+                                    } else if (qaFilter === 'pending') {
+                                        filtered = filtered.filter(e => !['verified', 'failed'].includes(e.status));
+                                    }
+                                }
 
-    {/* QA Report Modal */ }
-    {
-        modal === 'qa_report' && selectedEntry && (
-            <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setModal(null)}>
-                <div className="modal" style={{ maxWidth: 450 }}>
-                    <div className="modal-header">
-                        <h2 className="modal-title">QA Report: {qaReport.status === 'verified' ? 'Pass' : 'Fail'}</h2>
-                        <button className="btn-icon" onClick={() => setModal(null)}><X size={18} /></button>
-                    </div>
-                    <form onSubmit={handleQaReport}>
-                        <div className="modal-body">
-                            <p style={{ fontSize: 13, marginBottom: 12, color: 'var(--text-muted)' }}>
-                                Todo: <strong>{selectedEntry.title}</strong>
-                            </p>
-                            <div className="form-group">
-                                <label className="form-label">QA Notes / Reason</label>
-                                <textarea
-                                    className="form-textarea"
-                                    style={{ width: '100%', padding: '10px', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text)' }}
-                                    rows={4}
-                                    value={qaReport.notes}
-                                    onChange={e => setQaReport(p => ({ ...p, notes: e.target.value }))}
-                                    placeholder={qaReport.status === 'verified' ? 'Optional: Testing notes...' : 'Required: Why did it fail?'}
-                                    required={qaReport.status === 'failed'}
-                                />
-                            </div>
-                        </div>
-                        <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, padding: '16px 24px', borderTop: '1px solid var(--border)' }}>
-                            <button type="button" className="btn btn-ghost" onClick={() => setModal(null)}>Cancel</button>
-                            <button
-                                type="submit"
-                                className={`btn ${qaReport.status === 'verified' ? 'btn-success' : 'btn-danger'}`}
-                                disabled={savingId === selectedEntry.id}
-                                style={{
-                                    padding: '8px 20px',
-                                    borderRadius: 8,
-                                    fontWeight: 600,
-                                    background: qaReport.status === 'verified' ? '#10b981' : '#ef4444',
-                                    color: '#fff',
-                                    border: 'none'
-                                }}
-                            >
-                                {savingId === selectedEntry.id ? 'Saving...' : `Submit ${qaReport.status === 'verified' ? 'Pass' : 'Fail'}`}
-                            </button>
-                        </div>
-                    </form>
-                </div>
+                                if (filtered.length === 0) {
+                                    return <tr><td colSpan={8}><div className="empty-state">No entries found for criteria</div></td></tr>;
+                                }
+
+                                return filtered.map(e => (
+                                    <tr key={e.id}>
+                                        <td>
+                                            <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)' }}>
+                                                {new Date(e.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                                            </div>
+                                            <div style={{ fontSize: 10, color: 'var(--text-dim)' }}>
+                                                {new Date(e.date).toLocaleDateString('en-IN', { weekday: 'short' })}
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <span style={{ fontWeight: 800, color: 'var(--accent)', fontSize: 15 }}>{e.hours_spent}</span>
+                                            <span style={{ fontSize: 9, color: 'var(--text-dim)', marginLeft: 2 }}>h</span>
+                                        </td>
+                                        <td style={{ fontSize: 12, fontWeight: 600 }}>{e.userName}</td>
+                                        <td>
+                                            <span className="badge-pill badge-purple" style={{ fontSize: 9, padding: '2px 7px', fontWeight: 700 }}>
+                                                {(e.project?.name || e.task?.project?.name || 'In-House').toUpperCase()}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <div style={{ fontWeight: 600, fontSize: 13 }}>{e.title}</div>
+                                            {e.notes && (
+                                                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2, maxWidth: 360, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                    {e.notes}
+                                                </div>
+                                            )}
+                                            {e.developer_reply && (
+                                                <div style={{ fontSize: 10, color: '#34d399', marginTop: 2, fontWeight: 600 }}>
+                                                    ↩ {e.developer_reply}
+                                                </div>
+                                            )}
+                                        </td>
+                                        <td style={{ fontSize: 11, color: e.created_at ? 'var(--success)' : 'var(--text-dim)', fontWeight: 600 }}>
+                                            {e.created_at ? new Date(e.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : '—'}
+                                        </td>
+                                        <td>
+                                            <span className={`badge-pill ${STATUS_BADGE[e.status]}`} style={{ fontSize: 10, padding: '3px 9px', fontWeight: 700 }}>
+                                                {e.status?.replace('_', ' ').toUpperCase()}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            {e.status === 'verified' && <span className="badge-pill badge-green" style={{ fontSize: '9px' }}>PASSED</span>}
+                                            {e.status === 'failed' && <span className="badge-pill badge-red" style={{ fontSize: '9px' }}>FAILED</span>}
+                                            {!['verified', 'failed'].includes(e.status) && <span style={{ opacity: 0.3 }}>—</span>}
+                                        </td>
+                                        <td style={{ fontSize: 10, color: e.status === 'verified' ? 'var(--text-muted)' : '#fb7185', fontWeight: 600 }}>
+                                            {e.qa_notes ? `🚩 ${e.qa_notes}` : <span style={{ opacity: 0.3 }}>—</span>}
+                                        </td>
+                                        <td>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                                <div style={{ position: 'relative', flex: 1 }}>
+                                                    <input
+                                                        className="feedback-input"
+                                                        placeholder={e.admin_feedback ? '' : 'Add feedback…'}
+                                                        defaultValue={e.admin_feedback || ''}
+                                                        onBlur={ev => handleUpdate(e.id, { admin_feedback: ev.target.value })}
+                                                        title={e.admin_feedback || 'Add admin feedback'}
+                                                    />
+                                                    {savingId === e.id && modal !== 'qa_report' && <div className="spinner-sm" style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)' }} />}
+                                                </div>
+
+                                                {/* Tester Actions */}
+                                                {(hasRole('Tester') || hasRole('super_admin')) && (e.status === 'done' || e.status === 'verified' || e.status === 'failed') && (
+                                                    <div style={{ display: 'flex', gap: 4 }}>
+                                                        <button
+                                                            className={`btn-icon-ts ${e.status === 'verified' ? 'active-pass' : ''}`}
+                                                            onClick={() => openQaModal(e, 'verified')}
+                                                            title="Pass / Verify"
+                                                        >
+                                                            <ShieldCheck size={16} />
+                                                        </button>
+                                                        <button
+                                                            className={`btn-icon-ts ${e.status === 'failed' ? 'active-fail' : ''}`}
+                                                            onClick={() => openQaModal(e, 'failed')}
+                                                            title="Fail / Rejected"
+                                                        >
+                                                            <AlertCircle size={16} />
+                                                        </button>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))
+                            })()}
+                        </tbody>
+                    </table>
+                )}
             </div>
-        )
-    }
 
-    <style>{`
+            {/* QA Report Modal */}
+            {
+                modal === 'qa_report' && selectedEntry && (
+                    <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setModal(null)}>
+                        <div className="modal" style={{ maxWidth: 450 }}>
+                            <div className="modal-header">
+                                <h2 className="modal-title">QA Report: {qaReport.status === 'verified' ? 'Pass' : 'Fail'}</h2>
+                                <button className="btn-icon" onClick={() => setModal(null)}><X size={18} /></button>
+                            </div>
+                            <form onSubmit={handleQaReport}>
+                                <div className="modal-body">
+                                    <p style={{ fontSize: 13, marginBottom: 12, color: 'var(--text-muted)' }}>
+                                        Todo: <strong>{selectedEntry.title}</strong>
+                                    </p>
+                                    <div className="form-group">
+                                        <label className="form-label">QA Notes / Reason</label>
+                                        <textarea
+                                            className="form-textarea"
+                                            style={{ width: '100%', padding: '10px', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text)' }}
+                                            rows={4}
+                                            value={qaReport.notes}
+                                            onChange={e => setQaReport(p => ({ ...p, notes: e.target.value }))}
+                                            placeholder={qaReport.status === 'verified' ? 'Optional: Testing notes...' : 'Required: Why did it fail?'}
+                                            required={qaReport.status === 'failed'}
+                                        />
+                                    </div>
+                                </div>
+                                <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, padding: '16px 24px', borderTop: '1px solid var(--border)' }}>
+                                    <button type="button" className="btn btn-ghost" onClick={() => setModal(null)}>Cancel</button>
+                                    <button
+                                        type="submit"
+                                        className={`btn ${qaReport.status === 'verified' ? 'btn-success' : 'btn-danger'}`}
+                                        disabled={savingId === selectedEntry.id}
+                                        style={{
+                                            padding: '8px 20px',
+                                            borderRadius: 8,
+                                            fontWeight: 600,
+                                            background: qaReport.status === 'verified' ? '#10b981' : '#ef4444',
+                                            color: '#fff',
+                                            border: 'none'
+                                        }}
+                                    >
+                                        {savingId === selectedEntry.id ? 'Saving...' : `Submit ${qaReport.status === 'verified' ? 'Pass' : 'Fail'}`}
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                )
+            }
+
+            <style>{`
                 .custom-multi-select {
                     display: flex;
                     flex-wrap: wrap;

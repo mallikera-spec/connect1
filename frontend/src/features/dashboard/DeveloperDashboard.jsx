@@ -26,6 +26,11 @@ export default function DeveloperDashboard({ dateRange }) {
     const inProgress = stats.tasks_by_status?.in_progress ?? 0;
     const done = stats.tasks_by_status?.done ?? 0;
 
+    const tsStats = stats.timesheet_tasks_by_status || {};
+    const totalTodos = Object.values(tsStats).reduce((a, b) => a + b, 0);
+    const doneTodos = (tsStats.done || 0) + (tsStats.verified || 0);
+    const failedTodos = tsStats.failed || 0;
+
     return (
         <div>
             <div className="dashboard-section-header" style={{ marginBottom: 16 }}>
@@ -79,26 +84,50 @@ export default function DeveloperDashboard({ dateRange }) {
 
             <div className="dashboard-section-header" style={{ marginBottom: 16 }}>
                 <h3 style={{ fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--accent-light)' }}>
-                    Timesheet & Projects
+                    Todo Overview (Timesheet)
                 </h3>
             </div>
             <div className="stats-grid" style={{ marginBottom: 32 }}>
-                <StatCard
+                {/* <StatCard
                     icon={Timer}
                     label="Hours Logged"
                     value={`${stats.total_hours_logged ?? 0}h`}
                     color="#8b5cf6"
                     to="/timesheet"
                     state={{ startDate: dateRange.startDate, endDate: dateRange.endDate }}
+                /> */}
+                <StatCard
+                    icon={ListTodo}
+                    label="Total Todos Logged"
+                    value={totalTodos}
+                    color="#3b82f6"
+                    to="/timesheet"
+                    state={{ startDate: dateRange.startDate, endDate: dateRange.endDate }}
+                />
+                <StatCard
+                    icon={CheckCircle2}
+                    label="Done Todos"
+                    value={doneTodos}
+                    color="#10b981"
+                    to="/timesheet"
+                    state={{ startDate: dateRange.startDate, endDate: dateRange.endDate }}
                 />
                 <StatCard
                     icon={AlertCircle}
                     label="Failed Todos"
-                    value={stats.timesheet_tasks_by_status?.failed ?? 0}
-                    color="#f43f5e"
+                    value={failedTodos}
+                    color="#ef4444"
                     to="/timesheet"
                     state={{ statusFilter: 'failed', startDate: dateRange.startDate, endDate: dateRange.endDate }}
                 />
+            </div>
+
+            <div className="dashboard-section-header" style={{ marginBottom: 16 }}>
+                <h3 style={{ fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--accent-light)' }}>
+                    Projects
+                </h3>
+            </div>
+            <div className="stats-grid" style={{ marginBottom: 32 }}>
                 <StatCard
                     icon={FolderKanban}
                     label="My Projects"

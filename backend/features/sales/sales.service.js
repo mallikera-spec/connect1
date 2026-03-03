@@ -490,22 +490,32 @@ export const getSalesMetrics = async (filters = {}) => {
 
     const stats = data.reduce((acc, lead) => {
         const val = parseFloat(lead.deal_value || 0);
-        acc[lead.status] = (acc[lead.status] || 0) + 1;
-        acc.total = (acc.total || 0) + 1;
+        const status = String(lead.status || '').toLowerCase();
 
-        if (lead.status === 'Won') {
+        // Use normalized names for specific counters
+        if (status === 'won') {
+            acc.wonCount = (acc.wonCount || 0) + 1;
             acc.wonValue = (acc.wonValue || 0) + val;
-        } else if (lead.status === 'Proposal') {
+        } else if (status === 'proposal') {
             acc.pipelineValue = (acc.pipelineValue || 0) + val;
         }
 
+        // Maintain original status mapping for dynamic frontend list if needed, 
+        // but normalize for consistent access
+        acc[status] = (acc[status] || 0) + 1;
+        // Keep "Won" for backward compatibility if conversionRate logic uses it specifically
+        if (status === 'won') acc.Won = (acc.Won || 0) + 1;
+
+        acc.total = (acc.total || 0) + 1;
         acc.totalValue = (acc.totalValue || 0) + val;
         return acc;
     }, {
         total: 0,
         wonValue: 0,
         pipelineValue: 0,
-        totalValue: 0
+        totalValue: 0,
+        wonCount: 0,
+        Won: 0
     });
 
     // Calculate conversion rate: (Won / Total) * 100

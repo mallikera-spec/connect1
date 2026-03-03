@@ -17,7 +17,7 @@ const NAV = [
         items: [
             { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
             { to: '/polls', label: 'Polls', icon: Vote },
-            { to: '/policies', label: 'Argomsob Policies', icon: Shield },
+            { to: '/policies', label: 'ArgosMob Policies', icon: Shield },
             { to: '/profile', label: 'My Profile', icon: UserCircle },
         ]
     },

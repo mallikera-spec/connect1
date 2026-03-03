@@ -1,35 +1,134 @@
 import { supabaseAdmin } from '../../config/supabase.js';
 
+// Helper to parse time strings like "HH:MM" or numeric strings to decimal hours
+const parseTime = (timeStr) => {
+    if (timeStr === null || timeStr === undefined) return 0;
+    if (typeof timeStr === 'number') return timeStr;
+    const str = String(timeStr).trim();
+    if (!str) return 0;
+
+    if (str.includes(':')) {
+        const [h, m] = str.split(':').map(Number);
+        return (isNaN(h) ? 0 : h) + (isNaN(m) ? 0 : m / 60);
+    }
+    const num = parseFloat(str);
+    return isNaN(num) ? 0 : num;
+};
+
 // No time_entries table — reporting uses actual_hours on tasks (auto-calculated by DB trigger)
 
 export const getProjectReport = async (projectId) => {
-    const { data: tasks, error } = await supabaseAdmin
-        .from('tasks')
-        .select('id, title, status, priority, estimated_hours, actual_hours, assigned_to')
-        .eq('project_id', projectId);
-    if (error) throw error;
+    // 1. Fetch Project Details
+    const { data: project } = await supabaseAdmin
+        .from('projects')
+        .select('*')
+        .eq('id', projectId)
+        .single();
 
-    const totalActualHours = tasks.reduce((sum, t) => sum + (t.actual_hours || 0), 0);
+    // 2. Fetch Tasks with Assignee Details
+    const { data: tasks, error: tasksError } = await supabaseAdmin
+        .from('tasks')
+        .select(`
+            id, title, status, priority, estimated_hours, actual_hours, assigned_to,
+            assignee:profiles!tasks_assigned_to_fkey(id, full_name)
+        `)
+        .eq('project_id', projectId);
+    if (tasksError) throw tasksError;
+
+    // 3. Fetch Timesheet Entries for the project (either direct or via tasks)
+    const taskIds = (tasks || []).map(t => t.id);
+    let tsQuery = supabaseAdmin
+        .from('timesheet_entries')
+        .select(`
+            *,
+            timesheet:timesheets(user_id)
+        `);
+
+    if (taskIds.length > 0) {
+        tsQuery = tsQuery.or(`project_id.eq.${projectId},task_id.in.(${taskIds.join(',')})`);
+    } else {
+        tsQuery = tsQuery.eq('project_id', projectId);
+    }
+    const { data: timesheetEntries, error: tsError } = await tsQuery;
+    if (tsError) throw tsError;
+
+    // 4. Calculate stats for summary cards
+    // Use timesheet entries for actual hours to ensure consistency with costing
+    const totalActualHours = timesheetEntries.reduce((sum, te) => sum + parseTime(te.hours_spent), 0);
     const totalEstimatedHours = tasks.reduce((sum, t) => sum + (t.estimated_hours || 0), 0);
 
+    // --- Development Costing Logic ---
+    // Hourly Rate = CTC / (12 months * 22 days * 8 hours) => CTC / 2112
+    const WORKING_HOURS_PER_YEAR = 12 * 22 * 8;
+
+    // Get all user CTCs for people who worked on this project
+    const userIds = [...new Set(timesheetEntries.map(te => te.timesheet?.user_id))].filter(Boolean);
+    const { data: userProfiles } = await supabaseAdmin
+        .from('profiles')
+        .select('id, full_name, ctc')
+        .in('id', userIds);
+
+    const profileMap = Object.fromEntries((userProfiles || []).map(p => [p.id, p]));
+
+    // Aggregate time and cost per user
+    const userCosting = {};
+    timesheetEntries.forEach(te => {
+        const uId = te.timesheet?.user_id;
+        const profile = profileMap[uId];
+        if (!profile) return;
+
+        const hours = parseTime(te.hours_spent);
+        const annualCTC = parseFloat(profile.ctc || 0);
+        const hourlyRate = annualCTC / WORKING_HOURS_PER_YEAR;
+        const cost = hours * hourlyRate;
+
+        if (!userCosting[uId]) {
+            userCosting[uId] = {
+                id: uId,
+                name: profile.full_name,
+                totalHours: 0,
+                hourlyRate: parseFloat(hourlyRate.toFixed(2)),
+                totalCost: 0
+            };
+        }
+        userCosting[uId].totalHours += hours;
+        userCosting[uId].totalCost += cost;
+    });
+
+    const costingBreakdown = Object.values(userCosting).map(item => ({
+        ...item,
+        totalHours: parseFloat(item.totalHours.toFixed(2)),
+        totalCost: parseFloat(item.totalCost.toFixed(2))
+    }));
+
+    const totalProjectCost = costingBreakdown.reduce((sum, item) => sum + item.totalCost, 0);
+
     return {
+        project,
         project_id: projectId,
         total_tasks: tasks.length,
         tasks_by_status: {
-            pending: tasks.filter((t) => t.status === 'pending').length,
-            in_progress: tasks.filter((t) => t.status === 'in_progress').length,
-            done: tasks.filter((t) => t.status === 'done').length,
-            verified: tasks.filter((t) => t.status === 'verified').length,
-            failed: tasks.filter((t) => t.status === 'failed').length,
+            pending: tasks.filter((t) => String(t.status).toLowerCase() === 'pending').length,
+            in_progress: tasks.filter((t) => String(t.status).toLowerCase() === 'in_progress').length,
+            done: tasks.filter((t) => String(t.status).toLowerCase() === 'done').length,
+            verified: tasks.filter((t) => String(t.status).toLowerCase() === 'verified').length,
+            failed: tasks.filter((t) => String(t.status).toLowerCase() === 'failed').length,
         },
         total_estimated_hours: parseFloat(totalEstimatedHours.toFixed(2)),
         total_actual_hours: parseFloat(totalActualHours.toFixed(2)),
+        total_project_cost: parseFloat(totalProjectCost.toFixed(2)),
+        costing_breakdown: costingBreakdown,
         tasks,
     };
 };
 
 export const getUserReport = async (userId, { startDate, endDate, roles = [] } = {}) => {
-    const isTester = roles.includes('Tester') || roles.includes('super_admin') || roles.includes('Super Admin');
+    const isTester = roles.map(r => String(r).toLowerCase()).includes('tester') ||
+        roles.map(r => String(r).toLowerCase()).includes('super admin') ||
+        roles.map(r => String(r).toLowerCase()).includes('super_admin');
+
+    const sDate = startDate ? startDate.slice(0, 10) : null;
+    const eDate = endDate ? endDate.slice(0, 10) : null;
 
     let taskQuery = supabaseAdmin
         .from('tasks')
@@ -48,8 +147,6 @@ export const getUserReport = async (userId, { startDate, endDate, roles = [] } =
     const { data: tasks, error } = await taskQuery;
     if (error) throw error;
 
-    const totalActualHours = tasks.reduce((sum, t) => sum + (t.actual_hours || 0), 0);
-
     // Fetch timesheet tasks by status for the period
     let tsEntryQuery = supabaseAdmin
         .from('timesheet_entries')
@@ -64,12 +161,26 @@ export const getUserReport = async (userId, { startDate, endDate, roles = [] } =
     if (!isTester) {
         tsEntryQuery = tsEntryQuery.eq('timesheet.user_id', userId);
     }
-    if (startDate) tsEntryQuery = tsEntryQuery.gte('timesheet.work_date', startDate);
-    if (endDate) tsEntryQuery = tsEntryQuery.lte('timesheet.work_date', endDate);
+    if (sDate) tsEntryQuery = tsEntryQuery.gte('timesheet.work_date', sDate);
+    if (eDate) tsEntryQuery = tsEntryQuery.lte('timesheet.work_date', eDate);
 
     const { data: tsEntries } = await tsEntryQuery;
+    const totalActualHours = (tsEntries || []).reduce((sum, e) => {
+        const workDate = e.timesheet?.work_date;
+        if (sDate && workDate < sDate) return sum;
+        if (eDate && workDate > eDate) return sum;
+        return sum + parseTime(e.hours_spent);
+    }, 0);
+
     const tsStats = { todo: 0, in_progress: 0, done: 0, blocked: 0, verified: 0, failed: 0 };
-    (tsEntries || []).forEach(e => { if (tsStats[e.status] !== undefined) tsStats[e.status]++; });
+    (tsEntries || []).forEach(e => {
+        const workDate = e.timesheet?.work_date;
+        if (sDate && workDate < sDate) return;
+        if (eDate && workDate > eDate) return;
+
+        const status = String(e.status || '').toLowerCase();
+        if (tsStats[status] !== undefined) tsStats[status]++;
+    });
 
     // Calculate dynamic project count for Testers/Admins based on active work
     let finalProjectCount = 0;
@@ -92,17 +203,17 @@ export const getUserReport = async (userId, { startDate, endDate, roles = [] } =
         total_tasks: tasks.length,
         total_projects: finalProjectCount,
         tasks_by_status: {
-            pending: tasks.filter((t) => t.status === 'pending').length,
-            in_progress: tasks.filter((t) => t.status === 'in_progress').length,
-            done: tasks.filter((t) => t.status === 'done').length,
-            verified: tasks.filter((t) => t.status === 'verified').length,
-            failed: tasks.filter((t) => t.status === 'failed').length,
+            total: tasks.length,
+            pending: tasks.filter((t) => String(t.status).toLowerCase() === 'pending').length,
+            in_progress: tasks.filter((t) => String(t.status).toLowerCase() === 'in_progress').length,
+            done: tasks.filter((t) => String(t.status).toLowerCase() === 'done').length,
+            verified: tasks.filter((t) => String(t.status).toLowerCase() === 'verified').length,
+            failed: tasks.filter((t) => String(t.status).toLowerCase() === 'failed').length,
         },
         timesheet_tasks_by_status: tsStats,
         total_hours_logged: parseFloat(totalActualHours.toFixed(2)),
         tasks: tasks.map(t => ({
             ...t,
-            // Ensure project name is flattened or ready for display
             projectName: t.project?.name
         })),
         todos: (tsEntries || []).map(e => ({
@@ -113,6 +224,9 @@ export const getUserReport = async (userId, { startDate, endDate, roles = [] } =
 };
 
 export const getOverallReport = async ({ startDate, endDate } = {}) => {
+    const sDate = startDate ? startDate.slice(0, 10) : null;
+    const eDate = endDate ? endDate.slice(0, 10) : null;
+
     let taskQuery = supabaseAdmin
         .from('tasks')
         .select('id, status, actual_hours, estimated_hours, created_at');
@@ -134,33 +248,46 @@ export const getOverallReport = async ({ startDate, endDate } = {}) => {
         .from('projects')
         .select('*', { count: 'exact', head: true });
 
-    const totalActualHours = tasks.reduce((sum, t) => sum + (t.actual_hours || 0), 0);
-
     // Overall timesheet status aggregation for the period
     let tsQuery = supabaseAdmin
         .from('timesheet_entries')
         .select(`
             status,
+            hours_spent,
             timesheet:timesheets!inner(work_date)
         `);
 
-    if (startDate) tsQuery = tsQuery.gte('timesheet.work_date', startDate);
-    if (endDate) tsQuery = tsQuery.lte('timesheet.work_date', endDate);
+    if (sDate) tsQuery = tsQuery.gte('timesheet.work_date', sDate);
+    if (eDate) tsQuery = tsQuery.lte('timesheet.work_date', eDate);
 
     const { data: tsEntries } = await tsQuery;
+    const totalActualHours = (tsEntries || []).reduce((sum, e) => {
+        const workDate = e.timesheet?.work_date;
+        if (sDate && workDate < sDate) return sum;
+        if (eDate && workDate > eDate) return sum;
+        return sum + parseTime(e.hours_spent);
+    }, 0);
+
     const tsStats = { todo: 0, in_progress: 0, done: 0, blocked: 0, verified: 0, failed: 0 };
-    (tsEntries || []).forEach(e => { if (tsStats[e.status] !== undefined) tsStats[e.status]++; });
+    (tsEntries || []).forEach(e => {
+        const workDate = e.timesheet?.work_date;
+        if (sDate && workDate < sDate) return;
+        if (eDate && workDate > eDate) return;
+
+        const status = String(e.status || '').toLowerCase();
+        if (tsStats[status] !== undefined) tsStats[status]++;
+    });
 
     return {
         total_users: userCount,
         total_projects: projectCount,
         total_tasks: tasks.length,
         tasks_by_status: {
-            pending: tasks.filter((t) => t.status === 'pending').length,
-            in_progress: tasks.filter((t) => t.status === 'in_progress').length,
-            done: tasks.filter((t) => t.status === 'done').length,
-            verified: tasks.filter((t) => t.status === 'verified').length,
-            failed: tasks.filter((t) => t.status === 'failed').length,
+            pending: tasks.filter((t) => String(t.status).toLowerCase() === 'pending').length,
+            in_progress: tasks.filter((t) => String(t.status).toLowerCase() === 'in_progress').length,
+            done: tasks.filter((t) => String(t.status).toLowerCase() === 'done').length,
+            verified: tasks.filter((t) => String(t.status).toLowerCase() === 'verified').length,
+            failed: tasks.filter((t) => String(t.status).toLowerCase() === 'failed').length,
         },
         timesheet_tasks_by_status: tsStats,
         total_hours_logged: parseFloat(totalActualHours.toFixed(2)),
@@ -185,26 +312,26 @@ export const getDeveloperCalendarSummary = async ({ startDate, endDate, projectI
             )
         `);
 
-    if (startDate) q = q.gte('timesheet.work_date', startDate);
-    if (endDate) q = q.lte('timesheet.work_date', endDate);
+    const sDate = startDate ? startDate.slice(0, 10) : null;
+    const eDate = endDate ? endDate.slice(0, 10) : null;
+
+    if (sDate) q = q.gte('timesheet.work_date', sDate);
+    if (eDate) q = q.lte('timesheet.work_date', eDate);
 
     const { data, error } = await q;
     if (error) throw error;
-
-    const parseTime = (timeStr) => {
-        if (!timeStr || !timeStr.includes(':')) return 0;
-        const [h, m] = timeStr.split(':').map(Number);
-        return (h * 60) + m;
-    };
 
     const aggregation = {};
 
     data.forEach(entry => {
         const user = entry.timesheet?.user;
         const project = entry.task?.project;
+        const workDate = entry.timesheet?.work_date;
 
         if (!user || !project) return;
         if (projectId && project.id !== projectId) return;
+        if (sDate && workDate < sDate) return;
+        if (eDate && workDate > eDate) return;
 
         const key = `${user.id}_${project.id}`;
         if (!aggregation[key]) {
@@ -218,13 +345,13 @@ export const getDeveloperCalendarSummary = async ({ startDate, endDate, projectI
                 totalMinutes: 0,
             };
         }
-        aggregation[key].totalMinutes += parseTime(entry.hours_spent);
+        aggregation[key].totalMinutes += parseTime(entry.hours_spent) * 60;
     });
 
     const result = Object.values(aggregation).map(item => {
         const totalHours = item.totalMinutes / 60;
-        const manDays = totalHours / 8; // 1 day = 8 hours
-        const dailyRate = item.userCTC / 22; // Assumes monthly CTC and 22 working days
+        const manDays = totalHours / 8;
+        const dailyRate = item.userCTC / 22;
         const estimatedCost = manDays * dailyRate;
 
         return {
@@ -239,7 +366,6 @@ export const getDeveloperCalendarSummary = async ({ startDate, endDate, projectI
 };
 
 export const getEmployeeOverview = async ({ startDate, endDate } = {}) => {
-    // Fetch all profiles with roles
     const { data: profiles, error: profileError } = await supabaseAdmin
         .from('profiles')
         .select(`
@@ -248,15 +374,16 @@ export const getEmployeeOverview = async ({ startDate, endDate } = {}) => {
         `);
     if (profileError) throw profileError;
 
-    // Filter out Super Admins and Management department
+    const sDate = startDate ? startDate.slice(0, 10) : null;
+    const eDate = endDate ? endDate.slice(0, 10) : null;
+
     const filteredProfiles = profiles.filter(p => {
-        const roles = p.user_roles?.map(ur => ur.role?.name) || [];
-        const isSuperAdmin = roles.includes('Super Admin') || roles.includes('super_admin');
-        const isManagement = p.department?.toLowerCase() === 'management';
+        const roles = p.user_roles?.map(ur => ur.role?.name.toLowerCase()) || [];
+        const isSuperAdmin = roles.includes('super admin') || roles.includes('super_admin');
+        const isManagement = String(p.department || '').toLowerCase() === 'management';
         return !isSuperAdmin && !isManagement;
     });
 
-    // Fetch tasks
     let taskQuery = supabaseAdmin
         .from('tasks')
         .select('assigned_to, status, actual_hours, created_at');
@@ -270,12 +397,11 @@ export const getEmployeeOverview = async ({ startDate, endDate } = {}) => {
     const { data: tasks, error: taskError } = await taskQuery;
     if (taskError) throw taskError;
 
-    // Fetch timesheet entries for the period
     let tsQuery = supabaseAdmin
         .from('timesheet_entries')
         .select(`
-            id, hours_spent, title,
-            timesheet:timesheets (
+            id, hours_spent, title, status,
+            timesheet:timesheets!inner (
                 work_date,
                 user_id
             ),
@@ -286,14 +412,16 @@ export const getEmployeeOverview = async ({ startDate, endDate } = {}) => {
             )
         `);
 
-    if (startDate) tsQuery = tsQuery.gte('timesheet.work_date', startDate);
-    if (endDate) tsQuery = tsQuery.lte('timesheet.work_date', endDate);
+    if (sDate) tsQuery = tsQuery.gte('timesheet.work_date', sDate);
+    if (eDate) tsQuery = tsQuery.lte('timesheet.work_date', eDate);
 
-    const { data: tsEntries, error: tsError } = await tsQuery;
+    const { data: tsEntries } = await tsQuery;
 
-    // Aggregate metrics by user
     const userMetrics = {};
     filteredProfiles.forEach(p => {
+        const roles = p.user_roles?.map(ur => ur.role?.name.toLowerCase()) || [];
+        const isTester = roles.includes('tester');
+
         userMetrics[p.id] = {
             id: p.id,
             full_name: p.full_name,
@@ -301,26 +429,64 @@ export const getEmployeeOverview = async ({ startDate, endDate } = {}) => {
             department: p.department,
             designation: p.designation,
             avatar_url: p.avatar_url,
+            isTester,
             total_tasks: 0,
-            pending_tasks: 0,
-            done_tasks: 0,
+            tasks: { total: 0, verified: 0, failed: 0 },
+            todos: { total: 0, verified: 0, failed: 0 },
             total_hours: 0,
             timesheet_items: [],
-            sales_stats: null // For BDMs/Marketing
+            sales_stats: null
         };
     });
 
-    // Identify BDMs and fetch leads
+    tasks.forEach(t => {
+        if (t.assigned_to && userMetrics[t.assigned_to]) {
+            const m = userMetrics[t.assigned_to];
+            m.total_tasks++;
+            m.tasks.total++;
+            const status = String(t.status || '').toLowerCase();
+            if (status === 'verified') m.tasks.verified++;
+            else if (status === 'failed') m.tasks.failed++;
+        }
+    });
+
+    if (tsEntries) {
+        tsEntries.forEach(entry => {
+            const userId = entry.timesheet?.user_id;
+            const workDate = entry.timesheet?.work_date;
+
+            if (sDate && workDate < sDate) return;
+            if (eDate && workDate > eDate) return;
+
+            if (userId && userMetrics[userId]) {
+                const m = userMetrics[userId];
+                const hours = parseTime(entry.hours_spent);
+                m.total_hours += hours;
+
+                m.todos.total++;
+                const status = String(entry.status || '').toLowerCase();
+                if (status === 'verified') m.todos.verified++;
+                else if (status === 'failed') m.todos.failed++;
+
+                m.timesheet_items.push({
+                    id: entry.id,
+                    title: entry.title,
+                    hours: entry.hours_spent,
+                    date: workDate,
+                    project: entry.task?.project?.name || 'No Project'
+                });
+            }
+        });
+    }
+
     const bdmProfileIds = filteredProfiles
         .filter(p => {
-            const roles = p.user_roles?.map(ur => ur.role?.name) || [];
-            return roles.includes('BDM') || p.department?.toLowerCase() === 'marketing';
+            const roles = p.user_roles?.map(ur => ur.role?.name.toLowerCase()) || [];
+            return roles.includes('bdm') || String(p.department || '').toLowerCase() === 'marketing';
         })
         .map(p => p.id);
 
-    let leads = [];
     if (bdmProfileIds.length > 0) {
-        // Initialize sales_stats for all identified BDMs
         bdmProfileIds.forEach(id => {
             if (userMetrics[id]) {
                 userMetrics[id].sales_stats = {
@@ -343,80 +509,38 @@ export const getEmployeeOverview = async ({ startDate, endDate } = {}) => {
             const end = endDate.includes('T') ? endDate : `${endDate} 23:59:59.999`;
             leadQuery = leadQuery.lte('created_at', end);
         }
-        const { data: leadsData } = await leadQuery;
-        leads = leadsData || [];
+
+        const fetchLeads = async () => {
+            const { data: leadsData } = await leadQuery;
+            (leadsData || []).forEach(l => {
+                if (l.assigned_agent_id && userMetrics[l.assigned_agent_id]) {
+                    const m = userMetrics[l.assigned_agent_id];
+                    const s = m.sales_stats;
+                    if (!s) return;
+                    const val = parseFloat(l.deal_value || 0);
+                    s.total_leads++;
+                    const status = String(l.status || '').toLowerCase();
+                    if (status === 'won') {
+                        s.won_count++;
+                        s.won_value += val;
+                    } else if (status === 'proposal') {
+                        s.pipeline_value += val;
+                    }
+                    if (['proposal', 'won'].includes(status)) {
+                        s.quotation_count++;
+                    }
+                }
+            });
+        };
+        await fetchLeads();
     }
 
-    tasks.forEach(t => {
-        if (t.assigned_to && userMetrics[t.assigned_to]) {
-            const m = userMetrics[t.assigned_to];
-            m.total_tasks++;
-            if (['done', 'verified'].includes(t.status)) m.done_tasks++;
-            else m.pending_tasks++;
-        }
-    });
-
-    // Aggregate sales metrics for BDMs
-    leads.forEach(l => {
-        if (l.assigned_agent_id && userMetrics[l.assigned_agent_id]) {
-            const m = userMetrics[l.assigned_agent_id];
-            const s = m.sales_stats;
-            if (!s) return; // Should not happen now
-
-            const val = parseFloat(l.deal_value || 0);
-            s.total_leads++;
-            if (l.status === 'Won') {
-                s.won_count++;
-                s.won_value += val;
-            } else if (l.status === 'Proposal') {
-                s.pipeline_value += val;
-            }
-            if (['Proposal', 'Won'].includes(l.status)) {
-                s.quotation_count++;
-            }
-        }
-    });
-
-    // Calculate conversion rates
     Object.values(userMetrics).forEach(m => {
         if (m.sales_stats && m.sales_stats.total_leads > 0) {
             m.sales_stats.conversion_rate = (m.sales_stats.won_count / m.sales_stats.total_leads) * 100;
         }
     });
 
-    if (tsEntries) {
-        tsEntries.forEach(entry => {
-            const userId = entry.timesheet?.user_id;
-            const workDate = entry.timesheet?.work_date;
-
-            // Manual date check if query filter was broad
-            if (startDate && workDate < startDate) return;
-            if (endDate && workDate > endDate) return;
-
-            if (userId && userMetrics[userId]) {
-                const m = userMetrics[userId];
-
-                // Helper to parse HH:MM to decimal hours for summing
-                const parseTime = (timeStr) => {
-                    if (!timeStr || !timeStr.includes(':')) return 0;
-                    const [h, m] = timeStr.split(':').map(Number);
-                    return h + (m / 60);
-                };
-
-                const hours = parseTime(entry.hours_spent);
-                m.total_hours += hours;
-                m.timesheet_items.push({
-                    id: entry.id,
-                    title: entry.title,
-                    hours: entry.hours_spent,
-                    date: workDate,
-                    project: entry.task?.project?.name || 'No Project'
-                });
-            }
-        });
-    }
-
-    // Group by department
     const grouped = {};
     Object.values(userMetrics).forEach(m => {
         const dept = m.department || 'Other';

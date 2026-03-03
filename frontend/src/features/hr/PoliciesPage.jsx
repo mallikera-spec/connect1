@@ -11,7 +11,6 @@ export default function PoliciesPage() {
                 {
                     title: 'Leave Policy',
                     content: [
-                        { name: 'Sick Leave', limit: '12 Days/FY', desc: 'For medical needs. Leaves do not roll over to next FY.' },
                         { name: 'Earned Leave', limit: '18 Days/FY', desc: '1 day/month (first 6 mo), then 1.5. No rollover to next FY.' },
                         { name: 'Unpaid Leave', limit: 'As needed', desc: 'Available for emergencies. Results in salary deduction.' }
                     ]

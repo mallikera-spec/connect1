@@ -8,7 +8,9 @@ import { Clock, Calendar, ArrowRight, DollarSign, TrendingUp, FileText, CheckCir
 export default function AdminDashboard({ dateRange }) {
     const navigate = useNavigate();
     const [stats, setStats] = useState(null);
-    const [employeeOverview, setEmployeeOverview] = useState(null);
+    const [bdms, setBdms] = useState([]);
+    const [testers, setTesters] = useState([]);
+    const [developers, setDevelopers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [hrStats, setHrStats] = useState({ pendingAttendance: 0, pendingLeaves: 0 });
     const [salesStats, setSalesStats] = useState({ pipelineValue: 0, wonValue: 0, conversionRate: 0 });
@@ -26,7 +28,28 @@ export default function AdminDashboard({ dateRange }) {
         ])
             .then(([res1, res2, res3, res4]) => {
                 setStats(res1.data.data);
-                if (res2) setEmployeeOverview(res2.data.data);
+
+                if (res2) {
+                    const allDepts = res2.data.data || {};
+                    const bdmList = [];
+                    const testerList = [];
+                    const developerList = [];
+                    Object.values(allDepts).forEach(users => {
+                        users.forEach(u => {
+                            // Check roles or department for developer identification
+                            const isDeveloper = !u.isTester && !u.sales_stats &&
+                                (u.department?.toLowerCase() === 'engineering' || u.department?.toLowerCase() === 'development');
+
+                            if (u.sales_stats) bdmList.push(u);
+                            else if (u.isTester) testerList.push(u);
+                            else if (isDeveloper) developerList.push(u);
+                        });
+                    });
+                    setBdms(bdmList);
+                    setTesters(testerList);
+                    setDevelopers(developerList);
+                }
+
                 if (res3) setSalesStats(res3.data.data);
                 if (res4) setOverallMilestones(res4.data.data);
             })
@@ -94,6 +117,16 @@ export default function AdminDashboard({ dateRange }) {
                         <h3 style={{ fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Tasks</h3>
                     </div>
                     <div className="polished-card-body">
+                        <div
+                            className="report-row clickable-row polished-row"
+                            onClick={() => navigate('/tasks', { state: { startDate: dateRange.startDate, endDate: dateRange.endDate } })}
+                        >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                <div className="status-dot" style={{ background: 'var(--text-dim)' }} />
+                                <span style={{ textTransform: 'capitalize', fontSize: 13, fontWeight: 500 }}>Total</span>
+                            </div>
+                            <span style={{ fontWeight: 700, fontSize: 14 }}>{stats.total_tasks || 0}</span>
+                        </div>
                         {Object.entries(stats.tasks_by_status || {}).map(([status, count]) => (
                             <div
                                 className="report-row clickable-row polished-row"
@@ -121,6 +154,18 @@ export default function AdminDashboard({ dateRange }) {
                         <h3 style={{ fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Organization Timesheets</h3>
                     </div>
                     <div className="polished-card-body">
+                        <div
+                            className="report-row clickable-row polished-row"
+                            onClick={() => navigate('/timesheet', { state: { startDate: dateRange.startDate, endDate: dateRange.endDate } })}
+                        >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                <div className="status-dot" style={{ background: 'var(--text-dim)' }} />
+                                <span style={{ textTransform: 'capitalize', fontSize: 13, fontWeight: 500 }}>Total</span>
+                            </div>
+                            <span style={{ fontWeight: 700, fontSize: 14 }}>
+                                {Object.values(stats.timesheet_tasks_by_status || {}).reduce((a, b) => a + b, 0)}
+                            </span>
+                        </div>
                         {Object.entries(stats.timesheet_tasks_by_status || {}).map(([status, count]) => (
                             <div
                                 className="report-row clickable-row polished-row"
@@ -236,26 +281,48 @@ export default function AdminDashboard({ dateRange }) {
                 </div>
             </div>
 
-            {employeeOverview && (
+            {bdms.length > 0 && (
                 <div style={{ marginTop: '32px' }}>
-                    <h2 style={{ fontSize: '18px', fontWeight: 600, marginBottom: '20px' }}>Employee Performance Overview</h2>
-                    {Object.entries(employeeOverview).map(([dept, employees]) => (
-                        <div key={dept} style={{ marginBottom: '32px' }}>
-                            <h3 style={{ fontSize: '14px', color: 'var(--accent-light)', fontWeight: 600, marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <span style={{ padding: '4px 12px', background: 'var(--accent-transparent)', borderRadius: '20px' }}>{dept}</span>
-                                <span style={{ fontSize: '12px', color: 'var(--text-dim)', fontWeight: 400 }}>{employees.length} Members</span>
-                            </h3>
-                            <div style={{
-                                display: 'grid',
-                                gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
-                                gap: '24px'
-                            }}>
-                                {employees.map(emp => (
-                                    <EmployeeCard key={emp.id} employee={emp} isAdminView={true} currentRange={dateRange} />
-                                ))}
-                            </div>
-                        </div>
-                    ))}
+                    <h2 style={{ fontSize: '18px', fontWeight: 600, marginBottom: '20px' }}>BDM Performance Overview</h2>
+                    <div style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
+                        gap: '24px'
+                    }}>
+                        {bdms.map(emp => (
+                            <EmployeeCard key={emp.id} employee={emp} isAdminView={true} currentRange={dateRange} />
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {testers.length > 0 && (
+                <div style={{ marginTop: '32px' }}>
+                    <h2 style={{ fontSize: '18px', fontWeight: 600, marginBottom: '20px' }}>Tester Performance Overview</h2>
+                    <div style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
+                        gap: '24px'
+                    }}>
+                        {testers.map(emp => (
+                            <EmployeeCard key={emp.id} employee={emp} isAdminView={true} currentRange={dateRange} />
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {developers.length > 0 && (
+                <div style={{ marginTop: '32px' }}>
+                    <h2 style={{ fontSize: '18px', fontWeight: 600, marginBottom: '20px' }}>Developer Performance Overview</h2>
+                    <div style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
+                        gap: '24px'
+                    }}>
+                        {developers.map(emp => (
+                            <EmployeeCard key={emp.id} employee={emp} isAdminView={true} currentRange={dateRange} />
+                        ))}
+                    </div>
                 </div>
             )}
         </div>

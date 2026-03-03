@@ -15,7 +15,7 @@ export default function HRDashboard() {
     const [mySlips, setMySlips] = useState([]);
 
     const [isLeaveModalOpen, setIsLeaveModalOpen] = useState(false);
-    const [leaveForm, setLeaveForm] = useState({ start_date: '', end_date: '', type: 'Sick Leave', leave_type_id: '', reason: '' });
+    const [leaveForm, setLeaveForm] = useState({ start_date: '', end_date: '', type: 'Earned Leave', leave_type_id: '', reason: '' });
     const [submitting, setSubmitting] = useState(false);
 
     useEffect(() => {
@@ -65,7 +65,7 @@ export default function HRDashboard() {
             setLeaveForm({
                 start_date: '',
                 end_date: '',
-                type: leaveTypes[0]?.name || 'Sick Leave',
+                type: leaveTypes[0]?.name || 'Earned Leave',
                 leave_type_id: leaveTypes[0]?.id || '',
                 reason: ''
             });

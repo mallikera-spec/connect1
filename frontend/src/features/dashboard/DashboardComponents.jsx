@@ -78,7 +78,7 @@ export function EmployeeCard({ employee, isAdminView, currentRange }) {
                 transition: 'transform 0.2s, box-shadow 0.2s',
                 height: '100%' // Ensure uniform height
             }}
-            onClick={goToPersonalTimesheet}
+            onClick={() => goToPersonalTimesheet()}
             onMouseOver={(e) => isAdminView && (e.currentTarget.style.transform = 'translateY(-4px)')}
             onMouseOut={(e) => isAdminView && (e.currentTarget.style.transform = 'translateY(0)')}
         >
@@ -152,21 +152,17 @@ export function EmployeeCard({ employee, isAdminView, currentRange }) {
                     {/* Tasks Row */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                         <div style={{ fontSize: '10px', fontWeight: 800, color: 'var(--text-dim)', textTransform: 'uppercase', minWidth: '40px' }}>Tasks</div>
-                        <div className="stats-grid" style={{ flex: 1, gridTemplateColumns: 'repeat(4, 1fr)', gap: '4px', marginBottom: 0 }}>
+                        <div className="stats-grid" style={{ flex: 1, gridTemplateColumns: 'repeat(3, 1fr)', gap: '4px', marginBottom: 0 }}>
                             <div className="metric-box" onClick={(e) => { e.stopPropagation(); goToTasks(); }}>
-                                <div className="metric-val">{employee.tasks?.total || 0}</div>
+                                <div className="metric-val">{employee.tasks?.total ?? employee.total_tasks ?? 0}</div>
                                 <div className="metric-lbl">Total</div>
                             </div>
-                            <div className="metric-box" onClick={(e) => { e.stopPropagation(); goToTasks('pending'); }}>
-                                <div className="metric-val" style={{ color: 'var(--accent-light)' }}>{employee.tasks?.pending || 0}</div>
-                                <div className="metric-lbl">Pending</div>
-                            </div>
-                            <div className="metric-box" onClick={(e) => { e.stopPropagation(); goToTasks('done'); }}>
-                                <div className="metric-val" style={{ color: 'var(--success)' }}>{employee.tasks?.done || 0}</div>
-                                <div className="metric-lbl">Done</div>
+                            <div className="metric-box" onClick={(e) => { e.stopPropagation(); goToTasks('verified'); }}>
+                                <div className="metric-val" style={{ color: 'var(--success)' }}>{employee.tasks?.verified ?? employee.verified_tasks ?? 0}</div>
+                                <div className="metric-lbl">Verified</div>
                             </div>
                             <div className="metric-box" onClick={(e) => { e.stopPropagation(); goToTasks('failed'); }}>
-                                <div className="metric-val" style={{ color: '#ef4444' }}>{employee.tasks?.failed || 0}</div>
+                                <div className="metric-val" style={{ color: '#ef4444' }}>{employee.tasks?.failed ?? employee.failed_tasks ?? 0}</div>
                                 <div className="metric-lbl">Failed</div>
                             </div>
                         </div>
@@ -177,25 +173,52 @@ export function EmployeeCard({ employee, isAdminView, currentRange }) {
                     {/* Todos Row */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                         <div style={{ fontSize: '10px', fontWeight: 800, color: 'var(--text-dim)', textTransform: 'uppercase', minWidth: '40px' }}>Todos</div>
-                        <div className="stats-grid" style={{ flex: 1, gridTemplateColumns: 'repeat(4, 1fr)', gap: '4px', marginBottom: 0 }}>
+                        <div className="stats-grid" style={{ flex: 1, gridTemplateColumns: 'repeat(3, 1fr)', gap: '4px', marginBottom: 0 }}>
                             <div className="metric-box" onClick={(e) => { e.stopPropagation(); goToPersonalTimesheet(); }}>
-                                <div className="metric-val">{employee.todos?.total || 0}</div>
+                                <div className="metric-val">{employee.todos?.total ?? employee.total_todos ?? 0}</div>
                                 <div className="metric-lbl">Total</div>
                             </div>
-                            <div className="metric-box" onClick={(e) => { e.stopPropagation(); goToPersonalTimesheet('todo'); }}>
-                                <div className="metric-val" style={{ color: 'var(--accent-light)' }}>{employee.todos?.pending || 0}</div>
-                                <div className="metric-lbl">Pending</div>
-                            </div>
-                            <div className="metric-box" onClick={(e) => { e.stopPropagation(); goToPersonalTimesheet('done'); }}>
-                                <div className="metric-val" style={{ color: 'var(--success)' }}>{employee.todos?.done || 0}</div>
-                                <div className="metric-lbl">Done</div>
+                            <div className="metric-box" onClick={(e) => { e.stopPropagation(); goToPersonalTimesheet('verified'); }}>
+                                <div className="metric-val" style={{ color: 'var(--success)' }}>{employee.todos?.verified ?? employee.verified_todos ?? 0}</div>
+                                <div className="metric-lbl">Verified</div>
                             </div>
                             <div className="metric-box" onClick={(e) => { e.stopPropagation(); goToPersonalTimesheet('failed'); }}>
-                                <div className="metric-val" style={{ color: '#ef4444' }}>{employee.todos?.failed || 0}</div>
+                                <div className="metric-val" style={{ color: '#ef4444' }}>{employee.todos?.failed ?? employee.failed_todos ?? 0}</div>
                                 <div className="metric-lbl">Failed</div>
                             </div>
                         </div>
                     </div>
+
+                    {employee.metrics && (
+                        <>
+                            <div style={{ height: '1px', background: 'var(--border)', opacity: 0.5, margin: '4px 0' }} />
+
+                            {/* Quality/Performance Row */}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                <div style={{ fontSize: '10px', fontWeight: 800, color: 'var(--text-dim)', textTransform: 'uppercase', minWidth: '40px' }}>Perf.</div>
+                                <div className="stats-grid" style={{ flex: 1, gridTemplateColumns: 'repeat(3, 1fr)', gap: '4px', marginBottom: 0 }}>
+                                    <div className="metric-box" style={{ cursor: 'default' }} onClick={(e) => e.stopPropagation()}>
+                                        <div className="metric-val" style={{ color: employee.metrics.qa_pass_rate >= 90 ? 'var(--success)' : (employee.metrics.qa_pass_rate >= 70 ? 'var(--warning)' : '#ef4444') }}>
+                                            {employee.metrics.qa_pass_rate.toFixed(0)}%
+                                        </div>
+                                        <div className="metric-lbl">QA Pass</div>
+                                    </div>
+                                    <div className="metric-box" style={{ cursor: 'default' }} onClick={(e) => e.stopPropagation()}>
+                                        <div className="metric-val" style={{ color: employee.metrics.estimation_accuracy > 0 && employee.metrics.estimation_accuracy <= 110 ? 'var(--success)' : 'var(--warning)' }}>
+                                            {employee.metrics.estimation_accuracy > 0 ? employee.metrics.estimation_accuracy.toFixed(0) + '%' : '—'}
+                                        </div>
+                                        <div className="metric-lbl">Est. Acc.</div>
+                                    </div>
+                                    <div className="metric-box" style={{ cursor: 'default' }} onClick={(e) => e.stopPropagation()}>
+                                        <div className="metric-val" style={{ color: employee.metrics.blocker_frequency > 15 ? '#ef4444' : 'var(--text)' }}>
+                                            {employee.metrics.blocker_frequency.toFixed(0)}%
+                                        </div>
+                                        <div className="metric-lbl">Blocked</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </>
+                    )}
                 </div>
             )}
 

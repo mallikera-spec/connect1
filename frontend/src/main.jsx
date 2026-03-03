@@ -21,9 +21,14 @@ createRoot(document.getElementById('root')).render(
             toastOptions={{
               style: {
                 background: 'var(--bg-card)',
-                color: 'var(--text-primary)',
+                color: 'var(--text)',
                 border: '1px solid var(--border)',
                 fontSize: '13px',
+                backdropFilter: 'blur(10px)',
+                boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
+                padding: '12px 16px',
+                borderRadius: '12px',
+                fontWeight: '600',
               },
             }}
           />

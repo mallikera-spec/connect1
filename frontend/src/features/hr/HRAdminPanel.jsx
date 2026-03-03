@@ -62,7 +62,7 @@ export default function HRAdminPanel() {
             empList.forEach(e => {
                 settingsMap[e.id] = {
                     joining_date: e.date_of_joining || e.joining_date || '',
-                    base_salary: e.base_salary || '',
+                    ctc: e.ctc || e.base_salary || '',
                 };
             });
             setEmpSettings(settingsMap);
@@ -95,7 +95,12 @@ export default function HRAdminPanel() {
             await fetch(`${import.meta.env.VITE_API_URL}/api/v1/users/${userId}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
-                body: JSON.stringify({ joining_date: settings.joining_date || null, base_salary: parseFloat(settings.base_salary) || 0 })
+                body: JSON.stringify({
+                    joining_date: settings.joining_date || null,
+                    date_of_joining: settings.joining_date || null,
+                    ctc: parseFloat(settings.ctc) || 0,
+                    base_salary: parseFloat(settings.ctc) || 0
+                })
             });
 
             // Trigger sync for this user specifically or all
@@ -466,9 +471,9 @@ export default function HRAdminPanel() {
             {activeTab === 'employees' && (
                 <div className="table-wrapper">
                     <div className="table-toolbar">
-                        <h2 style={{ fontSize: 15, fontWeight: 600 }}>Employee HR Settings</h2>
+                        <h2 style={{ fontSize: 15, fontWeight: 600 }}>Employee HR & Costing Settings</h2>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                            <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Set joining date & base salary to calculate correct leave balance</span>
+                            <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Set joining date & Annual CTC for leave balance and project costing</span>
                             <button className="btn btn-ghost btn-sm"
                                 onClick={handleSyncAll}
                                 disabled={syncing}
@@ -485,7 +490,7 @@ export default function HRAdminPanel() {
                                 <SortableHeader sortKey="full_name" label="Employee" currentSortKey={empSK} sortDir={empSD} onSort={empSort} />
                                 <SortableHeader sortKey="department" label="Department" currentSortKey={empSK} sortDir={empSD} onSort={empSort} />
                                 <th>Joining Date</th>
-                                <th>Base Salary (₹)</th>
+                                <th>Annual CTC (₹)</th>
                                 <th style={{ textAlign: 'right' }}>Action</th>
                             </tr>
                         </thead>
@@ -507,9 +512,9 @@ export default function HRAdminPanel() {
                                     <td>
                                         <input type="number" className="form-input"
                                             style={{ fontSize: 13, padding: '6px 10px' }}
-                                            placeholder="e.g. 50000"
-                                            value={empSettings[emp.id]?.base_salary || ''}
-                                            onChange={e => setEmpSettings(p => ({ ...p, [emp.id]: { ...p[emp.id], base_salary: e.target.value } }))}
+                                            placeholder="e.g. 1200000"
+                                            value={empSettings[emp.id]?.ctc || ''}
+                                            onChange={e => setEmpSettings(p => ({ ...p, [emp.id]: { ...p[emp.id], ctc: e.target.value } }))}
                                         />
                                     </td>
                                     <td style={{ textAlign: 'right' }}>

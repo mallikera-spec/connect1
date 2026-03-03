@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
-import { useLocation } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { Plus, Pencil, Trash2, X, Calendar, ShieldCheck, AlertCircle } from 'lucide-react'
 import api from '../../lib/api'
 import toast from 'react-hot-toast'
@@ -19,6 +19,7 @@ export default function TasksPage() {
     const canDelete = hasPermission('delete_task')
     const isManager = hasPermission('manage_projects') || hasPermission('manage_employees')
     const location = useLocation()
+    const navigate = useNavigate()
 
     const [tasks, setTasks] = useState([])
     const [projects, setProjects] = useState([])
@@ -67,7 +68,7 @@ export default function TasksPage() {
     useEffect(() => { load() }, [filters])
 
     useEffect(() => {
-        if (location.state) {
+        if (location.state && Object.keys(location.state).length > 0) {
             const newState = {
                 project_id: location.state.project_id || '',
                 status: location.state.status || '',
@@ -82,10 +83,10 @@ export default function TasksPage() {
                 openCreate();
             }
 
-            // Clear the state to avoid sticky filters on refresh or back navigation
-            window.history.replaceState({}, document.title);
+            // Safely clear the location state via React Router so it doesn't persist on refresh
+            navigate(location.pathname, { replace: true, state: {} });
         }
-    }, [location.state]);
+    }, [location.state, location.pathname, navigate]);
 
     const openCreate = () => {
         setForm({ ...EMPTY_FORM, assigned_to: isManager ? '' : user?.id })
