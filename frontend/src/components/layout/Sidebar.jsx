@@ -78,11 +78,14 @@ const NAV = [
     },
 ]
 
-export default function Sidebar() {
+import { X } from 'lucide-react'
+
+export default function Sidebar({ mobileOpen, setMobileOpen }) {
     const [collapsed, setCollapsed] = useState(false)
     const [expandedGroups, setExpandedGroups] = useState(['Overview', 'Project Management', 'Testing Module'])
     const { logout, hasPermission, hasRole } = useAuth()
     const navigate = useNavigate()
+    const isActuallyCollapsed = collapsed && !mobileOpen;
 
     const handleLogout = async () => {
         await logout()
@@ -126,10 +129,21 @@ export default function Sidebar() {
         .filter(group => group.items.length > 0)
 
     return (
-        <aside className={`sidebar${collapsed ? ' collapsed' : ''}`}>
+        <aside className={`sidebar${isActuallyCollapsed ? ' collapsed' : ''}${mobileOpen ? ' mobile-open' : ''}`}>
             <div className="sidebar-brand">
-                <div className="brand-logo">R</div>
-                {!collapsed && <span className="brand-name">ArgosMob - Connect</span>}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
+                    <div className="brand-logo">R</div>
+                    {!isActuallyCollapsed && <span className="brand-name">ArgosMob - Connect</span>}
+                </div>
+
+                {mobileOpen && (
+                    <button
+                        className="btn-icon mobile-only"
+                        onClick={() => setMobileOpen(false)}
+                    >
+                        <X size={20} />
+                    </button>
+                )}
             </div>
 
             <nav className="sidebar-nav">
@@ -142,20 +156,20 @@ export default function Sidebar() {
                             <button
                                 className={`sidebar-section-header ${isExpanded ? 'active' : ''}`}
                                 onClick={() => toggleGroup(group.section)}
-                                title={collapsed ? group.section : ''}
+                                title={isActuallyCollapsed ? group.section : ''}
                             >
                                 <div className="section-title">
                                     <SectionIcon size={18} />
-                                    {!collapsed && <span>{group.section}</span>}
+                                    {!isActuallyCollapsed && <span>{group.section}</span>}
                                 </div>
-                                {!collapsed && (
+                                {!isActuallyCollapsed && (
                                     <div className={`chevron ${isExpanded ? 'rotate' : ''}`}>
                                         <ChevronRight size={14} />
                                     </div>
                                 )}
                             </button>
 
-                            {isExpanded && !collapsed && (
+                            {isExpanded && !isActuallyCollapsed && (
                                 <div className="sidebar-sub-menu">
                                     {group.items.map(({ to, icon: Icon, label }) => {
                                         const displayLabel = (label === 'BDM Performance' && hasRole('bdm')) ? 'My Performance' : label;
@@ -180,11 +194,11 @@ export default function Sidebar() {
             <div className="sidebar-footer">
                 <button className="nav-item" onClick={handleLogout} title="Sign out">
                     <LogOut size={18} />
-                    {!collapsed && <span>Sign out</span>}
+                    {!isActuallyCollapsed && <span>Sign out</span>}
                 </button>
                 <button className="nav-item" onClick={() => setCollapsed(c => !c)} style={{ marginTop: 4 }}>
-                    {collapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
-                    {!collapsed && <span>Collapse</span>}
+                    {isActuallyCollapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
+                    {!isActuallyCollapsed && <span>Collapse</span>}
                 </button>
             </div>
         </aside>

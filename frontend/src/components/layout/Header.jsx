@@ -2,7 +2,7 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { useTheme } from '../../context/ThemeContext'
 import { useNotifications } from '../../context/NotificationContext'
-import { Sun, Moon, Monitor, Bell, CheckCheck, Inbox } from 'lucide-react'
+import { Sun, Moon, Monitor, Bell, CheckCheck, Inbox, Menu } from 'lucide-react'
 import { useState, useRef, useEffect } from 'react'
 
 const TITLES = {
@@ -22,7 +22,7 @@ const THEMES = [
     { value: 'system', icon: Monitor, title: 'System' },
 ]
 
-export default function Header() {
+export default function Header({ onMenuClick }) {
     const { pathname } = useLocation()
     const navigate = useNavigate()
     const { user } = useAuth()
@@ -35,6 +35,13 @@ export default function Header() {
     return (
         <header className="header">
             <div className="header-left">
+                <button
+                    className="btn-icon mobile-only"
+                    onClick={onMenuClick}
+                    style={{ marginRight: '8px' }}
+                >
+                    <Menu size={20} />
+                </button>
                 <span className="page-title">{title}</span>
             </div>
             <div className="header-right">

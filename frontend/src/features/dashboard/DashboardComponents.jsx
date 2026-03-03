@@ -102,49 +102,51 @@ export function EmployeeCard({ employee, isAdminView, currentRange }) {
             </div>
 
             {isBDM && employee.sales_stats && (
-                <div className="stats-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px', marginBottom: 0 }}>
+                <div className="stats-grid-mini" style={{ marginBottom: 0 }}>
                     <div
-                        style={{ background: 'var(--bg-app)', padding: '8px', borderRadius: '8px', textAlign: 'center', cursor: 'pointer', border: '1px solid var(--border)' }}
+                        className="metric-box"
                         onClick={(e) => { e.stopPropagation(); navigate('/leads', { state: { agent: employee.id, startDate: currentRange?.startDate, endDate: currentRange?.endDate } }); }}
                     >
-                        <div style={{ fontSize: '14px', fontWeight: 800 }}>{employee.sales_stats.total_leads || 0}</div>
-                        <div style={{ fontSize: '8px', color: 'var(--text-dim)', textTransform: 'uppercase', fontWeight: 600 }}>Leads</div>
+                        <div className="metric-val">{employee.sales_stats.total_leads || 0}</div>
+                        <div className="metric-lbl">Leads</div>
                     </div>
                     <div
-                        style={{ background: 'var(--bg-app)', padding: '8px', borderRadius: '8px', textAlign: 'center', cursor: 'pointer', border: '1px solid var(--border)' }}
+                        className="metric-box"
                         onClick={(e) => { e.stopPropagation(); navigate('/leads', { state: { agent: employee.id, status: 'Proposal', startDate: currentRange?.startDate, endDate: currentRange?.endDate } }); }}
                     >
-                        <div style={{ fontSize: '14px', fontWeight: 800, color: 'var(--accent-light)' }}>
+                        <div className="metric-val" style={{ color: 'var(--accent-light)' }}>
                             ₹{Math.round((employee.sales_stats.pipeline_value || 0) / 1000)}k
                         </div>
-                        <div style={{ fontSize: '8px', color: 'var(--text-dim)', textTransform: 'uppercase', fontWeight: 600 }}>Pipeline</div>
+                        <div className="metric-lbl">Pipeline</div>
                     </div>
                     <div
-                        style={{ background: 'var(--bg-app)', padding: '8px', borderRadius: '8px', textAlign: 'center', cursor: 'pointer', border: '1px solid var(--border)' }}
+                        className="metric-box"
                         onClick={(e) => { e.stopPropagation(); navigate('/leads', { state: { agent: employee.id, status: 'Won', startDate: currentRange?.startDate, endDate: currentRange?.endDate } }); }}
                     >
-                        <div style={{ fontSize: '14px', fontWeight: 800, color: 'var(--success)' }}>
+                        <div className="metric-val" style={{ color: 'var(--success)' }}>
                             ₹{Math.round((employee.sales_stats.won_value || 0) / 1000)}k
                         </div>
-                        <div style={{ fontSize: '8px', color: 'var(--text-dim)', textTransform: 'uppercase', fontWeight: 600 }}>Won Value</div>
+                        <div className="metric-lbl">Won Value</div>
                     </div>
                     <div
-                        style={{ background: 'var(--bg-app)', padding: '8px', borderRadius: '8px', textAlign: 'center', cursor: 'pointer', border: '1px solid var(--border)', gridColumn: 'span 1' }}
+                        className="metric-box"
+                        style={{ gridColumn: 'span 1' }}
                         onClick={(e) => { e.stopPropagation(); navigate('/leads', { state: { agent: employee.id, status: 'Won', startDate: currentRange?.startDate, endDate: currentRange?.endDate } }); }}
                     >
-                        <div style={{ fontSize: '14px', fontWeight: 800, color: '#f59e0b' }}>
+                        <div className="metric-val" style={{ color: '#f59e0b' }}>
                             {(employee.sales_stats.conversion_rate || 0).toFixed(1)}%
                         </div>
-                        <div style={{ fontSize: '8px', color: 'var(--text-dim)', textTransform: 'uppercase', fontWeight: 600 }}>Conv. Rate</div>
+                        <div className="metric-lbl">Conv. Rate</div>
                     </div>
                     <div
-                        style={{ background: 'var(--bg-app)', padding: '8px', borderRadius: '8px', textAlign: 'center', cursor: 'pointer', border: '1px solid var(--border)', gridColumn: 'span 2' }}
+                        className="metric-box"
+                        style={{ gridColumn: 'span 2' }}
                         onClick={(e) => { e.stopPropagation(); navigate('/leads', { state: { agent: employee.id, startDate: currentRange?.startDate, endDate: currentRange?.endDate } }); }}
                     >
-                        <div style={{ fontSize: '14px', fontWeight: 800, color: 'var(--info)' }}>
+                        <div className="metric-val" style={{ color: 'var(--info)' }}>
                             {employee.sales_stats.quotation_count}
                         </div>
-                        <div style={{ fontSize: '8px', color: 'var(--text-dim)', textTransform: 'uppercase', fontWeight: 600 }}>Quotations (Req)</div>
+                        <div className="metric-lbl">Quotations (Req)</div>
                     </div>
                 </div>
             )}

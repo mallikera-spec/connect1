@@ -112,12 +112,7 @@ export default function TesterDashboard({ dateRange }) {
             </div>
 
             {/* Section 3: Timesheet Todos (Quick Testing) */}
-            <div className="dashboard-section-header" style={{ marginBottom: 16 }}>
-                <h3 style={{ fontSize: 14, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--accent-light)' }}>
-                    Timesheet Todos (Quick Testing)
-                </h3>
-            </div>
-            <div className="stats-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', marginBottom: 32 }}>
+            <div className="stats-grid" style={{ marginBottom: 32 }}>
                 <StatCard
                     icon={CheckCircle2}
                     label="Todos Ready"

@@ -145,7 +145,7 @@ export default function DeveloperDashboard({ dateRange }) {
                 />
             </div>
 
-            <div className="dashboard-grid" style={{ marginTop: 24, gridTemplateColumns: 'repeat(2, 1fr)' }}>
+            <div className="dashboard-grid" style={{ marginTop: 24 }}>
                 <NotificationCard />
                 {total > 0 && (
                     <div className="card" style={{ padding: '16px 20px', height: '100%', display: 'flex', flexDirection: 'column' }}>

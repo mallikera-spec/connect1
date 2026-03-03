@@ -101,7 +101,7 @@ export default function BDMDashboard({ dateRange }) {
                 </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: '24px', alignItems: 'start' }}>
+            <div className="dashboard-main-layout">
                 {/* Left Side: Callbacks & Follow-ups */}
                 <div>
                     <div className="section-header" style={{ marginBottom: '20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>

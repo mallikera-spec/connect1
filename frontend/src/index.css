@@ -393,7 +393,8 @@ body {
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  overflow: hidden;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .table-toolbar {
@@ -422,6 +423,20 @@ body {
 table {
   width: 100%;
   border-collapse: collapse;
+  min-width: 800px;
+  /* Force minimum width to trigger scroll on small screens */
+}
+
+@media (max-width: 1024px) {
+  table {
+    min-width: 700px;
+  }
+}
+
+@media (max-width: 768px) {
+  table {
+    min-width: 600px;
+  }
 }
 
 thead th {
@@ -434,7 +449,7 @@ thead th {
   text-transform: uppercase;
   border-bottom: 1px solid var(--border);
   background: rgba(255, 255, 255, 0.05);
-  /* Slightly more visible background */
+  white-space: nowrap;
 }
 
 tbody tr {
@@ -647,7 +662,32 @@ tbody td {
   display: flex;
   flex-direction: column;
   box-shadow: var(--shadow);
-  animation: slideUp 0.2s ease;
+  animation: slideUp 0.1s ease;
+  position: relative;
+}
+
+@media (max-width: 768px) {
+  .modal-overlay {
+    padding: 10px;
+  }
+
+  .modal {
+    max-height: 95vh;
+    border-radius: 12px;
+  }
+
+  .modal-header {
+    padding: 16px 20px;
+  }
+
+  .modal-body {
+    padding: 16px 20px;
+    gap: 12px;
+  }
+
+  .modal-footer {
+    padding: 12px 20px;
+  }
 }
 
 .modal-lg {
@@ -2131,4 +2171,132 @@ tbody td {
   text-transform: uppercase;
   font-weight: 600;
   letter-spacing: 0.02em;
+}
+
+/* ── Utility Classes ── */
+.mobile-only {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .mobile-only {
+    display: flex;
+  }
+}
+
+/* ── Responsive Styles ── */
+@media (max-width: 1024px) {
+  :root {
+    --sidebar-w: 200px;
+  }
+}
+
+@media (max-width: 768px) {
+  :root {
+    --sidebar-w: 0px;
+  }
+
+  .sidebar {
+    position: fixed;
+    height: 100vh;
+    left: 0;
+    top: 0;
+    transform: translateX(-100%);
+    box-shadow: 10px 0 30px rgba(0, 0, 0, 0.5);
+    z-index: 1100;
+  }
+
+  .sidebar.mobile-open {
+    transform: translateX(0);
+    width: 240px;
+  }
+
+  /* When sidebar is open on mobile, main area shouldn't shrink anymore */
+  .sidebar.mobile-open+.main-area {
+    margin-left: 0;
+  }
+
+  .header {
+    padding: 0 16px;
+  }
+
+  .page-content {
+    padding: 16px 12px;
+  }
+
+  .stats-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .form-row {
+    grid-template-columns: 1fr !important;
+  }
+
+  .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .modal {
+    width: 95%;
+    max-height: 95vh;
+  }
+}
+
+.stats-grid-mini {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+
+@media (max-width: 480px) {
+  .stats-grid-mini {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.dashboard-main-layout {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: 24px;
+  align-items: start;
+}
+
+@media (max-width: 1024px) {
+  .dashboard-main-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .header-right .user-chip span {
+    display: none;
+  }
+
+  .stat-card .stat-value {
+    font-size: 22px;
+  }
+
+  .stat-card .stat-icon {
+    width: 40px;
+    height: 40px;
+  }
+
+  .table-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .search-input-wrap .form-input {
+    width: 100%;
+  }
+
+  .table-filters {
+    width: 100%;
+  }
+
+  .table-filters select {
+    flex: 1;
+  }
 }
