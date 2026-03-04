@@ -85,7 +85,6 @@ export default function PoliciesPage() {
         { date: '26-Jan-26', day: 'Monday', desc: 'Republic Day', status: 'Off' },
         { date: '15-Feb-26', day: 'Sunday', desc: 'Mahashivratri', status: 'Off' },
         { date: '05-Mar-26', day: 'Wednesday', desc: 'Holi', status: 'Off' },
-        { date: '26-Mar-26', day: 'Thursday', desc: 'Shri Ram Navami', status: 'Working' },
         { date: '28-Aug-26', day: 'Friday', desc: 'Raksha Bandhan', status: 'Off' },
         { date: '02-Oct-26', day: 'Friday', desc: 'Mahatma Gandhi Jayanti', status: 'Off' },
         { date: '20-Oct-26', day: 'Tuesday', desc: 'Dussehra', status: 'Off' },

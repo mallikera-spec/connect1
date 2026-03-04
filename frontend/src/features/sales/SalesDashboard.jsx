@@ -15,12 +15,60 @@ import { EmployeeCard, AttendanceWidget } from '../dashboard/DashboardComponents
 /**
  * SalesDashboard — High-level strategic overview of sales pipeline and agent performance.
  */
+
+/**
+ * Sub-component for individual follow-up items.
+ */
+function FollowUpItem({ fu, navigate }) {
+    let Icon = FileText;
+    if (fu.type === 'Call' || fu.type === 'Callback') Icon = PhoneCall;
+    if (fu.type === 'Email') Icon = Mail;
+    if (fu.type === 'Meeting') Icon = Presentation;
+
+    const isOverdue = new Date(fu.scheduled_at) < new Date() && fu.status !== 'Completed';
+
+    return (
+        <div
+            className="followup-item clickable-row"
+            onClick={() => navigate('/leads', { state: { leadId: fu.lead?.id } })}
+            style={{ display: 'flex', alignItems: 'flex-start', gap: '16px', padding: '16px 20px', borderBottom: '1px solid var(--border)' }}
+        >
+            <div style={{
+                width: 40, height: 40, borderRadius: '10px',
+                background: isOverdue ? 'rgba(239,68,68,0.1)' : 'rgba(245,158,11,0.1)',
+                color: isOverdue ? 'var(--danger)' : 'var(--warning)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
+            }}>
+                <Icon size={20} />
+            </div>
+            <div style={{ flex: 1 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '4px' }}>
+                    <div style={{ fontWeight: 600, fontSize: '15px' }}>{fu.lead?.name} <span style={{ color: 'var(--text-dim)', fontWeight: 400 }}>{fu.lead?.company ? `@ ${fu.lead.company}` : ''}</span></div>
+                    <div style={{
+                        fontSize: '12px', fontWeight: 600,
+                        color: isOverdue ? 'var(--danger)' : 'var(--text-dim)',
+                        background: isOverdue ? 'rgba(239,68,68,0.1)' : 'var(--bg-app)',
+                        padding: '4px 8px', borderRadius: '4px'
+                    }}>
+                        {new Date(fu.scheduled_at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}
+                        {isOverdue && ' (Overdue)'}
+                    </div>
+                </div>
+                <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
+                    {fu.notes || `Scheduled ${fu.type.toLowerCase()}`}
+                </div>
+            </div>
+        </div>
+    );
+}
+
 export default function SalesDashboard() {
     const navigate = useNavigate();
     const { user: currentUser } = useAuth();
     const [overallMetrics, setOverallMetrics] = useState(null);
     const [bdmStats, setBdmStats] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [activeTab, setActiveTab] = useState('callbacks'); // 'callbacks' or 'interactions'
     const [dateRange, setDateRange] = useState({
         startDate: getISTMonthStartString(),
         endDate: getISTTodayString()
@@ -172,51 +220,60 @@ export default function SalesDashboard() {
                             View All <ChevronRight size={14} />
                         </button>
                     </div>
-                    <div className="card polished-card" style={{ overflow: 'hidden' }}>
-                        <div className="followup-list">
-                            {overallMetrics.pendingFollowUps.map(fu => {
-                                let Icon = FileText;
-                                if (fu.type === 'Call' || fu.type === 'Callback') Icon = PhoneCall;
-                                if (fu.type === 'Email') Icon = Mail;
-                                if (fu.type === 'Meeting') Icon = Presentation;
+                    <div className="card polished-card" style={{ minHeight: '350px', padding: 0, overflow: 'hidden' }}>
+                        <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', background: 'rgba(255,255,255,0.02)' }}>
+                            <button
+                                onClick={() => setActiveTab('callbacks')}
+                                style={{
+                                    flex: 1, padding: '16px', border: 'none', background: 'none', cursor: 'pointer',
+                                    color: activeTab === 'callbacks' ? 'var(--accent-light)' : 'var(--text-dim)',
+                                    borderBottom: activeTab === 'callbacks' ? '2px solid var(--accent-light)' : 'none',
+                                    fontWeight: 600, fontSize: '15px'
+                                }}
+                            >
+                                Callbacks
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('interactions')}
+                                style={{
+                                    flex: 1, padding: '16px', border: 'none', background: 'none', cursor: 'pointer',
+                                    color: activeTab === 'interactions' ? 'var(--accent-light)' : 'var(--text-dim)',
+                                    borderBottom: activeTab === 'interactions' ? '2px solid var(--accent-light)' : 'none',
+                                    fontWeight: 600, fontSize: '15px'
+                                }}
+                            >
+                                Recent Interactions
+                            </button>
+                        </div>
 
-                                const isOverdue = new Date(fu.scheduled_at) < new Date();
-
-                                return (
-                                    <div
-                                        key={fu.id}
-                                        className="followup-item clickable-row"
-                                        onClick={() => navigate('/leads', { state: { leadId: fu.lead?.id } })}
-                                        style={{ display: 'flex', alignItems: 'flex-start', gap: '16px', padding: '16px 20px', borderBottom: '1px solid var(--border)' }}
-                                    >
-                                        <div style={{
-                                            width: 40, height: 40, borderRadius: '10px',
-                                            background: isOverdue ? 'rgba(239,68,68,0.1)' : 'rgba(245,158,11,0.1)',
-                                            color: isOverdue ? 'var(--danger)' : 'var(--warning)',
-                                            display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
-                                        }}>
-                                            <Icon size={20} />
-                                        </div>
-                                        <div style={{ flex: 1 }}>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '4px' }}>
-                                                <div style={{ fontWeight: 600, fontSize: '15px' }}>{fu.lead?.name} <span style={{ color: 'var(--text-dim)', fontWeight: 400 }}>{fu.lead?.company ? `@ ${fu.lead.company}` : ''}</span></div>
-                                                <div style={{
-                                                    fontSize: '12px', fontWeight: 600,
-                                                    color: isOverdue ? 'var(--danger)' : 'var(--text-dim)',
-                                                    background: isOverdue ? 'rgba(239,68,68,0.1)' : 'var(--bg-app)',
-                                                    padding: '4px 8px', borderRadius: '4px'
-                                                }}>
-                                                    {new Date(fu.scheduled_at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}
-                                                    {isOverdue && ' (Overdue)'}
-                                                </div>
-                                            </div>
-                                            <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
-                                                {fu.notes || `Scheduled ${fu.type.toLowerCase()}`}
-                                            </div>
-                                        </div>
+                        <div className="tab-content" style={{ maxHeight: '450px', overflowY: 'auto' }}>
+                            {activeTab === 'callbacks' ? (
+                                overallMetrics?.pendingFollowUps?.filter(fu => fu.type === 'Callback').length > 0 ? (
+                                    <div className="followup-list">
+                                        {overallMetrics.pendingFollowUps.filter(fu => fu.type === 'Callback').map(fu => (
+                                            <FollowUpItem key={fu.id} fu={fu} navigate={navigate} />
+                                        ))}
                                     </div>
-                                );
-                            })}
+                                ) : (
+                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '60px 0', opacity: 0.5 }}>
+                                        <PhoneCall size={48} style={{ marginBottom: '16px' }} />
+                                        <p>No pending callbacks scheduled.</p>
+                                    </div>
+                                )
+                            ) : (
+                                overallMetrics?.pendingFollowUps?.filter(fu => fu.type !== 'Callback').length > 0 ? (
+                                    <div className="followup-list">
+                                        {overallMetrics.pendingFollowUps.filter(fu => fu.type !== 'Callback').map(fu => (
+                                            <FollowUpItem key={fu.id} fu={fu} navigate={navigate} />
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '60px 0', opacity: 0.5 }}>
+                                        <CalendarClock size={48} style={{ marginBottom: '16px' }} />
+                                        <p>No recent interactions log.</p>
+                                    </div>
+                                )
+                            )}
                         </div>
                     </div>
                 </div>

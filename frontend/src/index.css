@@ -105,6 +105,13 @@ body {
   width: var(--sidebar-collapsed-w);
 }
 
+.sidebar.collapsed .brand-name,
+.sidebar.collapsed .sidebar-section-header span,
+.sidebar.collapsed .nav-item span,
+.sidebar.collapsed .chevron {
+  display: none;
+}
+
 .sidebar-brand {
   height: var(--header-h);
   display: flex;
@@ -1193,13 +1200,38 @@ tbody td {
   }
 
   .sidebar-brand .brand-name,
-  .sidebar-section-label,
+  .sidebar-section-header span,
   .nav-item span {
     display: none;
   }
 
+  .sidebar.mobile-open .brand-name,
+  .sidebar.mobile-open .sidebar-section-header span,
+  .sidebar.mobile-open .nav-item span {
+    display: block !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+  }
+
+  .sidebar.mobile-open .chevron {
+    display: block !important;
+  }
+
   .dashboard-grid {
     grid-template-columns: 1fr;
+  }
+
+  .sticky-date-picker-container {
+    width: 100% !important;
+    justify-content: stretch !important;
+    margin-bottom: 16px;
+  }
+
+  .sticky-date-picker {
+    width: 100% !important;
+    margin: 0 !important;
+    transform-origin: top center !important;
+    border-radius: var(--radius-md) !important;
   }
 
   .form-row {

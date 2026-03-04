@@ -133,7 +133,7 @@ export default function Sidebar({ mobileOpen, setMobileOpen }) {
             <div className="sidebar-brand">
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
                     <div className="brand-logo">R</div>
-                    {!isActuallyCollapsed && <span className="brand-name">ArgosMob - Connect</span>}
+                    <span className="brand-name">ArgosMob - Connect</span>
                 </div>
 
                 {mobileOpen && (
@@ -160,16 +160,14 @@ export default function Sidebar({ mobileOpen, setMobileOpen }) {
                             >
                                 <div className="section-title">
                                     <SectionIcon size={18} />
-                                    {!isActuallyCollapsed && <span>{group.section}</span>}
+                                    <span>{group.section}</span>
                                 </div>
-                                {!isActuallyCollapsed && (
-                                    <div className={`chevron ${isExpanded ? 'rotate' : ''}`}>
-                                        <ChevronRight size={14} />
-                                    </div>
-                                )}
+                                <div className={`chevron ${isExpanded ? 'rotate' : ''}`}>
+                                    <ChevronRight size={14} />
+                                </div>
                             </button>
 
-                            {isExpanded && !isActuallyCollapsed && (
+                            {isExpanded && (
                                 <div className="sidebar-sub-menu">
                                     {group.items.map(({ to, icon: Icon, label }) => {
                                         const displayLabel = (label === 'BDM Performance' && hasRole('bdm')) ? 'My Performance' : label;
@@ -194,11 +192,11 @@ export default function Sidebar({ mobileOpen, setMobileOpen }) {
             <div className="sidebar-footer">
                 <button className="nav-item" onClick={handleLogout} title="Sign out">
                     <LogOut size={18} />
-                    {!isActuallyCollapsed && <span>Sign out</span>}
+                    <span>Sign out</span>
                 </button>
                 <button className="nav-item" onClick={() => setCollapsed(c => !c)} style={{ marginTop: 4 }}>
                     {isActuallyCollapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
-                    {!isActuallyCollapsed && <span>Collapse</span>}
+                    <span>Collapse</span>
                 </button>
             </div>
         </aside>

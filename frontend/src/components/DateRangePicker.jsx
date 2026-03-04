@@ -75,32 +75,32 @@ export default function DateRangePicker({ startDate, endDate, onRangeChange }) {
     return (
         <div className={`sticky-date-picker-container ${isShrunk ? 'shrunk' : ''}`}>
             <div className="card sticky-date-picker">
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <Calendar size={isShrunk ? 14 : 18} color="var(--accent-light)" />
-
-                    {/* Presets Dropdown */}
-                    <div className="preset-selector-wrap">
-                        <select
-                            className="preset-select"
-                            value={selectedPreset}
-                            onChange={(e) => handlePresetChange(e.target.value)}
-                        >
-                            <option value="custom">Custom Range</option>
-                            <option value="today">Today</option>
-                            <option value="yesterday">Yesterday</option>
-                            <option value="this_week">This Week</option>
-                            <option value="last_7_days">Last 7 Days</option>
-                            <option value="last_30_days">Last 30 Days</option>
-                            <option value="mtd">Month to Date (MTD)</option>
-                            <option value="last_month">Last Month</option>
-                            <option value="ytd">Year to Date (YTD)</option>
-                        </select>
-                        <ChevronDown size={12} className="select-arrow" />
+                <div className="date-picker-inner">
+                    <div className="preset-selector-row">
+                        <Calendar size={isShrunk ? 14 : 18} color="var(--accent-light)" />
+                        <div className="preset-selector-wrap">
+                            <select
+                                className="preset-select"
+                                value={selectedPreset}
+                                onChange={(e) => handlePresetChange(e.target.value)}
+                            >
+                                <option value="custom">Custom Range</option>
+                                <option value="today">Today</option>
+                                <option value="yesterday">Yesterday</option>
+                                <option value="this_week">This Week</option>
+                                <option value="last_7_days">Last 7 Days</option>
+                                <option value="last_30_days">Last 30 Days</option>
+                                <option value="mtd">Month to Date (MTD)</option>
+                                <option value="last_month">Last Month</option>
+                                <option value="ytd">Year to Date (YTD)</option>
+                            </select>
+                            <ChevronDown size={12} className="select-arrow" />
+                        </div>
                     </div>
 
                     <div className="date-inputs-divider" />
 
-                    <div style={{ display: 'flex', alignItems: 'center', gap: isShrunk ? '4px' : '8px' }}>
+                    <div className="date-inputs-row">
                         <input
                             type="date"
                             className="input date-input"
@@ -110,7 +110,7 @@ export default function DateRangePicker({ startDate, endDate, onRangeChange }) {
                                 setSelectedPreset('custom')
                             }}
                         />
-                        <span style={{ color: 'var(--text-dim)', fontSize: isShrunk ? '11px' : '13px' }}>to</span>
+                        <span className="date-to-sep">to</span>
                         <input
                             type="date"
                             className="input date-input"
@@ -125,6 +125,29 @@ export default function DateRangePicker({ startDate, endDate, onRangeChange }) {
             </div>
 
             <style>{`
+                .date-picker-inner {
+                    display: flex;
+                    align-items: center;
+                    gap: 10px;
+                    width: 100%;
+                }
+                .preset-selector-row {
+                    display: flex;
+                    align-items: center;
+                    gap: 10px;
+                }
+                .date-inputs-row {
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                }
+                .date-to-sep {
+                    color: var(--text-dim);
+                    font-size: 13px;
+                }
+                .shrunk .date-to-sep {
+                    font-size: 11px;
+                }
                 .preset-selector-wrap {
                     position: relative;
                     display: flex;
@@ -158,6 +181,42 @@ export default function DateRangePicker({ startDate, endDate, onRangeChange }) {
                 }
                 .shrunk .date-inputs-divider {
                     height: 14px;
+                }
+
+                @media (max-width: 600px) {
+                    .sticky-date-picker {
+                        width: 100% !important;
+                    }
+                    .date-picker-inner {
+                        flex-direction: column;
+                        align-items: stretch;
+                        gap: 8px;
+                        width: 100% !important;
+                    }
+                    .date-inputs-divider {
+                        display: none;
+                    }
+                    .date-inputs-row {
+                        justify-content: space-between;
+                        width: 100% !important;
+                    }
+                    .date-input {
+                        flex: 1;
+                        font-size: 12px;
+                        padding: 6px 8px;
+                        width: 100%;
+                    }
+                    .preset-selector-row {
+                        border-bottom: 1px solid var(--border);
+                        padding-bottom: 4px;
+                        width: 100%;
+                    }
+                    .preset-selector-wrap {
+                        flex: 1;
+                    }
+                    .preset-select {
+                        width: 100%;
+                    }
                 }
             `}</style>
         </div>

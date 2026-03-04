@@ -140,6 +140,26 @@ export function EmployeeCard({ employee, isAdminView, currentRange }) {
                     </div>
                     <div
                         className="metric-box"
+                        style={{ gridColumn: 'span 1' }}
+                        onClick={(e) => { e.stopPropagation(); navigate('/follow-ups', { state: { agentId: employee.id, type: 'Callback' } }); }}
+                    >
+                        <div className="metric-val" style={{ color: 'var(--warning)' }}>
+                            {employee.sales_stats.pending_callbacks || 0}
+                        </div>
+                        <div className="metric-lbl">Callbacks</div>
+                    </div>
+                    <div
+                        className="metric-box"
+                        style={{ gridColumn: 'span 1' }}
+                        onClick={(e) => { e.stopPropagation(); navigate('/follow-ups', { state: { agentId: employee.id } }); }}
+                    >
+                        <div className="metric-val" style={{ color: 'var(--info)' }}>
+                            {employee.sales_stats.total_interactions || 0}
+                        </div>
+                        <div className="metric-lbl">Interactions</div>
+                    </div>
+                    <div
+                        className="metric-box"
                         style={{ gridColumn: 'span 2' }}
                         onClick={(e) => { e.stopPropagation(); navigate('/leads', { state: { agent: employee.id, startDate: currentRange?.startDate, endDate: currentRange?.endDate } }); }}
                     >
