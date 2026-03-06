@@ -599,3 +599,28 @@ export const getAttendanceReport = async ({ userId, startDate, endDate, status }
     const profileMap = Object.fromEntries((profiles || []).map(p => [p.id, p]));
     return data.map(r => ({ ...r, user: profileMap[r.user_id] || null }));
 };
+// --- Leave Report ---
+export const getLeaveReport = async ({ userId, startDate, endDate, status }) => {
+    let query = supabaseAdmin
+        .from('leave_requests')
+        .select('*, leave_type:leave_types(id, name)');
+
+    if (userId) query = query.eq('user_id', userId);
+    if (startDate) query = query.gte('start_date', startDate);
+    if (endDate) query = query.lte('end_date', endDate);
+    if (status) query = query.eq('status', status);
+
+    const { data, error } = await query.order('start_date', { ascending: false });
+    if (error) throw error;
+
+    if (!data || data.length === 0) return [];
+
+    const uIds = [...new Set(data.map(r => r.user_id))];
+    const { data: profiles } = await supabaseAdmin
+        .from('profiles')
+        .select('id, full_name, email')
+        .in('id', uIds);
+
+    const profileMap = Object.fromEntries((profiles || []).map(p => [p.id, p]));
+    return data.map(r => ({ ...r, user: profileMap[r.user_id] || null }));
+};

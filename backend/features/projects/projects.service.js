@@ -38,6 +38,10 @@ export const getAllProjects = async (options = {}) => {
         }
     }
 
+    if (options.status) {
+        query = query.eq('status', options.status);
+    }
+
     if (options.startDate && options.endDate) {
         // Filter projects that have tasks or timesheet entries in the date range
         const { data: activeTasks } = await supabaseAdmin

@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-    TrendingUp, DollarSign, Users,
+    TrendingUp, Users,
     ArrowUpRight, Target, ChevronRight,
-    CalendarClock, PhoneCall, Mail, Presentation, FileText
+    CalendarClock, PhoneCall, Mail, Presentation, FileText,
+    IndianRupee
 } from 'lucide-react';
 import { SalesService } from '../sales/SalesService';
 import { useAuth } from '../../context/AuthContext';
@@ -12,58 +13,11 @@ import { EmployeeCard, AttendanceWidget } from './DashboardComponents';
 /**
  * BDMDashboard — Specialized view for Business Development Managers.
  */
-
-/**
- * Sub-component for individual follow-up items.
- */
-function FollowUpItem({ fu, navigate }) {
-    let Icon = FileText;
-    if (fu.type === 'Call' || fu.type === 'Callback') Icon = PhoneCall;
-    if (fu.type === 'Email') Icon = Mail;
-    if (fu.type === 'Meeting') Icon = Presentation;
-
-    const isOverdue = new Date(fu.scheduled_at) < new Date() && fu.status !== 'Completed';
-
-    return (
-        <div
-            className="followup-item clickable-row"
-            onClick={() => navigate('/leads', { state: { leadId: fu.lead?.id } })}
-            style={{ display: 'flex', alignItems: 'flex-start', gap: '16px', padding: '16px 20px', borderBottom: '1px solid var(--border)' }}
-        >
-            <div style={{
-                width: 40, height: 40, borderRadius: '10px',
-                background: isOverdue ? 'rgba(239,68,68,0.1)' : 'rgba(124,58,237,0.1)',
-                color: isOverdue ? 'var(--danger)' : 'var(--accent-light)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
-            }}>
-                <Icon size={18} />
-            </div>
-            <div style={{ flex: 1 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '4px' }}>
-                    <div style={{ fontWeight: 600, fontSize: '14px' }}>{fu.lead?.name}</div>
-                    <div style={{
-                        fontSize: '11px', fontWeight: 600,
-                        color: isOverdue ? 'var(--danger)' : 'var(--text-muted)',
-                        background: isOverdue ? 'rgba(239,68,68,0.1)' : 'var(--bg-app)',
-                        padding: '4px 8px', borderRadius: '4px'
-                    }}>
-                        {new Date(fu.scheduled_at).toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                    </div>
-                </div>
-                <div style={{ fontSize: '12px', color: 'var(--text-dim)', opacity: 0.8 }}>
-                    {fu.notes || `Scheduled ${fu.type.toLowerCase()}`}
-                </div>
-            </div>
-        </div>
-    );
-}
-
 export default function BDMDashboard({ dateRange }) {
     const navigate = useNavigate();
     const { user: currentUser } = useAuth();
     const [metrics, setMetrics] = useState(null);
     const [loading, setLoading] = useState(true);
-    const [activeTab, setActiveTab] = useState('callbacks'); // 'callbacks' or 'interactions'
 
     useEffect(() => {
         if (currentUser?.id) {
@@ -114,7 +68,7 @@ export default function BDMDashboard({ dateRange }) {
                     </div>
                     <div className="stat-content">
                         <label>Your Pipeline</label>
-                        <h3>${(metrics?.pipelineValue || 0).toLocaleString()}</h3>
+                        <h3>Rs {(metrics?.pipelineValue || 0).toLocaleString()}</h3>
                         <div className="stat-footer">
                             <span className="trend positive"><ArrowUpRight size={12} /> {(metrics?.Proposal || 0)} Proposals</span>
                         </div>
@@ -123,11 +77,11 @@ export default function BDMDashboard({ dateRange }) {
 
                 <div className="card polished-card stat-card-dashboard" onClick={() => handleStatClick('status', 'Won')}>
                     <div className="stat-icon-box" style={{ background: 'rgba(34, 197, 94, 0.1)', color: '#22c55e' }}>
-                        <DollarSign size={24} />
+                        <IndianRupee size={24} />
                     </div>
                     <div className="stat-content">
                         <label>Revenue Generated</label>
-                        <h3>${(metrics?.wonValue || 0).toLocaleString()}</h3>
+                        <h3>Rs {(metrics?.wonValue || 0).toLocaleString()}</h3>
                         <div className="stat-footer">
                             <span className="trend positive"><ArrowUpRight size={12} /> {metrics?.Won || 0} Deals Won</span>
                         </div>
@@ -161,64 +115,58 @@ export default function BDMDashboard({ dateRange }) {
                         </button>
                     </div>
 
-                    <div className="card polished-card" style={{ minHeight: '350px', padding: 0, overflow: 'hidden' }}>
-                        <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', background: 'rgba(255,255,255,0.02)' }}>
-                            <button
-                                onClick={() => setActiveTab('callbacks')}
-                                style={{
-                                    flex: 1, padding: '12px', border: 'none', background: 'none', cursor: 'pointer',
-                                    color: activeTab === 'callbacks' ? 'var(--accent-light)' : 'var(--text-dim)',
-                                    borderBottom: activeTab === 'callbacks' ? '2px solid var(--accent-light)' : 'none',
-                                    fontWeight: 600, fontSize: '13px'
-                                }}
-                            >
-                                Callbacks
-                            </button>
-                            <button
-                                onClick={() => setActiveTab('interactions')}
-                                style={{
-                                    flex: 1, padding: '12px', border: 'none', background: 'none', cursor: 'pointer',
-                                    color: activeTab === 'interactions' ? 'var(--accent-light)' : 'var(--text-dim)',
-                                    borderBottom: activeTab === 'interactions' ? '2px solid var(--accent-light)' : 'none',
-                                    fontWeight: 600, fontSize: '13px'
-                                }}
-                            >
-                                Recent Interactions
-                            </button>
-                        </div>
+                    <div className="card polished-card" style={{ minHeight: '300px' }}>
+                        {metrics?.pendingFollowUps?.length > 0 ? (
+                            <div className="followup-list">
+                                {metrics.pendingFollowUps.slice(0, 5).map(fu => {
+                                    let Icon = FileText;
+                                    if (fu.type === 'Call' || fu.type === 'Callback') Icon = PhoneCall;
+                                    if (fu.type === 'Email') Icon = Mail;
+                                    if (fu.type === 'Meeting') Icon = Presentation;
 
-                        <div className="tab-content" style={{ maxHeight: '400px', overflowY: 'auto' }}>
-                            {activeTab === 'callbacks' ? (
-                                metrics?.pendingFollowUps?.filter(fu => fu.type === 'Callback').length > 0 ? (
-                                    <div className="followup-list">
-                                        {metrics.pendingFollowUps.filter(fu => fu.type === 'Callback').slice(0, 10).map(fu => (
-                                            <FollowUpItem key={fu.id} fu={fu} navigate={navigate} />
-                                        ))}
-                                    </div>
-                                ) : (
-                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '60px 0', opacity: 0.5 }}>
-                                        <PhoneCall size={48} style={{ marginBottom: '16px' }} />
-                                        <p>No pending callbacks.</p>
-                                    </div>
-                                )
-                            ) : (
-                                // Interactions tab: Show recent interactions (could be completed ones or all non-callbacks)
-                                // Let's show the non-callback pending ones or if we had recent activity, that would be better.
-                                // For now, let's show other types of pending follow-ups.
-                                metrics?.pendingFollowUps?.filter(fu => fu.type !== 'Callback').length > 0 ? (
-                                    <div className="followup-list">
-                                        {metrics.pendingFollowUps.filter(fu => fu.type !== 'Callback').slice(0, 10).map(fu => (
-                                            <FollowUpItem key={fu.id} fu={fu} navigate={navigate} />
-                                        ))}
-                                    </div>
-                                ) : (
-                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '60px 0', opacity: 0.5 }}>
-                                        <CalendarClock size={48} style={{ marginBottom: '16px' }} />
-                                        <p>No recent interactions log.</p>
-                                    </div>
-                                )
-                            )}
-                        </div>
+                                    const isOverdue = new Date(fu.scheduled_at) < new Date();
+
+                                    return (
+                                        <div
+                                            key={fu.id}
+                                            className="followup-item clickable-row"
+                                            onClick={() => navigate('/leads', { state: { leadId: fu.lead?.id } })}
+                                            style={{ display: 'flex', alignItems: 'flex-start', gap: '16px', padding: '16px 20px', borderBottom: '1px solid var(--border)' }}
+                                        >
+                                            <div style={{
+                                                width: 40, height: 40, borderRadius: '10px',
+                                                background: isOverdue ? 'rgba(239,68,68,0.1)' : 'rgba(124,58,237,0.1)',
+                                                color: isOverdue ? 'var(--danger)' : 'var(--accent-light)',
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
+                                            }}>
+                                                <Icon size={18} />
+                                            </div>
+                                            <div style={{ flex: 1 }}>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '4px' }}>
+                                                    <div style={{ fontWeight: 600, fontSize: '14px' }}>{fu.lead?.name}</div>
+                                                    <div style={{
+                                                        fontSize: '11px', fontWeight: 600,
+                                                        color: isOverdue ? 'var(--danger)' : 'var(--text-muted)',
+                                                        background: isOverdue ? 'rgba(239,68,68,0.1)' : 'var(--bg-app)',
+                                                        padding: '4px 8px', borderRadius: '4px'
+                                                    }}>
+                                                        {new Date(fu.scheduled_at).toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                                    </div>
+                                                </div>
+                                                <div style={{ fontSize: '12px', color: 'var(--text-dim)', opacity: 0.8 }}>
+                                                    {fu.notes || `Scheduled ${fu.type.toLowerCase()}`}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        ) : (
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '60px 0', opacity: 0.5 }}>
+                                <CalendarClock size={48} style={{ marginBottom: '16px' }} />
+                                <p>No pending follow-ups scheduled.</p>
+                            </div>
+                        )}
                     </div>
                 </div>
 

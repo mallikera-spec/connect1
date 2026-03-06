@@ -10,7 +10,7 @@ import { useAuth } from '../context/AuthContext'
  *     <RolesPage />
  *   </PermissionGate>
  */
-export default function PermissionGate({ perm, allowedRoles, children }) {
+export default function PermissionGate({ perm, allowedRoles, excludeRoles, children }) {
     const { hasPermission, hasRole, loading } = useAuth()
 
     if (loading) return null   // wait for auth to resolve
@@ -26,6 +26,11 @@ export default function PermissionGate({ perm, allowedRoles, children }) {
         isAuthorized = permOk;
     } else if (allowedRoles) {
         isAuthorized = roleOk;
+    }
+
+    // Explicitly exclude roles (AND NOT logic)
+    if (excludeRoles && excludeRoles.some(r => hasRole(r))) {
+        isAuthorized = false;
     }
 
     if (!isAuthorized) {

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { User, Phone, MapPin, Calendar, Heart, FileText, Tag, DollarSign, Save, Building2, Briefcase, ArrowLeft, Lock, Eye, EyeOff, Camera, Clock } from 'lucide-react'
+import { User, Phone, MapPin, Calendar, Heart, FileText, Tag, IndianRupee, Save, Building2, Briefcase, ArrowLeft, Lock, Eye, EyeOff, Camera, Clock } from 'lucide-react'
 import api from '../../lib/api'
 import toast from 'react-hot-toast'
 import { useAuth } from '../../context/AuthContext'
@@ -327,7 +327,7 @@ export default function ProfilePage() {
                 {/* Banking & Identity */}
                 <div className="card glass-card" style={{ marginBottom: 24 }}>
                     <div className="card-header-premium">
-                        <DollarSign size={18} />
+                        <IndianRupee size={18} />
                         <h3>Banking & Identity Details</h3>
                     </div>
                     <div className="card-body" style={{ padding: 24 }}>
@@ -409,7 +409,7 @@ export default function ProfilePage() {
                                     </div>
                                     {isEditingOther && (
                                         <div className="form-group">
-                                            <label className="form-label"><DollarSign size={13} style={{ marginRight: 4 }} />Annual CTC (₹)</label>
+                                            <label className="form-label"><IndianRupee size={13} style={{ marginRight: 4 }} />Annual CTC (₹)</label>
                                             <input type="number" min="0" step="1000" className="form-input" placeholder="e.g. 1200000"
                                                 value={form.ctc || ''} onChange={f('ctc')} />
                                         </div>
@@ -452,7 +452,7 @@ export default function ProfilePage() {
             {isAdmin && !isEditingOther && (
                 <div className="card glass-card" style={{ marginTop: 32, border: '1px solid var(--warning, #f59e0b)' }}>
                     <div className="card-header-premium" style={{ background: 'rgba(245,158,11,0.07)', borderBottomColor: 'rgba(245,158,11,0.2)' }}>
-                        <DollarSign size={18} style={{ color: '#f59e0b' }} />
+                        <IndianRupee size={18} style={{ color: '#f59e0b' }} />
                         <h3 style={{ color: '#f59e0b' }}>Admin: Quick Set Employee CTC</h3>
                     </div>
                     <div className="card-body" style={{ padding: 24 }}>

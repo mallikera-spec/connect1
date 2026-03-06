@@ -150,7 +150,7 @@ export default function NewLeadModal({ onClose, onSaved }) {
                             </div>
 
                             <div className="form-group">
-                                <label className="form-label">Deal Value ($)</label>
+                                <label className="form-label">Deal Value (Rs)</label>
                                 <input
                                     type="number"
                                     className="form-control"

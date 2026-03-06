@@ -94,7 +94,7 @@ export default function LeadLifecycleBoard({ leads, onSelectLead }) {
                                         </div>
 
                                         <div className="lead-card-footer">
-                                            <div className="value">${parseFloat(lead.deal_value || 0).toLocaleString()}</div>
+                                            <div className="value">Rs {parseFloat(lead.deal_value || 0).toLocaleString()}</div>
                                             <div className="agent">
                                                 {lead.assigned_agent?.full_name ? (
                                                     <div className="agent-avatar" title={lead.assigned_agent.full_name}>

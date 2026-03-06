@@ -42,8 +42,12 @@ export const getTaskById = async (req, res) => {
 import fs from 'fs';
 
 export const updateTask = async (req, res) => {
-    const logMsg = `[${new Date().toISOString()}] UPDATE TASK ${req.params.id}: ${JSON.stringify(req.body)}\n`;
-    fs.appendFileSync('c:/Users/malli/Argosmob_Projects/Dev/debug.log', logMsg);
+    try {
+        const logMsg = `[${new Date().toISOString()}] UPDATE TASK ${req.params.id}: ${JSON.stringify(req.body)}\n`;
+        fs.appendFileSync('debug.log', logMsg);
+    } catch (err) {
+        console.error('Failed to write to debug.log:', err.message);
+    }
 
     const body = updateTaskSchema.parse(req.body);
     const data = await tasksService.updateTask(req.params.id, body);

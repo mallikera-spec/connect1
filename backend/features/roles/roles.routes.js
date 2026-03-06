@@ -6,11 +6,12 @@ import { requirePermission } from '../../middleware/permission.middleware.js';
 const router = Router();
 
 router.use(authMiddleware);
-router.use(requirePermission('manage_roles'));
+// Mutating routes require manage_roles
+router.post('/', requirePermission('manage_roles'), createRole);
+router.patch('/:id', requirePermission('manage_roles'), updateRole);
+router.delete('/:id', requirePermission('manage_roles'), deleteRole);
 
-router.post('/', createRole);
-router.get('/', getAllRoles);
-router.patch('/:id', updateRole);
-router.delete('/:id', deleteRole);
+// View roles: allow hr/HR Manager and users with view_employees perm
+router.get('/', requirePermission('view_employees', ['hr', 'HR Manager', 'tester', 'bdm', 'sales manager']), getAllRoles);
 
 export default router;

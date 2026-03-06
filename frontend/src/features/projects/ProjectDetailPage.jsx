@@ -53,7 +53,7 @@ function Section({ title, action, children }) {
 export default function ProjectDetailPage() {
     const { id } = useParams()
     const navigate = useNavigate()
-    const { hasPermission } = useAuth()
+    const { hasPermission, hasRole } = useAuth()
     const canManage = hasPermission('manage_projects')
 
     const [tab, setTab] = useState('overview')
@@ -420,6 +420,44 @@ export default function ProjectDetailPage() {
                 <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>by <strong>{project.creator?.full_name || '—'}</strong></span>
             </div>
 
+            {/* Client & Types Strip */}
+            {(project.client_name || project.sub_types?.length > 0) && (
+                <div style={{ display: 'flex', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
+                    {project.client_name && (
+                        <div className="card" style={{ flex: 1, padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12, minWidth: 280, background: 'var(--bg-card)' }}>
+                            <div style={{ background: 'rgba(124, 58, 237, 0.1)', color: 'var(--accent)', padding: 8, borderRadius: 8 }}><Users size={18} /></div>
+                            <div>
+                                <div style={{ fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>Client Information</div>
+                                <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>{project.client_name}</div>
+                                <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 2 }}>
+                                    {project.client_email} {project.client_phone ? ` • ${project.client_phone}` : ''}
+                                </div>
+                                {project.acquisition_date && (
+                                    <div style={{ fontSize: 11, color: 'var(--accent)', marginTop: 4, fontWeight: 700 }}>
+                                        Acquired on: {new Date(project.acquisition_date).toLocaleDateString()}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+                    {project.sub_types?.length > 0 && (
+                        <div className="card" style={{ flex: 1, padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12, minWidth: 280, background: 'var(--bg-card)' }}>
+                            <div style={{ background: 'rgba(8, 145, 178, 0.1)', color: '#0891b2', padding: 8, borderRadius: 8 }}><Flag size={18} /></div>
+                            <div style={{ flex: 1 }}>
+                                <div style={{ fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>Project Categories</div>
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
+                                    {project.sub_types.map(t => (
+                                        <span key={t} style={{ fontSize: 10, fontWeight: 600, background: 'var(--border)', color: 'var(--text)', padding: '2px 10px', borderRadius: 99 }}>
+                                            {t}
+                                        </span>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            )}
+
             {/* Progress bar (Relocated to top) */}
             {tasks.length > 0 && (
                 <div className="card" style={{ padding: '12px 20px', marginBottom: 20 }}>
@@ -516,7 +554,7 @@ export default function ProjectDetailPage() {
                                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                                         <thead>
                                             <tr style={{ background: 'rgba(255,255,255,0.02)' }}>
-                                                {['Task', 'Assignee', 'Status', 'Priority', 'Due Date', 'Hours', ''].map(h => (
+                                                {['Task', 'Assignee', 'Status', 'Priority', 'Due Date', 'Hours', 'Actions'].map(h => (
                                                     <th key={h} style={{ padding: '9px 14px', textAlign: 'left', fontSize: 10, textTransform: 'uppercase', color: 'var(--text-dim)', fontWeight: 700, borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap' }}>{h}</th>
                                                 ))}
                                             </tr>
@@ -552,7 +590,7 @@ export default function ProjectDetailPage() {
                                                             <td style={{ padding: '9px 6px', textAlign: 'right' }}>
                                                                 <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
                                                                     <button className="btn btn-ghost btn-sm btn-icon" title="Edit" onClick={() => openEditTask(t)}><Pencil size={13} /></button>
-                                                                    {canManage && <button className="btn btn-danger btn-sm btn-icon" title="Delete" onClick={async () => { if (confirm('Delete this task?')) { try { await api.delete(`/tasks/${t.id}`); load() } catch (e) { toast.error(e.message) } } }}><Trash2 size={13} /></button>}
+                                                                    {hasRole('super_admin') && <button className="btn btn-danger btn-sm btn-icon" title="Delete" onClick={async () => { if (confirm('Delete this task?')) { try { await api.delete(`/tasks/${t.id}`); load() } catch (e) { toast.error(e.message) } } }}><Trash2 size={13} /></button>}
                                                                 </div>
                                                             </td>
                                                         </tr>

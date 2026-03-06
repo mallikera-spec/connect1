@@ -150,7 +150,7 @@ export default function EditLeadModal({ leadId, onClose, onSaved }) {
                             </div>
 
                             <div className="form-group">
-                                <label className="form-label">Proposal Value ($)</label>
+                                <label className="form-label">Proposal Value (Rs)</label>
                                 <input
                                     type="number"
                                     className="form-control"

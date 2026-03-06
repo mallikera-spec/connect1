@@ -6,7 +6,7 @@ import {
     Users, ShieldCheck, Key, Building2, Briefcase,
     FolderKanban, ListTodo, BarChart3,
     ChevronLeft, ChevronRight, LogOut,
-    UserCircle, Clock, Calendar, FileText, Sparkles, TrendingUp, Vote, Shield
+    UserCircle, Clock, Calendar, FileText, Sparkles, TrendingUp, Vote, Shield, Star
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -26,7 +26,7 @@ const NAV = [
         icon: FolderKanban,
         items: [
             { to: '/projects', label: 'All Projects', perm: 'manage_projects', roles: ['Tester'], icon: FolderKanban },
-            { to: '/projects', label: 'My Projects', perm: 'view_projects', roles: ['Tester'], hideIfHas: 'manage_projects', icon: FolderKanban },
+            { to: '/my-projects', label: 'My Projects', icon: FolderKanban },
             { to: '/tasks', label: 'Tasks', perm: 'view_tasks', roles: ['Tester'], icon: ListTodo },
             { to: '/timesheet', label: 'Timesheet', perm: 'view_timesheet', icon: Clock },
             { to: '/reports', label: 'Reports', perm: 'view_overall_report', icon: BarChart3 },
@@ -49,6 +49,7 @@ const NAV = [
         items: [
             { to: '/hr-dashboard', icon: Clock, label: 'My HR', hideIfRole: ['super_admin'] },
             { to: '/hr-admin', icon: Briefcase, label: 'HR Admin', perm: 'view_employees' },
+            { to: '/leave-tracker', icon: Calendar, label: 'Leave Tracker' },
             { to: '/attendance-report', icon: FileText, label: 'Attendance Report' },
             { to: '/departments', icon: Building2, label: 'Departments', perm: 'view_departments' },
             { to: '/designations', icon: Briefcase, label: 'Designations', perm: 'manage_designations' },
@@ -60,12 +61,13 @@ const NAV = [
         icon: FileText,
         sectionPerm: 'view_leads',
         items: [
-            { to: '/sales-dashboard', label: 'Dashboard', icon: LayoutDashboard, perm: 'view_leads', hideIfRole: ['bdm', 'sales manager'] },
-            { to: '/leads', label: 'Leads', icon: TrendingUp, perm: 'view_leads' },
-            { to: '/follow-ups', label: 'Follow-ups', icon: Clock, perm: 'view_leads' },
-            { to: '/bdm-performance', label: 'BDM Performance', icon: BarChart3, perm: 'view_leads' },
-            { to: '/clients', label: 'Clients', perm: 'view_clients', icon: Building2 },
-            { to: '/quotations', label: 'Quotation Builder', icon: Sparkles, perm: 'generate_quotations' },
+            { to: '/sales-dashboard', label: 'Dashboard', icon: LayoutDashboard, perm: 'view_leads', hideIfRole: ['bdm', 'sales manager', 'HR Manager', 'hr'] },
+            { to: '/leads', label: 'Leads', icon: TrendingUp, perm: 'view_leads', hideIfRole: ['HR Manager', 'hr'] },
+            { to: '/follow-ups', label: 'Follow-ups', icon: Clock, perm: 'view_leads', hideIfRole: ['HR Manager', 'hr'] },
+            { to: '/interaction-history', label: 'Interaction History', icon: Clock, perm: 'view_leads', hideIfRole: ['HR Manager', 'hr'] },
+            { to: '/bdm-performance', label: 'BDM Performance', icon: BarChart3, perm: 'view_leads', hideIfRole: ['HR Manager', 'hr'] },
+            { to: '/clients', label: 'Clients', perm: 'view_clients', icon: Building2, hideIfRole: ['HR Manager', 'hr'] },
+            { to: '/quotations', label: 'Quotation Builder', icon: Sparkles, perm: 'generate_quotations', hideIfRole: ['HR Manager', 'hr'] },
         ]
     },
     {

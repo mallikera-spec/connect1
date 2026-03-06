@@ -449,14 +449,16 @@ export const getAllFollowUps = async (filters = {}) => {
     if (filters.agent_id) query = query.eq('agent_id', filters.agent_id);
     if (filters.status) query = query.eq('status', filters.status);
 
-    // Scheduled Date Range
-    if (filters.startDate) query = query.gte('scheduled_at', filters.startDate);
+    // Activity Tracking vs Scheduled Tracking
+    const dateField = filters.trackActivity ? 'created_at' : 'scheduled_at';
+
+    if (filters.startDate) query = query.gte(dateField, filters.startDate);
     if (filters.endDate) {
         const end = filters.endDate.includes('T') ? filters.endDate : `${filters.endDate} 23:59:59.999`;
-        query = query.lte('scheduled_at', end);
+        query = query.lte(dateField, end);
     }
 
-    query = query.order('scheduled_at', { ascending: true });
+    query = query.order(dateField, { ascending: filters.trackActivity ? false : true });
 
     const { data, error } = await query;
     if (error) throw error;
@@ -573,6 +575,31 @@ export const getSalesMetrics = async (filters = {}) => {
         stats.pendingFollowUps = [];
     } else {
         stats.pendingFollowUps = followUpsData;
+    }
+
+    // Fetch recent interactions (completed follow-ups)
+    let interactionsQuery = supabaseAdmin
+        .from('follow_ups')
+        .select(`
+            id, type, notes, completed_at, 
+            lead:leads(id, name, company),
+            agent:users(id, full_name)
+        `)
+        .eq('status', 'Completed')
+        .order('completed_at', { ascending: false })
+        .limit(10);
+
+    if (filters.assigned_agent_id) {
+        interactionsQuery = interactionsQuery.eq('agent_id', filters.assigned_agent_id);
+    }
+
+    const { data: interactionsData, error: interactionsError } = await interactionsQuery;
+
+    if (interactionsError) {
+        console.error('Failed to fetch recent interactions:', interactionsError);
+        stats.recentInteractions = [];
+    } else {
+        stats.recentInteractions = interactionsData;
     }
 
     return stats;

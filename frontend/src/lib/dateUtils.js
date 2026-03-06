@@ -31,6 +31,17 @@ export const getISTMonthStartString = () => {
 };
 
 /**
+ * Returns the last day of the current month formatted as YYYY-MM-DD in IST.
+ */
+export const getISTMonthEndString = () => {
+    const istDate = getISTDate();
+    const year = istDate.getFullYear();
+    const month = istDate.getMonth();
+    const lastDay = new Date(year, month + 1, 0).getDate();
+    return `${year}-${String(month + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+};
+
+/**
  * Returns a date string formatted as YYYY-MM-DD that is `days` before today in IST.
  */
 export const getISTDateStringDaysAgo = (days) => {

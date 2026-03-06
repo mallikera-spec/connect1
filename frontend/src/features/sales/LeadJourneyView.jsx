@@ -91,7 +91,7 @@ export default function LeadJourneyView({ leadId }) {
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', fontSize: '13px' }}>
                         <div><span style={{ color: 'var(--text-dim)' }}>Created:</span> <b>{new Date(lead.created_at).toLocaleDateString()}</b></div>
                         <div><span style={{ color: 'var(--text-dim)' }}>Source:</span> <b>{lead.source || 'Unknown'}</b></div>
-                        <div><span style={{ color: 'var(--text-dim)' }}>Initial Value:</span> <b>${lead.deal_value || '0'}</b></div>
+                        <div><span style={{ color: 'var(--text-dim)' }}>Initial Value:</span> <b>Rs {lead.deal_value || '0'}</b></div>
                         <div><span style={{ color: 'var(--text-dim)' }}>Interactions:</span> <b>{lead.follow_ups?.length || 0} Logged</b></div>
                     </div>
                 </div>

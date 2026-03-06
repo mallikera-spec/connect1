@@ -74,6 +74,10 @@ export const HRService = {
         const response = await hrApi.get('/hr/leaves/balance', { params: { userId } });
         return response.data;
     },
+    getLeaveReport: async (params) => {
+        const response = await hrApi.get('/hr/leaves/report', { params });
+        return response.data;
+    },
     syncAllLeaveBalances: async () => {
         const response = await hrApi.post('/hr/leaves/sync');
         return response.data;

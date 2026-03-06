@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import api from '../../lib/api';
 import { EmployeeCard, StatCard, NotificationCard } from './DashboardComponents';
 import { HRService } from '../hr/HRService';
-import { Clock, Calendar, ArrowRight, DollarSign, TrendingUp, FileText, CheckCircle, IndianRupee } from 'lucide-react';
+import { Clock, Calendar, ArrowRight, TrendingUp, FileText, CheckCircle, IndianRupee } from 'lucide-react';
 
 export default function AdminDashboard({ dateRange }) {
     const navigate = useNavigate();

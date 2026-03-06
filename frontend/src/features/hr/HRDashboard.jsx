@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { HRService } from './HRService';
 import { Clock, Calendar, FileText, AlertCircle, X } from 'lucide-react';
@@ -126,9 +127,14 @@ export default function HRDashboard() {
                             ))}
                         </div>
                     </div>
-                    <button className="btn btn-primary" style={{ width: '100%', marginTop: 'auto' }} onClick={() => setIsLeaveModalOpen(true)}>
-                        Apply for Leave
-                    </button>
+                    <div style={{ display: 'flex', gap: 8, marginTop: 'auto' }}>
+                        <button className="btn btn-primary" style={{ flex: 2 }} onClick={() => setIsLeaveModalOpen(true)}>
+                            Apply for Leave
+                        </button>
+                        <NavLink to="/leave-tracker" className="btn btn-ghost" style={{ flex: 1, padding: '8px 4px', fontSize: 11 }}>
+                            View History
+                        </NavLink>
+                    </div>
                 </div>
 
                 {/* Latest Payslip Card */}
@@ -145,10 +151,10 @@ export default function HRDashboard() {
                                 {new Date(latestSlip.year, latestSlip.month - 1).toLocaleString('default', { month: 'long', year: 'numeric' })}
                             </div>
                             <div style={{ fontSize: 34, fontWeight: 700, color: 'var(--success)', marginBottom: 4 }}>
-                                ${parseFloat(latestSlip.net_salary).toLocaleString()}
+                                Rs {parseFloat(latestSlip.net_salary).toLocaleString()}
                             </div>
-                            {[['Base Salary', `$${parseFloat(latestSlip.base_salary).toLocaleString()}`, false],
-                            ['Deductions', `-$${parseFloat(latestSlip.deductions).toLocaleString()}`, true]].map(([label, val, isDanger]) => (
+                            {[['Base Salary', `Rs ${parseFloat(latestSlip.base_salary).toLocaleString()}`, false],
+                            ['Deductions', `-Rs ${parseFloat(latestSlip.deductions).toLocaleString()}`, true]].map(([label, val, isDanger]) => (
                                 <div key={label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, borderTop: '1px solid var(--border)', paddingTop: 6 }}>
                                     <span style={{ color: 'var(--text-muted)' }}>{label}</span>
                                     <span style={{ color: isDanger ? 'var(--danger)' : 'inherit' }}>{val}</span>

@@ -23,6 +23,7 @@ router.post('/leaves', hrController.submitLeaveRequest);
 router.get('/leaves/my', hrController.getMyLeaves);
 router.get('/leaves/types', hrController.getLeaveTypes);
 router.get('/leaves/balance', hrController.getLeaveBalance);
+router.get('/leaves/report', hrController.getLeaveReport);
 
 // Admin / Manager Leaves Management
 router.get('/leaves/pending', requirePermission('view_employees'), hrController.getPendingLeaves);

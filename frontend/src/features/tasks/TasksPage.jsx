@@ -16,7 +16,7 @@ export default function TasksPage() {
     const { hasPermission, hasRole, user } = useAuth()
     const canCreate = hasPermission('assign_task')
     const canUpdate = hasPermission('update_task')
-    const canDelete = hasPermission('delete_task')
+    const canDelete = hasRole('super_admin')
     const isManager = hasPermission('manage_projects') || hasPermission('manage_employees')
     const location = useLocation()
     const navigate = useNavigate()
@@ -326,7 +326,7 @@ export default function TasksPage() {
                             <th>Date</th><th>Due Date</th><th>QA Feedback</th><th>Project</th><th>Title</th><th>Assignee</th><th>Status</th><th>Priority</th><th>Actions</th>
                         </tr></thead>
                         <tbody>
-                            {tasks.length === 0 && <tr><td colSpan={8}><div className="empty-state"><p>No tasks found</p></div></td></tr>}
+                            {tasks.length === 0 && <tr><td colSpan={9}><div className="empty-state"><p>No tasks found</p></div></td></tr>}
                             {(tasks || []).map(t => (
                                 <tr key={t.id}>
                                     <td style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600 }}>

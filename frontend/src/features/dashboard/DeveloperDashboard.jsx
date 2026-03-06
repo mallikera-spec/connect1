@@ -28,7 +28,10 @@ export default function DeveloperDashboard({ dateRange }) {
 
     const tsStats = stats.timesheet_tasks_by_status || {};
     const totalTodos = Object.values(tsStats).reduce((a, b) => a + b, 0);
-    const doneTodos = (tsStats.done || 0) + (tsStats.verified || 0);
+    const inProgressTodos = tsStats.in_progress || 0;
+    const blockedTodos = tsStats.blocked || 0;
+    const pendingQaTodos = tsStats.done || 0;
+    const verifiedTodos = tsStats.verified || 0;
     const failedTodos = tsStats.failed || 0;
 
     return (
@@ -105,16 +108,40 @@ export default function DeveloperDashboard({ dateRange }) {
                     state={{ startDate: dateRange.startDate, endDate: dateRange.endDate }}
                 />
                 <StatCard
-                    icon={CheckCircle2}
-                    label="Done Todos"
-                    value={doneTodos}
-                    color="#10b981"
+                    icon={Clock}
+                    label="In Progress"
+                    value={inProgressTodos}
+                    color="#f59e0b"
                     to="/timesheet"
-                    state={{ startDate: dateRange.startDate, endDate: dateRange.endDate }}
+                    state={{ statusFilter: 'in_progress', startDate: dateRange.startDate, endDate: dateRange.endDate }}
+                />
+                <StatCard
+                    icon={CheckCircle2}
+                    label="Done (Pending QA)"
+                    value={pendingQaTodos}
+                    color="#8b5cf6"
+                    to="/timesheet"
+                    state={{ statusFilter: 'done', startDate: dateRange.startDate, endDate: dateRange.endDate }}
                 />
                 <StatCard
                     icon={AlertCircle}
-                    label="Failed Todos"
+                    label="Blocked"
+                    value={blockedTodos}
+                    color="#6b7280"
+                    to="/timesheet"
+                    state={{ statusFilter: 'blocked', startDate: dateRange.startDate, endDate: dateRange.endDate }}
+                />
+                <StatCard
+                    icon={CheckCircle2}
+                    label="Verified (Passed)"
+                    value={verifiedTodos}
+                    color="#10b981"
+                    to="/timesheet"
+                    state={{ statusFilter: 'verified', startDate: dateRange.startDate, endDate: dateRange.endDate }}
+                />
+                <StatCard
+                    icon={AlertCircle}
+                    label="Failed (Need Fix)"
                     value={failedTodos}
                     color="#ef4444"
                     to="/timesheet"

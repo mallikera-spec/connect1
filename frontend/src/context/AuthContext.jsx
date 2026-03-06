@@ -50,7 +50,10 @@ export function AuthProvider({ children }) {
     // Helper: check if user has a specific role (case-insensitive)
     const hasRole = (role) => {
         if (!user || !user.roles) return false
-        return user.roles.some(r => r.toLowerCase() === role.toLowerCase())
+        return user.roles.some(r => {
+            const roleName = typeof r === 'string' ? r : (r.name || '');
+            return roleName.toLowerCase() === role.toLowerCase();
+        })
     }
 
     return (

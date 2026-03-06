@@ -21,11 +21,9 @@ export default function FollowUps() {
     const [allAgents, setAllAgents] = useState([]);
 
     // Filters
-    const [activeTab, setActiveTab] = useState('callbacks'); // 'callbacks' or 'interactions'
     const [agentFilter, setAgentFilter] = useState('');
     const [statusFilter, setStatusFilter] = useState('Pending');
     const [search, setSearch] = useState('');
-    const [typeFilter, setTypeFilter] = useState(''); // New: filter by interaction type
     const [dateRange, setDateRange] = useState({
         start: new Date().toISOString().split('T')[0],
         end: new Date(new Date().setDate(new Date().getDate() + 30)).toISOString().split('T')[0]
@@ -95,20 +93,11 @@ export default function FollowUps() {
         }
     };
 
-    const filteredFollowUps = followUps.filter(fu => {
-        const matchesSearch =
-            fu.lead?.name?.toLowerCase().includes(search.toLowerCase()) ||
-            fu.lead?.company?.toLowerCase().includes(search.toLowerCase()) ||
-            fu.notes?.toLowerCase().includes(search.toLowerCase());
-
-        const matchesType = !typeFilter || fu.type === typeFilter;
-
-        if (activeTab === 'callbacks') {
-            return fu.type === 'Callback' && matchesSearch && matchesType;
-        }
-
-        return matchesSearch && matchesType;
-    });
+    const filteredFollowUps = followUps.filter(fu =>
+        fu.lead?.name?.toLowerCase().includes(search.toLowerCase()) ||
+        fu.lead?.company?.toLowerCase().includes(search.toLowerCase()) ||
+        fu.notes?.toLowerCase().includes(search.toLowerCase())
+    );
 
     return (
         <div className="followups-page">
@@ -119,71 +108,41 @@ export default function FollowUps() {
                 </div>
             </div>
 
-            {/* Tabs & Filters Bar */}
-            <div className="card polished-card" style={{ padding: '0', marginBottom: '24px', overflow: 'hidden' }}>
-                <div style={{ display: 'flex', borderBottom: '1px solid var(--border)' }}>
-                    <button
-                        onClick={() => setActiveTab('callbacks')}
-                        style={{
-                            flex: 1, padding: '16px', border: 'none', background: 'none', cursor: 'pointer',
-                            color: activeTab === 'callbacks' ? 'var(--accent-light)' : 'var(--text-dim)',
-                            borderBottom: activeTab === 'callbacks' ? '2px solid var(--accent-light)' : 'none',
-                            fontWeight: 600, fontSize: '14px', transition: 'all 0.2s'
-                        }}
-                    >
-                        <Phone size={16} style={{ marginRight: '8px', verticalAlign: 'middle' }} />
-                        All Callbacks
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('interactions')}
-                        style={{
-                            flex: 1, padding: '16px', border: 'none', background: 'none', cursor: 'pointer',
-                            color: activeTab === 'interactions' ? 'var(--accent-light)' : 'var(--text-dim)',
-                            borderBottom: activeTab === 'interactions' ? '2px solid var(--accent-light)' : 'none',
-                            fontWeight: 600, fontSize: '14px', transition: 'all 0.2s'
-                        }}
-                    >
-                        <FileText size={16} style={{ marginRight: '8px', verticalAlign: 'middle' }} />
-                        Interactions Log
-                    </button>
-                </div>
-
-                <div style={{ padding: '20px', display: 'flex', gap: '20px', alignItems: 'flex-end', flexWrap: 'wrap', background: 'rgba(255,255,255,0.01)' }}>
-                    <div style={{ position: 'relative', flex: 2, minWidth: '250px' }}>
-                        <label style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-dim)', display: 'block', marginBottom: '6px' }}>Search Leads</label>
-                        <div style={{ position: 'relative' }}>
-                            <Search style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-dim)' }} size={16} />
-                            <input
-                                type="text"
-                                placeholder="Search by name, company or notes..."
-                                className="form-control"
-                                style={{ paddingLeft: '38px', height: '42px' }}
-                                value={search}
-                                onChange={(e) => setSearch(e.target.value)}
-                            />
-                        </div>
+            {/* Filters Bar */}
+            <div className="card polished-card" style={{ padding: '16px', marginBottom: '24px' }}>
+                <div style={{ display: 'flex', gap: '16px', alignItems: 'center', flexWrap: 'wrap' }}>
+                    <div style={{ position: 'relative', flex: 1, minWidth: '200px' }}>
+                        <Search style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-dim)' }} size={16} />
+                        <input
+                            type="text"
+                            placeholder="Search by lead or notes..."
+                            className="form-control"
+                            style={{ paddingLeft: '36px' }}
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                        />
                     </div>
 
                     {isAdmin && (
                         <div className="filter-group">
-                            <label style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-dim)', display: 'block', marginBottom: '6px' }}>BDM / Agent</label>
+                            <label style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-dim)', display: 'block', marginBottom: '4px' }}>Agent</label>
                             <select
                                 className="form-control"
-                                style={{ height: '42px', width: '180px' }}
+                                style={{ height: '40px', width: '180px' }}
                                 value={agentFilter}
                                 onChange={e => setAgentFilter(e.target.value)}
                             >
-                                <option value="">All Agents</option>
+                                <option value="">All BDMs</option>
                                 {allAgents.map(a => <option key={a.id} value={a.id}>{a.full_name}</option>)}
                             </select>
                         </div>
                     )}
 
                     <div className="filter-group">
-                        <label style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-dim)', display: 'block', marginBottom: '6px' }}>Status</label>
+                        <label style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-dim)', display: 'block', marginBottom: '4px' }}>Status</label>
                         <select
                             className="form-control"
-                            style={{ height: '42px', width: '140px' }}
+                            style={{ height: '40px', width: '140px' }}
                             value={statusFilter}
                             onChange={e => setStatusFilter(e.target.value)}
                         >
@@ -194,29 +153,12 @@ export default function FollowUps() {
                     </div>
 
                     <div className="filter-group">
-                        <label style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-dim)', display: 'block', marginBottom: '6px' }}>Type</label>
-                        <select
-                            className="form-control"
-                            style={{ height: '42px', width: '130px' }}
-                            value={typeFilter}
-                            onChange={e => setTypeFilter(e.target.value)}
-                        >
-                            <option value="">All Types</option>
-                            <option value="Call">Call</option>
-                            <option value="Callback">Callback</option>
-                            <option value="Email">Email</option>
-                            <option value="Meeting">Meeting</option>
-                            <option value="Note">Note</option>
-                        </select>
-                    </div>
-
-                    <div className="filter-group">
-                        <label style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-dim)', display: 'block', marginBottom: '6px' }}>Date Range</label>
+                        <label style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-dim)', display: 'block', marginBottom: '4px' }}>Due Date Range</label>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                             <input
                                 type="date"
                                 className="form-control"
-                                style={{ width: '145px', height: '42px' }}
+                                style={{ width: '140px', height: '40px' }}
                                 value={dateRange.start}
                                 onChange={e => setDateRange(p => ({ ...p, start: e.target.value }))}
                             />
@@ -224,7 +166,7 @@ export default function FollowUps() {
                             <input
                                 type="date"
                                 className="form-control"
-                                style={{ width: '145px', height: '42px' }}
+                                style={{ width: '140px', height: '40px' }}
                                 value={dateRange.end}
                                 onChange={e => setDateRange(p => ({ ...p, end: e.target.value }))}
                             />

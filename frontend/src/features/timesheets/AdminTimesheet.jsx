@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link2, Clock, Calendar, Users, Filter, ShieldCheck, AlertCircle, X } from 'lucide-react'
+import { Link2, Clock, Calendar, Users, Filter, ShieldCheck, AlertCircle, X, Trash2 } from 'lucide-react'
 import { useLocation } from 'react-router-dom'
 import api from '../../lib/api'
 import toast from 'react-hot-toast'
@@ -113,6 +113,17 @@ export default function AdminTimesheet() {
             toast.error(err.message)
         } finally {
             setSavingId(null)
+        }
+    }
+
+    const handleDeleteEntry = async (id) => {
+        if (!confirm('Are you sure you want to delete this timesheet entry?')) return
+        try {
+            await api.delete(`/timesheets/entries/${id}`)
+            setAllEntries(prev => prev.filter(e => e.id !== id))
+            toast.success('Entry deleted successfully')
+        } catch (err) {
+            toast.error(err.message)
         }
     }
 
@@ -272,6 +283,7 @@ export default function AdminTimesheet() {
                                 <th style={{ width: 120 }}>QA Result</th>
                                 <th style={{ width: 180 }}>QA Notes</th>
                                 <th style={{ width: 200 }}>Admin Feedback</th>
+                                <th style={{ width: 80, textAlign: 'right' }}>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -297,7 +309,7 @@ export default function AdminTimesheet() {
                                 }
 
                                 if (filtered.length === 0) {
-                                    return <tr><td colSpan={8}><div className="empty-state">No entries found for criteria</div></td></tr>;
+                                    return <tr><td colSpan={11}><div className="empty-state">No entries found for criteria</div></td></tr>;
                                 }
 
                                 return filtered.map(e => (
@@ -350,21 +362,22 @@ export default function AdminTimesheet() {
                                             {e.qa_notes ? `🚩 ${e.qa_notes}` : <span style={{ opacity: 0.3 }}>—</span>}
                                         </td>
                                         <td>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                                <div style={{ position: 'relative', flex: 1 }}>
-                                                    <input
-                                                        className="feedback-input"
-                                                        placeholder={e.admin_feedback ? '' : 'Add feedback…'}
-                                                        defaultValue={e.admin_feedback || ''}
-                                                        onBlur={ev => handleUpdate(e.id, { admin_feedback: ev.target.value })}
-                                                        title={e.admin_feedback || 'Add admin feedback'}
-                                                    />
-                                                    {savingId === e.id && modal !== 'qa_report' && <div className="spinner-sm" style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)' }} />}
-                                                </div>
-
+                                            <div style={{ position: 'relative' }}>
+                                                <input
+                                                    className="feedback-input"
+                                                    placeholder={e.admin_feedback ? '' : 'Add feedback…'}
+                                                    defaultValue={e.admin_feedback || ''}
+                                                    onBlur={ev => handleUpdate(e.id, { admin_feedback: ev.target.value })}
+                                                    title={e.admin_feedback || 'Add admin feedback'}
+                                                />
+                                                {savingId === e.id && modal !== 'qa_report' && <div className="spinner-sm" style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)' }} />}
+                                            </div>
+                                        </td>
+                                        <td style={{ textAlign: 'right' }}>
+                                            <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
                                                 {/* Tester Actions */}
                                                 {(hasRole('Tester') || hasRole('super_admin')) && (e.status === 'done' || e.status === 'verified' || e.status === 'failed') && (
-                                                    <div style={{ display: 'flex', gap: 4 }}>
+                                                    <>
                                                         <button
                                                             className={`btn-icon-ts ${e.status === 'verified' ? 'active-pass' : ''}`}
                                                             onClick={() => openQaModal(e, 'verified')}
@@ -379,7 +392,17 @@ export default function AdminTimesheet() {
                                                         >
                                                             <AlertCircle size={16} />
                                                         </button>
-                                                    </div>
+                                                    </>
+                                                )}
+                                                {hasRole('super_admin') && (
+                                                    <button
+                                                        className="btn-icon-ts danger-hover"
+                                                        onClick={() => handleDeleteEntry(e.id)}
+                                                        title="Delete Entry"
+                                                        style={{ color: 'var(--text-dim)' }}
+                                                    >
+                                                        <Trash2 size={16} />
+                                                    </button>
                                                 )}
                                             </div>
                                         </td>

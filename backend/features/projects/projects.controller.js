@@ -21,6 +21,7 @@ export const getAllProjects = async (req, res) => {
 
     if (req.query.startDate) options.startDate = req.query.startDate;
     if (req.query.endDate) options.endDate = req.query.endDate;
+    if (req.query.status) options.status = req.query.status;
 
     const data = await projectsService.getAllProjects(options);
     successResponse(res, data, 'Projects fetched');

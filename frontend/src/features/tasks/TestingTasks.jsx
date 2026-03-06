@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { ShieldCheck, AlertCircle, Clock, Search, Filter, CheckCircle2, X, Users, Briefcase, ListTodo } from 'lucide-react'
+import { ShieldCheck, AlertCircle, Clock, Search, Filter, CheckCircle2, X, Users, Briefcase, ListTodo, Trash2 } from 'lucide-react'
 import api from '../../lib/api'
 import toast from 'react-hot-toast'
 import { useAuth } from '../../context/AuthContext'
@@ -122,6 +122,17 @@ export default function TestingTasks() {
             toast.error(err.message)
         } finally {
             setSavingId(null)
+        }
+    }
+
+    const handleDeleteTask = async (id) => {
+        if (!confirm('Are you sure you want to delete this task?')) return
+        try {
+            await api.delete(`/tasks/${id}`)
+            setTasks(prev => prev.filter(t => t.id !== id))
+            toast.success('Task deleted successfully')
+        } catch (err) {
+            toast.error(err.message)
         }
     }
 
@@ -257,7 +268,12 @@ export default function TestingTasks() {
                                                 <button className="btn-icon-sm fail" onClick={(e) => { e.stopPropagation(); openQaModal(t, 'failed'); }}><AlertCircle size={16} /></button>
                                             </div>
                                         ) : (
-                                            <button className="btn-icon-sm" onClick={(e) => { e.stopPropagation(); openQaModal(t, t.status); }}><Search size={16} /></button>
+                                            <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+                                                <button className="btn-icon-sm" onClick={(e) => { e.stopPropagation(); openQaModal(t, t.status); }} title="Details"><Search size={16} /></button>
+                                                {hasRole('super_admin') && (
+                                                    <button className="btn-icon-sm danger" onClick={(e) => { e.stopPropagation(); handleDeleteTask(t.id); }} title="Delete Task"><Trash2 size={16} /></button>
+                                                )}
+                                            </div>
                                         )}
                                     </td>
                                 </tr>

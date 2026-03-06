@@ -259,7 +259,7 @@ export default function UsersPage() {
         <div>
             <div className="page-header">
                 <div><h1>Employees</h1><p>Manage employees, roles and access</p></div>
-                {hasPermission('manage_employees') && (
+                {hasPermission('create_user') && (
                     <button className="btn btn-primary" onClick={openCreate}><Plus size={16} />New Employee</button>
                 )}
             </div>
@@ -272,21 +272,21 @@ export default function UsersPage() {
                     </div>
                 </div>
 
-                    {loading ? <div className="page-loader"><div className="spinner" /></div> : (
-                        <table>
-                            <thead><tr>
-                                <SortableHeader sortKey="full_name" label="Name" currentSortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
-                                <SortableHeader sortKey="email" label="Email" currentSortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
-                                <SortableHeader sortKey="department" label="Department" currentSortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
-                                <SortableHeader sortKey="designation" label="Designation" currentSortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
-                                <th>Roles</th>
-                                <th>Actions</th>
-                            </tr></thead>
-                            <tbody>
-                                {sortedUsers.length === 0 && (
-                                    <tr><td colSpan={6}><div className="empty-state"><p>No users found</p></div></td></tr>
-                                )}
-                                {sortedUsers.map(u => (
+                {loading ? <div className="page-loader"><div className="spinner" /></div> : (
+                    <table>
+                        <thead><tr>
+                            <SortableHeader sortKey="full_name" label="Name" currentSortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+                            <SortableHeader sortKey="email" label="Email" currentSortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+                            <SortableHeader sortKey="department" label="Department" currentSortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+                            <SortableHeader sortKey="designation" label="Designation" currentSortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+                            <th>Roles</th>
+                            <th>Actions</th>
+                        </tr></thead>
+                        <tbody>
+                            {sortedUsers.length === 0 && (
+                                <tr><td colSpan={6}><div className="empty-state"><p>No users found</p></div></td></tr>
+                            )}
+                            {sortedUsers.map(u => (
                                 <tr key={u.id}>
                                     <td><strong>{u.full_name}</strong></td>
                                     <td style={{ color: 'var(--text-muted)', fontSize: 13 }}>{u.email}</td>
@@ -314,11 +314,11 @@ export default function UsersPage() {
                                             {hasPermission('view_timesheets') && (
                                                 <button className="btn btn-ghost btn-sm btn-icon" onClick={() => navigate(`/timesheet?userId=${u.id}`)} title="View Timesheets"><Calendar size={14} /></button>
                                             )}
-                                            {hasPermission('manage_employees') && (
-                                                <>
-                                                    <button className="btn btn-ghost btn-sm btn-icon" onClick={() => openEdit(u)} title="Edit"><Pencil size={14} /></button>
-                                                    <button className="btn btn-danger btn-sm btn-icon" onClick={() => openDelete(u)} title="Delete"><Trash2 size={14} /></button>
-                                                </>
+                                            {hasPermission('edit_user') && (
+                                                <button className="btn btn-ghost btn-sm btn-icon" onClick={() => openEdit(u)} title="Edit"><Pencil size={14} /></button>
+                                            )}
+                                            {hasPermission('delete_user') && (
+                                                <button className="btn btn-danger btn-sm btn-icon" onClick={() => openDelete(u)} title="Delete"><Trash2 size={14} /></button>
                                             )}
                                         </div>
                                     </td>

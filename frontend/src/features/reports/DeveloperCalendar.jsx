@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Calendar, Filter, DollarSign, Clock, Users, Briefcase, FileText } from 'lucide-react'
+import { Calendar, Filter, IndianRupee, Clock, Users, Briefcase, FileText } from 'lucide-react'
 import api from '../../lib/api'
 import toast from 'react-hot-toast'
 
@@ -69,7 +69,7 @@ export default function DeveloperCalendar() {
 
                 <div className="card shadow-sm" style={{ padding: 24, display: 'flex', alignItems: 'center', gap: 20, borderLeft: '4px solid var(--success)' }}>
                     <div style={{ background: 'rgba(34, 197, 94, 0.1)', color: 'var(--success)', padding: 12, borderRadius: 12 }}>
-                        <DollarSign size={28} />
+                        <IndianRupee size={28} />
                     </div>
                     <div>
                         <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>Estimated Cost</div>

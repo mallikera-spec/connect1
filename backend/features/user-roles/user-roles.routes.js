@@ -6,7 +6,7 @@ import { requirePermission } from '../../middleware/permission.middleware.js';
 const router = Router();
 
 router.use(authMiddleware);
-router.use(requirePermission('assign_role'));
+router.use(requirePermission('assign_role', ['hr', 'HR Manager']));
 
 router.get('/:userId', getUserRoles);
 router.post('/', assignRole);

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, NavLink } from 'react-router-dom';
 import { HRService } from './HRService';
 import { Clock, Calendar, FileText, Check, X } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -363,6 +363,7 @@ export default function HRAdminPanel() {
                 <div className="table-wrapper">
                     <div className="table-toolbar">
                         <h2 style={{ fontSize: 15, fontWeight: 600 }}>Pending Leave Requests</h2>
+                        <NavLink to="/leave-tracker" className="btn btn-ghost btn-sm">View Full Report</NavLink>
                     </div>
                     <table>
                         <thead>
@@ -454,9 +455,9 @@ export default function HRAdminPanel() {
                                 <tr key={slip.id}>
                                     <td><strong>{slip.user?.full_name || '—'}</strong></td>
                                     <td style={{ color: 'var(--text-muted)', fontSize: 13 }}>{slip.month}/{slip.year}</td>
-                                    <td style={{ fontSize: 13 }}>${parseFloat(slip.base_salary).toLocaleString()}</td>
-                                    <td style={{ color: 'var(--danger)', fontSize: 13 }}>-${parseFloat(slip.deductions).toLocaleString()}</td>
-                                    <td style={{ fontWeight: 700, color: 'var(--success)' }}>${parseFloat(slip.net_salary).toLocaleString()}</td>
+                                    <td style={{ fontSize: 13 }}>Rs {parseFloat(slip.base_salary).toLocaleString()}</td>
+                                    <td style={{ color: 'var(--danger)', fontSize: 13 }}>-Rs {parseFloat(slip.deductions).toLocaleString()}</td>
+                                    <td style={{ fontWeight: 700, color: 'var(--success)' }}>Rs {parseFloat(slip.net_salary).toLocaleString()}</td>
                                     <td>{statusBadge(slip.status)}</td>
                                 </tr>
                             )) : (

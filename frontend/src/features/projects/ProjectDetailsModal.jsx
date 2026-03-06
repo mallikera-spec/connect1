@@ -164,6 +164,31 @@ export default function ProjectDetailsModal({ project, allUsers, onClose, onSave
                 </div>
 
                 <div className="modal-body" style={{ flex: 1, overflowY: 'auto' }}>
+                    {/* --- PROJECT INFO --- */}
+                    {(project.client_name || project.sub_types?.length > 0) && (
+                        <div style={{ display: 'flex', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
+                            {project.client_name && (
+                                <div style={{ flex: 1, minWidth: 200, padding: 12, background: 'var(--surface-light)', borderRadius: 8, border: '1px solid var(--border)' }}>
+                                    <div style={{ fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600, marginBottom: 4 }}>Client</div>
+                                    <div style={{ fontSize: 13, fontWeight: 700 }}>{project.client_name}</div>
+                                    <div style={{ fontSize: 11, color: 'var(--text-dim)' }}>{project.client_email} {project.client_phone ? `• ${project.client_phone}` : ''}</div>
+                                    {project.acquisition_date && (
+                                        <div style={{ fontSize: 11, color: 'var(--accent)', marginTop: 4, fontWeight: 600 }}>Acquired: {project.acquisition_date}</div>
+                                    )}
+                                </div>
+                            )}
+                            {project.sub_types?.length > 0 && (
+                                <div style={{ flex: 1, minWidth: 200, padding: 12, background: 'var(--surface-light)', borderRadius: 8, border: '1px solid var(--border)' }}>
+                                    <div style={{ fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600, marginBottom: 6 }}>Categories</div>
+                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                                        {project.sub_types.map(t => (
+                                            <span key={t} style={{ fontSize: 10, background: 'var(--bg-card)', padding: '1px 8px', borderRadius: 4, border: '1px solid var(--border)' }}>{t}</span>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
 
                     {/* --- TEAM TAB --- */}
                     {activeTab === 'team' && (

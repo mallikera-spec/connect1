@@ -148,3 +148,12 @@ export const getAttendanceReport = async (req, res, next) => {
         next(error);
     }
 };
+export const getLeaveReport = async (req, res, next) => {
+    try {
+        const { userId, startDate, endDate, status } = req.query;
+        const data = await hrService.getLeaveReport({ userId, startDate, endDate, status });
+        res.json({ success: true, data });
+    } catch (error) {
+        next(error);
+    }
+};

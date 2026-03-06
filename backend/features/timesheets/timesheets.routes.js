@@ -20,7 +20,7 @@ router.get('/project/:projectId', getProjectTimesheets);
 // Entry CRUD
 router.post('/:id/entries', addEntry);
 router.patch('/entries/:entryId', updateEntry);
-router.delete('/entries/:entryId', deleteEntry);
+router.delete('/entries/:entryId', requirePermission('delete_timesheet_entry'), deleteEntry);
 
 // Admin: view all
 router.get('/', requirePermission('view_timesheets'), getAllTimesheets);

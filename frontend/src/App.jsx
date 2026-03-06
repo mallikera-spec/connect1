@@ -11,6 +11,7 @@ import RolesPage from './features/roles/RolesPage'
 import PermissionsPage from './features/permissions/PermissionsPage'
 import DepartmentsPage from './features/departments/DepartmentsPage'
 import ProjectsPage from './features/projects/ProjectsPage'
+import MyProjectsPage from './features/projects/MyProjectsPage'
 import ProjectDetailPage from './features/projects/ProjectDetailPage'
 import ClientsList from './features/projects/ClientsList'
 import TasksPage from './features/tasks/TasksPage'
@@ -27,6 +28,7 @@ import Leads from './features/sales/Leads'
 import FollowUps from './features/sales/FollowUps'
 import SalesDashboard from './features/sales/SalesDashboard'
 import BDMPerformance from './features/reports/BDMPerformance'
+import InteractionHistory from './features/sales/InteractionHistory'
 import HRDashboard from './features/hr/HRDashboard'
 import HRAdminPanel from './features/hr/HRAdminPanel'
 import PollsPage from './features/polls/PollsPage'
@@ -34,11 +36,15 @@ import AttendanceReport from './features/reports/AttendanceReport'
 import TesterPage from './features/dashboard/TesterPage'
 import TestingReports from './features/timesheets/TestingReports'
 import PoliciesPage from './features/hr/PoliciesPage'
+import LeaveTracker from './features/hr/LeaveTracker'
+import DeviceGuard from './components/DeviceGuard'
 
 function AdminLayout({ children }) {
   return (
     <ProtectedRoute>
-      <DashboardLayout>{children}</DashboardLayout>
+      <DeviceGuard>
+        <DashboardLayout>{children}</DashboardLayout>
+      </DeviceGuard>
     </ProtectedRoute>
   )
 }
@@ -64,6 +70,9 @@ export default function App() {
       <Route path="/timesheet" element={<AdminLayout><PermissionGate perm="view_timesheet"><TimesheetPage /></PermissionGate></AdminLayout>} />
 
       {/* Project Management */}
+      <Route path="/my-projects" element={
+        <AdminLayout><MyProjectsPage /></AdminLayout>
+      } />
       <Route path="/projects" element={
         <AdminLayout><PermissionGate perm="view_projects" allowedRoles={['Tester']}><ProjectsPage /></PermissionGate></AdminLayout>
       } />
@@ -105,6 +114,9 @@ export default function App() {
       <Route path="/policies" element={
         <AdminLayout><PoliciesPage /></AdminLayout>
       } />
+      <Route path="/leave-tracker" element={
+        <AdminLayout><LeaveTracker /></AdminLayout>
+      } />
 
       {/* Access Control */}
       <Route path="/roles" element={
@@ -116,19 +128,22 @@ export default function App() {
 
       {/* Sales & Proposals */}
       <Route path="/quotations" element={
-        <AdminLayout><PermissionGate perm="generate_quotations"><QuotationPage /></PermissionGate></AdminLayout>
+        <AdminLayout><PermissionGate perm="generate_quotations" excludeRoles={['HR Manager']}><QuotationPage /></PermissionGate></AdminLayout>
       } />
       <Route path="/sales-dashboard" element={
-        <AdminLayout><PermissionGate perm="view_leads"><SalesDashboard /></PermissionGate></AdminLayout>
+        <AdminLayout><PermissionGate perm="view_leads" excludeRoles={['HR Manager']}><SalesDashboard /></PermissionGate></AdminLayout>
       } />
       <Route path="/leads" element={
-        <AdminLayout><PermissionGate perm="view_leads"><Leads /></PermissionGate></AdminLayout>
+        <AdminLayout><PermissionGate perm="view_leads" excludeRoles={['HR Manager']}><Leads /></PermissionGate></AdminLayout>
       } />
       <Route path="/follow-ups" element={
-        <AdminLayout><PermissionGate perm="view_leads"><FollowUps /></PermissionGate></AdminLayout>
+        <AdminLayout><PermissionGate perm="view_leads" excludeRoles={['HR Manager']}><FollowUps /></PermissionGate></AdminLayout>
       } />
       <Route path="/bdm-performance" element={
-        <AdminLayout><PermissionGate perm="view_leads"><BDMPerformance /></PermissionGate></AdminLayout>
+        <AdminLayout><PermissionGate perm="view_leads" excludeRoles={['HR Manager']}><BDMPerformance /></PermissionGate></AdminLayout>
+      } />
+      <Route path="/interaction-history" element={
+        <AdminLayout><PermissionGate perm="view_leads" excludeRoles={['HR Manager']}><InteractionHistory /></PermissionGate></AdminLayout>
       } />
 
       {/* Fallback */}
