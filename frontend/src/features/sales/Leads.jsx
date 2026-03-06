@@ -311,10 +311,14 @@ export default function Leads() {
                             <option value="">All Statuses</option>
                             <option value="New">New Lead</option>
                             <option value="Contacted">Contacted</option>
+                            <option value="Meeting">Meeting Scheduled</option>
                             <option value="Qualified">Qualified</option>
-                            <option value="Proposal">Proposal</option>
+                            <option value="Proposal">Proposal Sent</option>
+                            <option value="Negotiation">Negotiation</option>
                             <option value="Won">Won</option>
                             <option value="Lost">Lost</option>
+                            <option value="Invalid">Invalid Lead</option>
+                            <option value="Not Connected">Not Connected</option>
                         </select>
                     </div>
 
@@ -522,12 +526,16 @@ export default function Leads() {
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255,255,255,0.03)', padding: '4px 8px', borderRadius: '8px', border: '1px solid var(--border)' }}>
                                 <select className="form-select-minimal" style={{ width: '130px', height: '32px' }} value={bulkStatus} onChange={(e) => setBulkStatus(e.target.value)}>
                                     <option value="">Set Status...</option>
-                                    <option value="New">New</option>
+                                    <option value="New">New Lead</option>
                                     <option value="Contacted">Contacted</option>
+                                    <option value="Meeting">Meeting Scheduled</option>
                                     <option value="Qualified">Qualified</option>
-                                    <option value="Proposal">Proposal</option>
+                                    <option value="Proposal">Proposal Sent</option>
+                                    <option value="Negotiation">Negotiation</option>
                                     <option value="Won">Won</option>
                                     <option value="Lost">Lost</option>
+                                    <option value="Invalid">Invalid Lead</option>
+                                    <option value="Not Connected">Not Connected</option>
                                 </select>
                                 <button className="btn btn-secondary btn-sm" style={{ height: '32px' }} disabled={!bulkStatus || isBulkAssigning} onClick={handleBulkStatusUpdate}>Update</button>
                             </div>
@@ -554,10 +562,14 @@ export default function Leads() {
                 .status-badge { padding: 4px 12px; border-radius: 20px; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; }
                 .status-badge.new { background: rgba(59, 130, 246, 0.1); color: #3b82f6; border: 1px solid rgba(59, 130, 246, 0.2); }
                 .status-badge.contacted { background: rgba(139, 92, 246, 0.1); color: #8b5cf6; border: 1px solid rgba(139, 92, 246, 0.2); }
+                .status-badge.meeting { background: rgba(236, 72, 153, 0.1); color: #ec4899; border: 1px solid rgba(236, 72, 153, 0.2); }
                 .status-badge.qualified { background: rgba(16, 185, 129, 0.1); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.2); }
                 .status-badge.proposal { background: rgba(245, 158, 11, 0.1); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.2); }
+                .status-badge.negotiation { background: rgba(168, 85, 247, 0.1); color: #a855f7; border: 1px solid rgba(168, 85, 247, 0.2); }
                 .status-badge.won { background: rgba(16, 185, 129, 0.2); color: #059669; border: 1px solid #10b981; }
                 .status-badge.lost { background: rgba(239, 68, 68, 0.1); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.2); }
+                .status-badge.invalid { background: rgba(107, 114, 128, 0.1); color: #6b7280; border: 1px solid rgba(107, 114, 128, 0.2); }
+                .status-badge.not-connected { background: rgba(244, 63, 94, 0.1); color: #f43f5e; border: 1px solid rgba(244, 63, 94, 0.2); }
                 .clickable-row:hover { background: var(--bg-app) !important; cursor: pointer; }
                 .row-selected { background: rgba(124, 58, 237, 0.08) !important; border-left: 3px solid var(--accent); }
                 .bulk-action-bar { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); z-index: 1000; background: var(--bg-card); border: 1px solid var(--accent); box-shadow: 0 12px 40px rgba(0,0,0,0.3); padding: 12px 20px; animation: slideUp 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }

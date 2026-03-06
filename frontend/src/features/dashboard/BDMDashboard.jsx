@@ -100,6 +100,37 @@ export default function BDMDashboard({ dateRange }) {
                         </div>
                     </div>
                 </div>
+
+                <div className="card polished-card stat-card-dashboard">
+                    <div className="stat-icon-box" style={{ background: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b' }}>
+                        <Target size={24} />
+                    </div>
+                    <div className="stat-content">
+                        <label>Monthly Target</label>
+                        <h3>Rs {(metrics?.monthlyTarget || 0).toLocaleString()}</h3>
+                        <div className="stat-footer">
+                            <span style={{ color: 'var(--text-dim)' }}>15x base salary</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="card polished-card stat-card-dashboard">
+                    <div className="stat-icon-box" style={{
+                        background: (metrics?.variance || 0) >= 0 ? 'rgba(34, 197, 94, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                        color: (metrics?.variance || 0) >= 0 ? '#22c55e' : '#ef4444'
+                    }}>
+                        <TrendingUp size={24} />
+                    </div>
+                    <div className="stat-content">
+                        <label>Variance</label>
+                        <h3 style={{ color: (metrics?.variance || 0) >= 0 ? 'var(--success)' : '#ef4444' }}>
+                            {(metrics?.variance || 0) >= 0 ? '+' : ''} Rs {(metrics?.variance || 0).toLocaleString()}
+                        </h3>
+                        <div className="stat-footer">
+                            <span style={{ color: 'var(--text-dim)' }}>vs Target</span>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <div className="dashboard-main-layout">
@@ -242,6 +273,6 @@ export default function BDMDashboard({ dateRange }) {
                 }
                 .trend.positive { color: var(--success); display: flex; align-items: center; gap: 4px; }
             `}</style>
-        </div>
+        </div >
     );
 }

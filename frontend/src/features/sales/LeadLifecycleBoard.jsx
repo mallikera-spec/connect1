@@ -15,7 +15,7 @@ export default function LeadLifecycleBoard({ leads, onSelectLead }) {
             color: 'var(--info)',
             bg: 'rgba(59, 130, 246, 0.05)',
             border: 'rgba(59, 130, 246, 0.2)',
-            statuses: ['New', 'Contacted'],
+            statuses: ['New', 'Contacted', 'Meeting'],
             icon: <Clock size={16} />
         },
         {
@@ -25,7 +25,7 @@ export default function LeadLifecycleBoard({ leads, onSelectLead }) {
             color: 'var(--warning)',
             bg: 'rgba(245, 158, 11, 0.05)',
             border: 'rgba(245, 158, 11, 0.2)',
-            statuses: ['Qualified', 'Proposal'],
+            statuses: ['Qualified', 'Proposal', 'Negotiation'],
             icon: <Briefcase size={16} />
         },
         {

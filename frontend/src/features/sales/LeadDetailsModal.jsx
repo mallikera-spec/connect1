@@ -177,10 +177,14 @@ export default function LeadDetailsModal({ leadId, onClose, onSaved }) {
                                         >
                                             <option value="New">New Lead</option>
                                             <option value="Contacted">Contacted</option>
+                                            <option value="Meeting">Meeting Scheduled</option>
                                             <option value="Qualified">Qualified</option>
                                             <option value="Proposal">Proposal Sent</option>
-                                            <option value="Won">Closed Won</option>
-                                            <option value="Lost">Closed Lost</option>
+                                            <option value="Negotiation">Negotiation</option>
+                                            <option value="Won">Won</option>
+                                            <option value="Lost">Lost</option>
+                                            <option value="Invalid">Invalid Lead</option>
+                                            <option value="Not Connected">Not Connected</option>
                                         </select>
                                     </div>
                                     <div>

@@ -148,6 +148,24 @@ export function EmployeeCard({ employee, isAdminView, currentRange }) {
                         </div>
                         <div className="metric-lbl">Quotations (Req)</div>
                     </div>
+
+                    <div className="metric-box">
+                        <div className="metric-val" style={{ fontSize: '12px' }}>
+                            ₹{Math.round((employee.sales_stats.monthly_target || 0) / 1000)}k
+                        </div>
+                        <div className="metric-lbl">Monthly Target</div>
+                    </div>
+
+                    <div className="metric-box">
+                        <div className="metric-val" style={{
+                            fontSize: '12px',
+                            color: (employee.sales_stats.variance || 0) >= 0 ? 'var(--success)' : '#ef4444'
+                        }}>
+                            {(employee.sales_stats.variance || 0) >= 0 ? '+' : ''}
+                            ₹{Math.round((employee.sales_stats.variance || 0) / 1000)}k
+                        </div>
+                        <div className="metric-lbl">Variance</div>
+                    </div>
                 </div>
             )}
 

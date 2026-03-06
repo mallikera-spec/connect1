@@ -369,7 +369,7 @@ export const getEmployeeOverview = async ({ startDate, endDate } = {}) => {
     const { data: profiles, error: profileError } = await supabaseAdmin
         .from('profiles')
         .select(`
-            id, full_name, email, department, designation, avatar_url,
+            id, full_name, email, department, designation, avatar_url, ctc,
             user_roles(role:roles(name))
         `);
     if (profileError) throw profileError;
@@ -430,6 +430,7 @@ export const getEmployeeOverview = async ({ startDate, endDate } = {}) => {
             department: p.department,
             designation: p.designation,
             avatar_url: p.avatar_url,
+            ctc: p.ctc || 0,
             isTester,
             total_tasks: 0,
             tasks: { total: 0, verified: 0, failed: 0 },
@@ -501,6 +502,8 @@ export const getEmployeeOverview = async ({ startDate, endDate } = {}) => {
                     won_value: 0,
                     pipeline_value: 0,
                     quotation_count: 0,
+                    monthly_target: 0,
+                    variance: 0,
                     conversion_rate: 0
                 };
             }
@@ -542,8 +545,14 @@ export const getEmployeeOverview = async ({ startDate, endDate } = {}) => {
     }
 
     Object.values(userMetrics).forEach(m => {
-        if (m.sales_stats && m.sales_stats.total_leads > 0) {
-            m.sales_stats.conversion_rate = (m.sales_stats.won_count / m.sales_stats.total_leads) * 100;
+        if (m.sales_stats) {
+            if (m.sales_stats.total_leads > 0) {
+                m.sales_stats.conversion_rate = (m.sales_stats.won_count / m.sales_stats.total_leads) * 100;
+            }
+            // Monthly Target = (Monthly Salary) * 15
+            const monthlySalary = (m.ctc || 0) / 12;
+            m.sales_stats.monthly_target = Math.round(monthlySalary * 15);
+            m.sales_stats.variance = m.sales_stats.won_value - m.sales_stats.monthly_target;
         }
 
         // Calculate Quality Metrics for Developers/Testers

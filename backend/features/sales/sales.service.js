@@ -521,6 +521,22 @@ export const getSalesMetrics = async (filters = {}) => {
 
     if (error) throw error;
 
+    let monthlyTarget = 0;
+    let variance = 0;
+
+    if (filters.assigned_agent_id) {
+        const { data: profile } = await supabaseAdmin
+            .from('profiles')
+            .select('ctc')
+            .eq('id', filters.assigned_agent_id)
+            .single();
+
+        if (profile) {
+            const monthlySalary = (profile.ctc || 0) / 12;
+            monthlyTarget = Math.round(monthlySalary * 15);
+        }
+    }
+
     const stats = data.reduce((acc, lead) => {
         const val = parseFloat(lead.deal_value || 0);
         const status = String(lead.status || '').toLowerCase();
@@ -529,7 +545,7 @@ export const getSalesMetrics = async (filters = {}) => {
         if (status === 'won') {
             acc.wonCount = (acc.wonCount || 0) + 1;
             acc.wonValue = (acc.wonValue || 0) + val;
-        } else if (status === 'proposal') {
+        } else if (status === 'proposal' || status === 'meeting' || status === 'negotiation') {
             acc.pipelineValue = (acc.pipelineValue || 0) + val;
         }
 
@@ -553,6 +569,8 @@ export const getSalesMetrics = async (filters = {}) => {
 
     // Calculate conversion rate: (Won / Total) * 100
     stats.conversionRate = stats.total > 0 ? ((stats.Won || 0) / stats.total) * 100 : 0;
+    stats.monthlyTarget = monthlyTarget;
+    stats.variance = stats.wonValue - monthlyTarget;
 
     // Fetch pending follow-ups
     let followUpQuery = supabaseAdmin

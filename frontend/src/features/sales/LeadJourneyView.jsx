@@ -32,7 +32,7 @@ export default function LeadJourneyView({ leadId }) {
 
     // Determine current stage for visual highlighting
     let currentStage = 1; // 1: Lead, 2: Proposal, 3: Client, 4: Projects
-    if (lead.status === 'Proposal') currentStage = 2;
+    if (['Proposal', 'Negotiation'].includes(lead.status)) currentStage = 2;
     if (client || lead.status === 'Won') currentStage = 3;
     if (projects && projects.length > 0) currentStage = 4;
 
