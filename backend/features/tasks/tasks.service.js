@@ -53,15 +53,46 @@ export const getTaskById = async (id) => {
     return data;
 };
 
-export const updateTask = async (id, updates) => {
-    // Get original task to check for assignment change
-    const { data: oldTask } = await supabaseAdmin.from('tasks').select('assigned_to, title').eq('id', id).single();
+export const updateTask = async (id, updates, user) => {
+    // 1. Get current task state
+    const { data: currentTask, error: fetchError } = await supabaseAdmin
+        .from('tasks')
+        .select('*, assignee:profiles!assigned_to(id, full_name, email)')
+        .eq('id', id)
+        .single();
 
-    const { data, error } = await supabaseAdmin.from('tasks').update(updates).eq('id', id).select('*, project:projects(id, name), assignee:profiles!assigned_to(id, full_name, email)').single();
+    if (fetchError || !currentTask) throw new Error('Task not found');
+
+    // 2. Implement Locking Logic
+    const isAdmin = user?.roles?.some(r =>
+        ['super_admin', 'super admin', 'director', 'project_manager', 'project manager', 'hr', 'hr manager', 'tester'].includes(r.toLowerCase())
+    );
+
+    const isDeveloper = currentTask.assigned_to === user?.id;
+    const lockedStatuses = ['done', 'ready_for_qa', 'verified'];
+
+    if (!isAdmin && isDeveloper && lockedStatuses.includes(currentTask.status)) {
+        // If developer is trying to edit a locked task
+        // Exception: Allow them to update status to 'done' or 'ready_for_qa' if it was 'failed' (resubmission)
+        const isResubmitting = currentTask.status === 'failed' && (updates.status === 'done' || updates.status === 'ready_for_qa');
+
+        if (!isResubmitting) {
+            throw new Error(`Task is locked in ${currentTask.status} status. You cannot edit it.`);
+        }
+    }
+
+    // 3. Perform Update
+    const { data, error } = await supabaseAdmin
+        .from('tasks')
+        .update(updates)
+        .eq('id', id)
+        .select('*, project:projects(id, name), assignee:profiles!assigned_to(id, full_name, email)')
+        .single();
+
     if (error) throw error;
 
-    // Notify if assignment changed or updated
-    if (data.assigned_to && data.assigned_to !== oldTask?.assigned_to) {
+    // 4. Notifications (Assignment or Status Change)
+    if (data.assigned_to && data.assigned_to !== currentTask?.assigned_to) {
         try {
             await createNotification({
                 userId: data.assigned_to,
@@ -74,16 +105,19 @@ export const updateTask = async (id, updates) => {
             console.error('Failed to create notification:', err);
         }
     } else if (data.assigned_to) {
-        // Just an update to an existing assignment
         try {
             const isFailed = updates.status === 'failed';
+            const isVerified = updates.status === 'verified';
+
             await createNotification({
                 userId: data.assigned_to,
-                type: isFailed ? 'TASK_FAILED' : 'TASK_UPDATED',
-                title: isFailed ? 'Task Failed QA' : 'Task Updated',
+                type: isFailed ? 'TASK_FAILED' : isVerified ? 'TASK_VERIFIED' : 'TASK_UPDATED',
+                title: isFailed ? 'Task Failed QA' : isVerified ? 'Task Verified' : 'Task Updated',
                 message: isFailed
                     ? `QA failed for: ${data.title}. Check notes.`
-                    : `Task updated: ${data.title}`,
+                    : isVerified
+                        ? `Task verified by QA: ${data.title}`
+                        : `Task updated: ${data.title}`,
                 data: { taskId: data.id }
             });
         } catch (err) {

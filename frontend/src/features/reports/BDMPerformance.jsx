@@ -5,6 +5,7 @@ import { getISTMonthStartString, getISTTodayString } from '../../lib/dateUtils';
 import { BarChart3, ArrowUpRight, XCircle, Target, Award, TrendingUp, Percent } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import DataTable from '../../components/common/DataTable';
 
 export default function BDMPerformance() {
     const [data, setData] = useState([]);
@@ -143,77 +144,76 @@ export default function BDMPerformance() {
             </div>
 
             {!isBDM && (
-                <div className="card polished-card" style={{ padding: 0, overflow: 'hidden' }}>
+                <div className="card polished-card" style={{ padding: 0 }}>
                     <div style={{ padding: '20px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <h3 style={{ fontSize: 15, fontWeight: 700 }}>Individual Performance Matrix</h3>
                         <div style={{ fontSize: 12, color: 'var(--text-dim)' }}>{data.length} BDMs Tracked</div>
                     </div>
-                    <div className="table-wrapper">
-                        <table className="polished-table">
-                            <thead>
-                                <tr>
-                                    <th>BDM / Agent</th>
-                                    <th style={{ textAlign: 'right' }}>Target</th>
-                                    <th style={{ textAlign: 'right' }}>Won Value</th>
-                                    <th style={{ textAlign: 'right' }}>Variance</th>
-                                    <th style={{ textAlign: 'center' }}>Conv. %</th>
-                                    <th style={{ textAlign: 'center' }}>Action</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {filteredData.map(u => (
-                                    <tr key={u.id}>
-                                        <td>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                                                {u.avatar_url ? (
-                                                    <img src={u.avatar_url} alt={u.full_name} style={{ width: 40, height: 40, borderRadius: '50%' }} />
-                                                ) : (
-                                                    <div className="user-avatar" style={{ width: 40, height: 40, fontSize: 12, margin: 0 }}>{u.full_name?.slice(0, 2).toUpperCase()}</div>
-                                                )}
-                                                <div>
-                                                    <div style={{ fontWeight: 600, fontSize: 14 }}>{u.full_name}</div>
-                                                    <div style={{ fontSize: 11, color: 'var(--text-dim)' }}>{u.designation}</div>
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td style={{ textAlign: 'right', fontWeight: 600 }}>
-                                            ₹{(isFinite(u.sales_stats.monthly_target) ? u.sales_stats.monthly_target : 0).toLocaleString()}
-                                        </td>
-                                        <td
-                                            style={{ textAlign: 'right', color: 'var(--success)', fontWeight: 700, cursor: 'pointer' }}
-                                            onClick={() => navigate('/leads', { state: { agent: u.id, status: 'Won', ...dateRange } })}
-                                        >
-                                            ₹{u.sales_stats.won_value?.toLocaleString()}
-                                        </td>
-                                        <td style={{
-                                            textAlign: 'right',
-                                            color: (isFinite(u.sales_stats.variance) ? u.sales_stats.variance : 0) >= 0 ? 'var(--success)' : 'var(--danger)',
-                                            fontWeight: 600
-                                        }}>
-                                            {(() => {
-                                                const v = isFinite(u.sales_stats.variance) ? u.sales_stats.variance : 0;
-                                                return `${v >= 0 ? '+' : '-'}₹${Math.abs(v).toLocaleString()}`;
-                                            })()}
-                                        </td>
-                                        <td style={{ textAlign: 'center' }}>
-                                            <div style={{ display: 'inline-block', background: u.sales_stats.conversion_rate > 15 ? 'var(--success-bg)' : 'var(--warning-bg)', color: u.sales_stats.conversion_rate > 15 ? 'var(--success)' : 'var(--warning)', padding: '2px 8px', borderRadius: 20, fontSize: 12, fontWeight: 700 }}>
-                                                {u.sales_stats.conversion_rate.toFixed(1)}%
-                                            </div>
-                                        </td>
-                                        <td style={{ textAlign: 'center' }}>
-                                            <button
-                                                className="btn btn-ghost btn-sm"
-                                                onClick={() => navigate('/leads', { state: { agent: u.id, ...dateRange } })}
-                                                style={{ color: 'var(--accent-light)' }}
-                                            >
-                                                Details <ArrowUpRight size={14} style={{ marginLeft: 4 }} />
-                                            </button>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
+                    <DataTable
+                        data={filteredData}
+                        fileName="bdm-performance"
+                        loading={loading}
+                        columns={[
+                            { label: 'BDM / Agent', key: 'full_name' },
+                            { label: 'Target', key: 'monthly_target' },
+                            { label: 'Won Value', key: 'won_value' },
+                            { label: 'Variance', key: 'variance' },
+                            { label: 'Conv. %', key: 'conversion_rate' },
+                            { label: 'Action', key: 'action' }
+                        ]}
+                        renderRow={(u, index) => (
+                            <tr key={u.id}>
+                                <td style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--text-dim)' }}>{index + 1}</td>
+                                <td style={{ padding: '12px 16px' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                        {u.avatar_url ? (
+                                            <img src={u.avatar_url} alt={u.full_name} style={{ width: 40, height: 40, borderRadius: '50%' }} />
+                                        ) : (
+                                            <div className="user-avatar" style={{ width: 40, height: 40, fontSize: 12, margin: 0 }}>{u.full_name?.slice(0, 2).toUpperCase()}</div>
+                                        )}
+                                        <div>
+                                            <div style={{ fontWeight: 600, fontSize: 14 }}>{u.full_name}</div>
+                                            <div style={{ fontSize: 11, color: 'var(--text-dim)' }}>{u.designation}</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 600 }}>
+                                    ₹{(isFinite(u.sales_stats.monthly_target) ? u.sales_stats.monthly_target : 0).toLocaleString()}
+                                </td>
+                                <td
+                                    style={{ padding: '12px 16px', textAlign: 'right', color: 'var(--success)', fontWeight: 700, cursor: 'pointer' }}
+                                    onClick={() => navigate('/leads', { state: { agent: u.id, status: 'Won', ...dateRange } })}
+                                >
+                                    ₹{u.sales_stats.won_value?.toLocaleString()}
+                                </td>
+                                <td style={{
+                                    padding: '12px 16px',
+                                    textAlign: 'right',
+                                    color: (isFinite(u.sales_stats.variance) ? u.sales_stats.variance : 0) >= 0 ? 'var(--success)' : 'var(--danger)',
+                                    fontWeight: 600
+                                }}>
+                                    {(() => {
+                                        const v = isFinite(u.sales_stats.variance) ? u.sales_stats.variance : 0;
+                                        return `${v >= 0 ? '+' : '-'}₹${Math.abs(v).toLocaleString()}`;
+                                    })()}
+                                </td>
+                                <td style={{ padding: '12px 16px', textAlign: 'center' }}>
+                                    <div style={{ display: 'inline-block', background: u.sales_stats.conversion_rate > 15 ? 'var(--success-bg)' : 'var(--warning-bg)', color: u.sales_stats.conversion_rate > 15 ? 'var(--success)' : 'var(--warning)', padding: '2px 8px', borderRadius: 20, fontSize: 12, fontWeight: 700 }}>
+                                        {u.sales_stats.conversion_rate.toFixed(1)}%
+                                    </div>
+                                </td>
+                                <td style={{ padding: '12px 16px', textAlign: 'center' }}>
+                                    <button
+                                        className="btn btn-ghost btn-sm"
+                                        onClick={() => navigate('/leads', { state: { agent: u.id, ...dateRange } })}
+                                        style={{ color: 'var(--accent-light)' }}
+                                    >
+                                        Details <ArrowUpRight size={14} style={{ marginLeft: 4 }} />
+                                    </button>
+                                </td>
+                            </tr>
+                        )}
+                    />
                 </div>
             )}
         </div>

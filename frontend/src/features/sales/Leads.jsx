@@ -10,6 +10,7 @@ import toast from 'react-hot-toast';
 import { useState, useEffect } from 'react';
 import { useSearchParams, useLocation } from 'react-router-dom';
 import LeadLifecycleBoard from './LeadLifecycleBoard';
+import DataTable from '../../components/common/DataTable';
 
 const ExpandableNote = ({ note }) => {
     const [expanded, setExpanded] = useState(false);
@@ -377,171 +378,113 @@ export default function Leads() {
                     {viewMode === 'board' ? (
                         <LeadLifecycleBoard leads={leads} onSelectLead={setSelectedLeadId} />
                     ) : (
-                        <div className="card polished-card" style={{ padding: 0, overflow: 'hidden' }}>
-                            <div style={{ overflowX: 'auto' }}>
-                                <table className="users-table">
-                                    <thead>
-                                        <tr>
-                                            {isAdmin && (
-                                                <th style={{ width: '40px' }}>
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={leads.length > 0 && selectedLeadIds.length === leads.length}
-                                                        onChange={toggleSelectAll}
-                                                    />
-                                                </th>
-                                            )}
-                                            <th style={{ cursor: 'pointer' }} onClick={() => handleSort('created_at')}>
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                                    Date {sortBy === 'created_at' && (sortOrder === 'asc' ? <ChevronUp size={12} /> : <ChevronDown size={12} />)}
+                        <div className="card polished-card" style={{ padding: 0 }}>
+                            <DataTable
+                                data={leads}
+                                fileName="leads-list"
+                                loading={loading}
+                                // Server-side pagination
+                                totalItems={totalLeads}
+                                currentPage={page}
+                                itemsPerPage={limit}
+                                onPageChange={(p) => setPage(p)}
+                                onLimitChange={(l) => { setLimit(l); setPage(1); }}
+                                onSortChange={(s) => { setSortBy(s.key); setSortOrder(s.direction); }}
+                                sortConfig={{ key: sortBy, direction: sortOrder }}
+                                columns={[
+                                    ...(isAdmin ? [{
+                                        label: 'Select',
+                                        key: 'id',
+                                        render: (_, lead) => (
+                                            <input
+                                                type="checkbox"
+                                                checked={selectedLeadIds.includes(lead.id)}
+                                                onChange={(e) => { e.stopPropagation(); toggleLeadSelection(lead.id); }}
+                                            />
+                                        )
+                                    }] : []),
+                                    {
+                                        label: 'Date',
+                                        key: 'created_at',
+                                        sortable: true,
+                                        render: (val) => <span style={{ fontSize: '12px', color: 'var(--text-dim)' }}>{new Date(val).toLocaleDateString()}</span>
+                                    },
+                                    {
+                                        label: 'Name / Company',
+                                        key: 'name',
+                                        sortable: true,
+                                        render: (name, lead) => (
+                                            <div>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                    {lead.follow_ups?.some(f => f.status === 'Pending') && (
+                                                        <div title="Pending Callback/Follow-up" style={{ color: 'var(--warning)', marginTop: '2px' }}>
+                                                            <AlertCircle size={14} />
+                                                        </div>
+                                                    )}
+                                                    <div style={{ fontWeight: 600, color: 'var(--text)' }}>{name}</div>
                                                 </div>
-                                            </th>
-                                            <th style={{ cursor: 'pointer' }} onClick={() => handleSort('name')}>
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                                    Name / Company {sortBy === 'name' && (sortOrder === 'asc' ? <ChevronUp size={12} /> : <ChevronDown size={12} />)}
+                                                <div style={{ fontSize: '11px', color: 'var(--text-dim)', marginTop: '2px' }}>{lead.company || lead.email}</div>
+                                            </div>
+                                        )
+                                    },
+                                    { label: 'Phone', key: 'phone', render: (val) => <span style={{ fontSize: '13px' }}>{val || '--'}</span> },
+                                    { label: 'Location', key: 'location', render: (val) => <span style={{ fontSize: '13px', color: 'var(--text-dim)' }}>{val || '--'}</span> },
+                                    {
+                                        label: 'Status',
+                                        key: 'status',
+                                        sortable: true,
+                                        render: (val) => (
+                                            <span className={`status-badge ${val?.toLowerCase().replace(' ', '-')}`}>
+                                                {val}
+                                            </span>
+                                        )
+                                    },
+                                    {
+                                        label: 'Last Interaction',
+                                        key: 'id',
+                                        render: (_, lead) => {
+                                            if (!lead.follow_ups || lead.follow_ups.length === 0) return <span style={{ color: 'var(--text-dim)', fontSize: '12px' }}>No interactions</span>;
+                                            const latest = [...lead.follow_ups].sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
+                                            return (
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                                    <ExpandableNote note={latest.notes} />
                                                 </div>
-                                            </th>
-                                            <th>Phone</th>
-                                            <th>Location</th>
-                                            <th>Status</th>
-                                            <th>Last Interaction</th>
-                                            <th style={{ cursor: 'pointer' }} onClick={() => handleSort('deal_value')}>
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                                    Value {sortBy === 'deal_value' && (sortOrder === 'asc' ? <ChevronUp size={12} /> : <ChevronDown size={12} />)}
-                                                </div>
-                                            </th>
-                                            {isAdmin && <th>Assigned BDM</th>}
-                                            <th style={{ textAlign: 'right', paddingRight: '24px' }}>Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {leads.length > 0 ? leads.map(lead => (
-                                            <tr key={lead.id} className={`clickable-row ${selectedLeadIds.includes(lead.id) ? 'row-selected' : ''}`} onClick={() => setSelectedLeadId(lead.id)}>
-                                                {isAdmin && (
-                                                    <td style={{ width: '40px' }} onClick={(e) => e.stopPropagation()}>
-                                                        <input
-                                                            type="checkbox"
-                                                            checked={selectedLeadIds.includes(lead.id)}
-                                                            onChange={() => toggleLeadSelection(lead.id)}
-                                                        />
-                                                    </td>
-                                                )}
-                                                <td style={{ fontSize: '12px', color: 'var(--text-dim)' }}>
-                                                    {new Date(lead.created_at).toLocaleDateString()}
-                                                </td>
-                                                <td>
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                                        {lead.follow_ups?.some(f => f.status === 'Pending') && (
-                                                            <div title="Pending Callback/Follow-up" style={{ color: 'var(--warning)', marginTop: '2px' }}>
-                                                                <AlertCircle size={14} />
-                                                            </div>
-                                                        )}
-                                                        <div style={{ fontWeight: 600, color: 'var(--text)' }}>{lead.name}</div>
-                                                    </div>
-                                                    <div style={{ fontSize: '11px', color: 'var(--text-dim)', marginTop: '2px' }}>{lead.company || lead.email}</div>
-                                                </td>
-                                                <td style={{ fontSize: '13px' }}>{lead.phone || '--'}</td>
-                                                <td style={{ fontSize: '13px', color: 'var(--text-dim)' }}>
-                                                    {lead.location || <span style={{ opacity: 0.4 }}>--</span>}
-                                                </td>
-                                                <td>
-                                                    <span className={`status-badge ${lead.status?.toLowerCase().replace(' ', '-')}`}>
-                                                        {lead.status}
-                                                    </span>
-                                                </td>
-                                                <td>
-                                                    {(() => {
-                                                        if (!lead.follow_ups || lead.follow_ups.length === 0) return <span style={{ color: 'var(--text-dim)', fontSize: '12px' }}>No interactions</span>;
-                                                        const latest = [...lead.follow_ups].sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
-                                                        return (
-                                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                                                {/* <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                                                                    <strong>{latest.type}</strong> • {new Date(latest.created_at).toLocaleDateString()}
-                                                                </div> */}
-                                                                <ExpandableNote note={latest.notes} />
-                                                            </div>
-                                                        )
-                                                    })()}
-                                                </td>
-                                                <td>
-                                                    <div style={{ fontWeight: 700, color: 'var(--text)' }}>
-                                                        Rs {parseFloat(lead.deal_value || 0).toLocaleString()}
-                                                    </div>
-                                                </td>
-                                                {isAdmin && (
-                                                    <td style={{ fontSize: '13px' }}>
-                                                        {lead.assigned_agent?.full_name || <span style={{ opacity: 0.5 }}>Unassigned</span>}
-                                                    </td>
-                                                )}
-                                                <td style={{ textAlign: 'right', paddingRight: '24px' }} onClick={(e) => e.stopPropagation()}>
-                                                    <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-                                                        <button className="btn-icon" title="View" onClick={() => setSelectedLeadId(lead.id)}>
-                                                            <Eye size={16} color="var(--accent-light)" />
-                                                        </button>
-                                                        <button className="btn-icon" title="Edit" onClick={(e) => { e.stopPropagation(); setEditingLeadId(lead.id); }}>
-                                                            <Edit2 size={16} color="var(--info)" />
-                                                        </button>
-                                                        <button className="btn-icon" title="Delete" onClick={(e) => { e.stopPropagation(); handleDeleteLead(lead.id); }}>
-                                                            <Trash2 size={16} color="var(--danger)" />
-                                                        </button>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        )) : (
-                                            <tr>
-                                                <td colSpan="8" style={{ textAlign: 'center', padding: '60px 0', color: 'var(--text-dim)' }}>
-                                                    <div style={{ fontSize: '32px', marginBottom: '16px' }}>🔎</div>
-                                                    <div>No leads found.</div>
-                                                </td>
-                                            </tr>
-                                        )}
-                                    </tbody>
-                                </table>
-                            </div>
+                                            )
+                                        }
+                                    },
+                                    {
+                                        label: 'Value',
+                                        key: 'deal_value',
+                                        sortable: true,
+                                        render: (val) => <div style={{ fontWeight: 700, color: 'var(--text)' }}>Rs {parseFloat(val || 0).toLocaleString()}</div>
+                                    },
+                                    ...(isAdmin ? [{
+                                        label: 'Assigned BDM',
+                                        key: 'assigned_agent.full_name',
+                                        render: (_, lead) => <span style={{ fontSize: '13px' }}>{lead.assigned_agent?.full_name || <span style={{ opacity: 0.5 }}>Unassigned</span>}</span>
+                                    }] : []),
+                                    {
+                                        label: 'Actions',
+                                        key: 'id',
+                                        render: (_, lead) => (
+                                            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }} onClick={(e) => e.stopPropagation()}>
+                                                <button className="btn-icon" title="View" onClick={() => setSelectedLeadId(lead.id)}>
+                                                    <Eye size={16} color="var(--accent-light)" />
+                                                </button>
+                                                <button className="btn-icon" title="Edit" onClick={(e) => { e.stopPropagation(); setEditingLeadId(lead.id); }}>
+                                                    <Edit2 size={16} color="var(--info)" />
+                                                </button>
+                                                <button className="btn-icon" title="Delete" onClick={(e) => { e.stopPropagation(); handleDeleteLead(lead.id); }}>
+                                                    <Trash2 size={16} color="var(--danger)" />
+                                                </button>
+                                            </div>
+                                        )
+                                    }
+                                ]}
+                            />
                         </div>
                     )}
 
-                    {/* Universal Pagination Footer */}
-                    {totalLeads > 0 && (
-                        <div className="card polished-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 20px' }}>
-                            <div style={{ fontSize: '13px', color: 'var(--text-dim)' }}>
-                                Showing {((page - 1) * limit) + 1} to {Math.min(page * limit, totalLeads)} of {totalLeads} leads
-                            </div>
-                            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                                <select
-                                    className="form-select-minimal"
-                                    style={{ width: '85px', marginRight: '16px' }}
-                                    value={limit}
-                                    onChange={(e) => { setLimit(Number(e.target.value)); setPage(1); }}
-                                >
-                                    <option value="10">10 / page</option>
-                                    <option value="50">50 / page</option>
-                                    <option value="100">100 / page</option>
-                                    <option value="500">500 / page</option>
-                                </select>
-
-                                <button
-                                    className="btn-icon"
-                                    style={{ border: '1px solid var(--border)', background: 'var(--bg-app)' }}
-                                    disabled={page === 1}
-                                    onClick={() => setPage(p => Math.max(1, p - 1))}
-                                >
-                                    <ChevronLeft size={16} />
-                                </button>
-                                <span style={{ fontSize: '13px', fontWeight: 600, minWidth: '30px', textAlign: 'center' }}>
-                                    {page}
-                                </span>
-                                <button
-                                    className="btn-icon"
-                                    style={{ border: '1px solid var(--border)', background: 'var(--bg-app)' }}
-                                    disabled={page * limit >= totalLeads}
-                                    onClick={() => setPage(p => p + 1)}
-                                >
-                                    <ChevronRight size={16} />
-                                </button>
-                            </div>
-                        </div>
-                    )}
                 </div>
             )}
 

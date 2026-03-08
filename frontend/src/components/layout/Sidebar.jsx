@@ -62,6 +62,7 @@ const NAV = [
         icon: FileText,
         sectionPerm: 'view_leads',
         items: [
+            { to: '/our-projects', label: 'Our Projects', icon: Briefcase, perm: 'view_leads', hideIfRole: ['HR Manager', 'hr'] },
             { to: '/sales-dashboard', label: 'Dashboard', icon: LayoutDashboard, perm: 'view_leads', hideIfRole: ['bdm', 'sales manager', 'HR Manager', 'hr'] },
             { to: '/leads', label: 'Leads', icon: TrendingUp, perm: 'view_leads', hideIfRole: ['HR Manager', 'hr'] },
             { to: '/follow-ups', label: 'Follow-ups', icon: Clock, perm: 'view_leads', hideIfRole: ['HR Manager', 'hr'] },

@@ -1,8 +1,0 @@
---- leads ---
-id, name, company, email, phone, source, status, score, assigned_agent_id, owner_id, created_at, updated_at, deal_value, alt_phone, location
-
---- projects ---
-id, name, description, created_by, created_at, client_id, status, client_name, client_email, client_phone, sub_types, acquisition_date, days_committed, due_date, client_alt_phone
-
---- clients ---
-id, lead_id, company_name, contact_name, email, phone, status, owner_id, created_at, updated_at, alt_phone

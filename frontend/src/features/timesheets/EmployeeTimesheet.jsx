@@ -5,13 +5,14 @@ import api from '../../lib/api'
 import toast from 'react-hot-toast'
 import { useAuth } from '../../context/AuthContext'
 import EditEntryModal from './EditEntryModal'
+import DataTable from '../../components/common/DataTable'
 
-const STATUS_OPTS = ['todo', 'in_progress', 'done', 'blocked']
+const STATUS_OPTS = ['todo', 'in_progress', 'done']
 const STATUS_BADGE = {
     todo: 'badge-gray',
     in_progress: 'badge-yellow',
     done: 'badge-green',
-    blocked: 'badge-red',
+    // blocked: 'badge-red',
     verified: 'badge-purple',
     failed: 'badge-red'
 }
@@ -122,61 +123,27 @@ export default function EmployeeTimesheet() {
     const handleUpdate = async (entryId, updates) => {
         setSavingId(entryId)
         try {
+            const entry = allEntries.find(e => e.id === entryId);
+            const isResubmitting = entry?.status === 'failed' && updates.status === 'done';
+
             const res = await api.patch(`/timesheets/entries/${entryId}`, updates)
             const updated = res.data.data
+
+            if (isResubmitting) {
+                await api.post(`/timesheets/entries/${entryId}/feedback`, {
+                    content: 'Resubmitted for QA',
+                    new_status: 'done'
+                });
+            }
+
             setAllEntries(prev => prev.map(e => e.id === entryId ? { ...e, ...updated } : e))
+            toast.success('Activity updated')
         } catch (err) {
             toast.error(err.message)
         } finally {
             setSavingId(null)
         }
     }
-
-    const handleExportCSV = () => {
-        const entries = filteredEntries;
-        if (entries.length === 0) return toast.error('No data to export');
-        const headers = ['Date', 'Project', 'Activity', 'Hours', 'Status', 'QA Result', 'QA Notes', 'Admin Feedback'];
-        const rows = entries.map(e => [
-            e.date,
-            e.project?.name || e.projectName || 'In-House Project',
-            e.title,
-            e.hours_spent,
-            e.status,
-            ['verified', 'failed'].includes(e.status) ? e.status.toUpperCase() : 'PENDING',
-            (e.qa_notes || '').replace(/\n/g, ' '),
-            (e.admin_feedback || '').replace(/\n/g, ' ')
-        ]);
-        const csvContent = [headers, ...rows].map(r => r.join(',')).join('\n');
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.setAttribute('href', url);
-        link.setAttribute('download', `timesheet_${startDate}_${endDate}.csv`);
-        link.click();
-    };
-
-    const handleExportExcel = () => {
-        const entries = filteredEntries;
-        if (entries.length === 0) return toast.error('No data to export');
-        const headers = ['Date', 'Project', 'Activity', 'Hours', 'Status', 'QA Result', 'QA Notes', 'Admin Feedback'];
-        const rows = entries.map(e => [
-            e.date,
-            e.project?.name || e.projectName || 'In-House Project',
-            e.title,
-            e.hours_spent,
-            e.status,
-            ['verified', 'failed'].includes(e.status) ? e.status.toUpperCase() : 'PENDING',
-            (e.qa_notes || '').replace(/\n/g, ' '),
-            (e.admin_feedback || '').replace(/\n/g, ' ')
-        ]);
-        const csvContent = [headers, ...rows].map(r => r.join(',')).join('\n');
-        const blob = new Blob([csvContent], { type: 'application/vnd.ms-excel;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.setAttribute('href', url);
-        link.setAttribute('download', `timesheet_${startDate}_${endDate}.xls`);
-        link.click();
-    };
 
     const handleExportPDF = () => {
         window.print();
@@ -296,7 +263,7 @@ export default function EmployeeTimesheet() {
                                 <select className="form-select" value={newStatus} onChange={e => setNewStatus(e.target.value)}>
                                     <option value="todo">To Do (Planned)</option>
                                     <option value="in_progress">In Progress</option>
-                                    <option value="done">Done (Ready for QA)</option>
+                                    {/* <option value="done">Done (Ready for QA)</option> */}
                                 </select>
                             </div>
 
@@ -338,86 +305,83 @@ export default function EmployeeTimesheet() {
                                         <option key={s} value={s}>{s.toUpperCase()}</option>
                                     ))}
                                 </select>
-                                <div className="btn-group">
-                                    <button className="btn btn-ghost" style={{ padding: '4px 10px', fontSize: 11 }} onClick={handleExportCSV}>CSV</button>
-                                    <button className="btn btn-ghost" style={{ padding: '4px 10px', fontSize: 11 }} onClick={handleExportExcel}>EXCEL</button>
-                                    <button className="btn btn-ghost" style={{ padding: '4px 10px', fontSize: 11 }} onClick={handleExportPDF}>PDF</button>
+                                <div className="btn-group" style={{ display: 'none' }}>
+                                    {/* DataTable already provides these */}
                                 </div>
                             </div>
                         </div>
 
-                        <div className="table-wrapper" style={{ maxHeight: 'calc(100vh - 400px)', overflowY: 'auto' }}>
-                            {loading ? (
-                                <div className="page-loader" style={{ height: 200 }}><div className="spinner" /></div>
-                            ) : filteredEntries.length === 0 ? (
-                                <div className="empty-state-card" style={{ padding: 48 }}>
-                                    <Calendar size={48} style={{ opacity: 0.1, marginBottom: 16 }} />
-                                    <h3>No activities logged</h3>
-                                    <p>Your history for this period is empty.</p>
-                                </div>
-                            ) : (
-                                <table className="compact-table">
-                                    <thead>
-                                        <tr>
-                                            <th style={{ width: 100 }}>Date</th>
-                                            <th style={{ width: 120 }}>Project</th>
-                                            <th>Activity Details</th>
-                                            <th style={{ width: 60 }}>Time</th>
-                                            <th style={{ width: 120 }}>Status</th>
-                                            <th style={{ width: 150 }}>QA Feedback</th>
-                                            <th style={{ width: 180 }}>Admin Feedback</th>
-                                            <th style={{ width: 80, textAlign: 'right' }}>Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {filteredEntries.map(e => (
-                                            <tr key={e.id}>
-                                                <td style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-dim)' }}>{fmt(e.date)}</td>
-                                                <td>
-                                                    <span className="badge-pill badge-purple" style={{ fontSize: 9 }}>
-                                                        {(e.project?.name || 'In-House').toUpperCase()}
-                                                    </span>
-                                                </td>
-                                                <td>
-                                                    <div style={{ fontWeight: 600 }}>{e.title}</div>
-                                                    {e.notes && <div style={{ fontSize: 11, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 300 }}>{e.notes}</div>}
-                                                </td>
-                                                <td style={{ fontWeight: 800, color: 'var(--accent)' }}>{e.hours_spent}</td>
-                                                <td>
-                                                    {['verified', 'failed'].includes(e.status) ? (
-                                                        <span className={`badge-pill ${STATUS_BADGE[e.status]}`} style={{ width: '100%', textAlign: 'center' }}>
-                                                            {e.status.toUpperCase()}
-                                                        </span>
-                                                    ) : (
-                                                        <select
-                                                            className={`form-select-badge ${STATUS_BADGE[e.status]}`}
-                                                            value={e.status}
-                                                            onChange={ev => handleUpdate(e.id, { status: ev.target.value })}
-                                                            style={{ textTransform: 'uppercase', fontStyle: 'normal' }}
-                                                        >
-                                                            {STATUS_OPTS.map(s => <option key={s} value={s}>{s.toUpperCase()}</option>)}
-                                                        </select>
-                                                    )}
-                                                </td>
-                                                <td style={{ fontSize: 11, color: e.status === 'verified' ? 'var(--text-muted)' : '#ef4444', fontWeight: 600 }}>
-                                                    {e.qa_notes ? `🚩 ${e.qa_notes}` : <span style={{ opacity: 0.2 }}>—</span>}
-                                                </td>
-                                                <td style={{ fontSize: 11, color: 'var(--text-dim)' }}>
-                                                    {e.admin_feedback || <span style={{ opacity: 0.2 }}>—</span>}
-                                                </td>
-                                                <td style={{ textAlign: 'right' }}>
-                                                    <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
-                                                        <button className="btn-icon-sm" onClick={() => setEditingEntry(e)}><Edit size={14} /></button>
-                                                        {(hasRole('super_admin') || hasRole('director') || hasRole('Director')) && (
-                                                            <button className="btn-icon-sm danger" onClick={() => handleDelete(e.id)}><Trash2 size={14} /></button>
-                                                        )}
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            )}
+                        <div style={{ padding: '0 0 24px 0' }}>
+                            <DataTable
+                                loading={loading}
+                                data={filteredEntries}
+                                fileName={`timesheet_${startDate}_${endDate}`}
+                                columns={[
+                                    { label: 'Date', key: 'date', render: (val) => <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-dim)' }}>{fmt(val)}</span>, exportValue: (val) => val },
+                                    { label: 'Project', key: 'project.name', render: (val) => <span className="badge-pill badge-purple" style={{ fontSize: 9 }}>{(val || 'In-House').toUpperCase()}</span> },
+                                    {
+                                        label: 'Activity Details',
+                                        key: 'title',
+                                        render: (val, e) => (
+                                            <div>
+                                                <div style={{ fontWeight: 600 }}>{val}</div>
+                                                {e.notes && <div style={{ fontSize: 11, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 300 }}>{e.notes}</div>}
+                                            </div>
+                                        )
+                                    },
+                                    { label: 'Time', key: 'hours_spent', render: (val) => <span style={{ fontWeight: 800, color: 'var(--accent)' }}>{val}</span> },
+                                    {
+                                        label: 'Status',
+                                        key: 'status',
+                                        render: (val, e) => {
+                                            const isLocked = !['admin', 'super_admin', 'director'].some(r => user?.roles?.some(ur => (typeof ur === 'string' ? ur : ur.name).toLowerCase().includes(r))) && ['done', 'verified', 'failed'].includes(val);
+                                            const isFailed = val === 'failed';
+
+                                            if (isLocked && !isFailed) {
+                                                return <span className={`badge-pill ${STATUS_BADGE[val]}`} style={{ width: '100%', display: 'block', textAlign: 'center' }}>{val.toUpperCase()}</span>;
+                                            }
+
+                                            return (
+                                                <select
+                                                    className={`form-select-badge ${STATUS_BADGE[val]}`}
+                                                    value={val}
+                                                    onChange={ev => handleUpdate(e.id, { status: ev.target.value })}
+                                                    onClick={ev => ev.stopPropagation()}
+                                                    style={{ textTransform: 'uppercase', fontStyle: 'normal' }}
+                                                >
+                                                    {STATUS_OPTS.map(s => <option key={s} value={s}>{s.toUpperCase()}</option>)}
+                                                    {isFailed && <option value="done">DONE (RESUBMIT)</option>}
+                                                </select>
+                                            );
+                                        }
+                                    },
+                                    {
+                                        label: 'QA Status',
+                                        key: 'status',
+                                        render: (val) => {
+                                            if (val === 'verified') return <span className="badge-pill badge-green" style={{ width: '100%', display: 'block', textAlign: 'center' }}>PASS</span>;
+                                            if (val === 'failed') return <span className="badge-pill badge-red" style={{ width: '100%', display: 'block', textAlign: 'center' }}>FAIL</span>;
+                                            if (['done', 'ready_for_qa'].includes(val)) return <span className="badge-pill badge-yellow" style={{ width: '100%', display: 'block', textAlign: 'center' }}>UNDER REVIEW</span>;
+                                            return <span className="badge-pill badge-gray" style={{ width: '100%', display: 'block', textAlign: 'center' }}>PENDING</span>;
+                                        },
+                                        exportValue: (val) => val === 'verified' ? 'PASS' : val === 'failed' ? 'FAIL' : ['done', 'ready_for_qa'].includes(val) ? 'UNDER REVIEW' : 'PENDING'
+                                    },
+                                    { label: 'QA Feedback', key: 'qa_notes', render: (val, e) => <span style={{ fontSize: 11, color: e.status === 'failed' ? '#ef4444' : 'var(--text-muted)', fontWeight: 600 }}>{val ? `🚩 ${val}` : <span style={{ opacity: 0.2 }}>—</span>}</span> },
+                                    { label: 'Admin Feedback', key: 'admin_feedback', render: (val) => <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>{val || <span style={{ opacity: 0.2 }}>—</span>}</span> },
+                                    {
+                                        label: 'Actions',
+                                        key: 'id',
+                                        render: (_, e) => (
+                                            <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
+                                                <button className="btn-icon-sm" onClick={(ev) => { ev.stopPropagation(); setEditingEntry(e); }}><Edit size={14} /></button>
+                                                {(hasRole('super_admin') || hasRole('director') || hasRole('Director')) && (
+                                                    <button className="btn-icon-sm danger" onClick={(ev) => { ev.stopPropagation(); handleDelete(e.id); }}><Trash2 size={14} /></button>
+                                                )}
+                                            </div>
+                                        )
+                                    }
+                                ]}
+                            />
                         </div>
                     </div>
                 </div>

@@ -8,6 +8,7 @@ import { getISTDate } from '../../lib/dateUtils'
 import api from '../../lib/api'
 import toast from 'react-hot-toast'
 import { useAuth } from '../../context/AuthContext'
+import DataTable from '../../components/common/DataTable'
 
 const STATUS_BADGE = { pending: 'badge-gray', in_progress: 'badge-yellow', done: 'badge-green' }
 const PRIORITY_BADGE = { low: 'badge-blue', medium: 'badge-yellow', high: 'badge-red' }
@@ -561,57 +562,93 @@ export default function ProjectDetailPage() {
                                 </div>
                             }
                         >
-                            {!tasks || tasks.length === 0 ? <div className="empty-state"><p>No tasks yet</p></div> : (
-                                <div style={{ overflowX: 'auto' }}>
-                                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                                        <thead>
-                                            <tr style={{ background: 'rgba(255,255,255,0.02)' }}>
-                                                {['Task', 'Assignee', 'Status', 'Priority', 'Due Date', 'Hours', 'Actions'].map(h => (
-                                                    <th key={h} style={{ padding: '9px 14px', textAlign: 'left', fontSize: 10, textTransform: 'uppercase', color: 'var(--text-dim)', fontWeight: 700, borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap' }}>{h}</th>
-                                                ))}
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {tasks
-                                                .filter(t => !taskUserFilter || t.assignee?.id === taskUserFilter)
-                                                .filter(t => {
-                                                    if (!taskDateRange.startDate && !taskDateRange.endDate) return true;
-                                                    const taskDate = t.end_time ? new Date(t.end_time) : null;
-                                                    if (!taskDate) return false;
-                                                    if (taskDateRange.startDate && taskDate < new Date(taskDateRange.startDate)) return false;
-                                                    if (taskDateRange.endDate && taskDate > new Date(taskDateRange.endDate)) return false;
-                                                    return true;
-                                                })
-                                                .map(t => {
-                                                    const isOverdue = t.end_time && new Date(t.end_time) < today && t.status !== 'done'
-                                                    return (
-                                                        <tr key={t.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                                                            <td style={{ padding: '9px 14px', fontWeight: 600, fontSize: 13 }}>
-                                                                {t.title}
-                                                                {t.description && <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{t.description.slice(0, 70)}{t.description.length > 70 ? '…' : ''}</div>}
-                                                            </td>
-                                                            <td style={{ padding: '9px 14px' }}>
-                                                                {t.assignee ? <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}><Avatar name={t.assignee.full_name} i={0} size={26} /><span style={{ fontSize: 12 }}>{t.assignee.full_name}</span></div> : <span style={{ color: 'var(--text-dim)', fontSize: 12 }}>—</span>}
-                                                            </td>
-                                                            <td style={{ padding: '9px 14px' }}><span className={`badge ${STATUS_BADGE[t.status] || 'badge-gray'}`}>{t.status?.replace('_', ' ')}</span></td>
-                                                            <td style={{ padding: '9px 14px' }}><span className={`badge ${PRIORITY_BADGE[t.priority] || 'badge-gray'}`}>{t.priority}</span></td>
-                                                            <td style={{ padding: '9px 14px', fontSize: 12, fontWeight: isOverdue ? 700 : 400, color: isOverdue ? '#dc2626' : 'var(--text-muted)' }}>
-                                                                {t.end_time ? <>{isOverdue && '🔴 '}{new Date(t.end_time).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</> : '—'}
-                                                            </td>
-                                                            <td style={{ padding: '9px 14px', fontSize: 12, color: 'var(--text-muted)' }}>{t.estimated_hours || '—'} / {t.actual_hours?.toFixed(1) || '—'}</td>
-                                                            <td style={{ padding: '9px 6px', textAlign: 'right' }}>
-                                                                <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
-                                                                    <button className="btn btn-ghost btn-sm btn-icon" title="Edit" onClick={() => openEditTask(t)}><Pencil size={13} /></button>
-                                                                    {(hasRole('super_admin') || hasRole('director') || hasRole('Director')) && <button className="btn btn-danger btn-sm btn-icon" title="Delete" onClick={async () => { if (confirm('Delete this task?')) { try { await api.delete(`/tasks/${t.id}`); load() } catch (e) { toast.error(e.message) } } }}><Trash2 size={13} /></button>}
-                                                                </div>
-                                                            </td>
-                                                        </tr>
-                                                    )
-                                                })}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            )}
+                            <DataTable
+                                data={tasks
+                                    .filter(t => !taskUserFilter || t.assignee?.id === taskUserFilter)
+                                    .filter(t => {
+                                        if (!taskDateRange.startDate && !taskDateRange.endDate) return true;
+                                        const taskDate = t.end_time ? new Date(t.end_time) : null;
+                                        if (!taskDate) return false;
+                                        if (taskDateRange.startDate && taskDate < new Date(taskDateRange.startDate)) return false;
+                                        if (taskDateRange.endDate && taskDate > new Date(taskDateRange.endDate)) return false;
+                                        return true;
+                                    })}
+                                fileName={`${project?.name}_Tasks`}
+                                columns={[
+                                    {
+                                        label: 'Task',
+                                        key: 'title',
+                                        render: (val, t) => (
+                                            <div style={{ fontWeight: 600, fontSize: '13px' }}>
+                                                {val}
+                                                {t.description && <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px', whiteSpace: 'normal', maxWidth: '300px' }}>{t.description.slice(0, 70)}{t.description.length > 70 ? '…' : ''}</div>}
+                                            </div>
+                                        )
+                                    },
+                                    {
+                                        label: 'Assignee',
+                                        key: 'assignee.full_name',
+                                        render: (val, t) => (
+                                            t.assignee ? (
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
+                                                    <Avatar name={t.assignee.full_name} i={0} size={26} />
+                                                    <span style={{ fontSize: '12px' }}>{t.assignee.full_name}</span>
+                                                </div>
+                                            ) : <span style={{ color: 'var(--text-dim)', fontSize: '12px' }}>—</span>
+                                        )
+                                    },
+                                    {
+                                        label: 'Status',
+                                        key: 'status',
+                                        render: (val) => <span className={`badge ${STATUS_BADGE[val] || 'badge-gray'}`}>{val?.replace('_', ' ')}</span>
+                                    },
+                                    {
+                                        label: 'Priority',
+                                        key: 'priority',
+                                        render: (val) => <span className={`badge ${PRIORITY_BADGE[val] || 'badge-gray'}`}>{val}</span>
+                                    },
+                                    {
+                                        label: 'Due Date',
+                                        key: 'end_time',
+                                        render: (val, t) => {
+                                            const isOverdue = val && new Date(val) < today && t.status !== 'done';
+                                            return (
+                                                <div style={{ fontSize: '12px', fontWeight: isOverdue ? 700 : 400, color: isOverdue ? '#dc2626' : 'var(--text-muted)' }}>
+                                                    {val ? <>{isOverdue && '🔴 '}{new Date(val).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</> : '—'}
+                                                </div>
+                                            );
+                                        }
+                                    },
+                                    {
+                                        label: 'Hours (Est/Act)',
+                                        key: 'estimated_hours',
+                                        render: (val, t) => <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{val || '—'} / {t.actual_hours?.toFixed(1) || '—'}</div>
+                                    },
+                                    {
+                                        label: 'Actions',
+                                        key: 'actions',
+                                        render: (_, t) => (
+                                            <div style={{ display: 'flex', gap: '4px', justifyContent: 'flex-end' }}>
+                                                <button className="btn btn-ghost btn-sm btn-icon" title="Edit" onClick={() => openEditTask(t)}><Pencil size={13} /></button>
+                                                {(hasRole('super_admin') || hasRole('director') || hasRole('Director')) && (
+                                                    <button className="btn btn-danger btn-sm btn-icon" title="Delete" onClick={async () => {
+                                                        if (window.confirm('Delete this task?')) {
+                                                            try {
+                                                                await api.delete(`/tasks/${t.id}`);
+                                                                load();
+                                                            } catch (e) {
+                                                                toast.error(e.message);
+                                                            }
+                                                        }
+                                                    }}>
+                                                        <Trash2 size={13} />
+                                                    </button>
+                                                )}
+                                            </div>
+                                        )
+                                    }
+                                ]}
+                            />
                         </Section>
                     )}
 
@@ -781,52 +818,65 @@ export default function ProjectDetailPage() {
                                 <button className="btn btn-ghost btn-sm" onClick={downloadCsv} disabled={!timesheets.length}><FileText size={13} /> Export CSV</button>
                             </div>
                         }>
-                            {timesheets.length === 0 ? <div className="empty-state"><p>No timesheet entries logged for this project yet</p></div> : (
-                                <div style={{ overflowX: 'auto' }}>
-                                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                                        <thead>
-                                            <tr style={{ background: 'rgba(255,255,255,0.02)' }}>
-                                                {['Date', 'Developer', 'Task', 'Task Due Date', 'Hours', 'Notes'].map(h => (
-                                                    <th key={h} style={{ padding: '9px 14px', textAlign: 'left', fontSize: 10, textTransform: 'uppercase', color: 'var(--text-dim)', fontWeight: 700, borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap' }}>{h}</th>
-                                                ))}
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {(tsUserFilter ? timesheets.filter(ts => ts.user?.id === tsUserFilter) : timesheets).map(ts => (
-                                                <tr key={ts.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                                                    <td style={{ padding: '12px 14px', fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap' }}>
-                                                        {ts.work_date ? new Date(ts.work_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
-                                                    </td>
-                                                    <td style={{ padding: '12px 14px' }}>
-                                                        {ts.user ? (
-                                                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                                                <Avatar name={ts.user.full_name} i={0} size={24} />
-                                                                <div>
-                                                                    <div style={{ fontSize: 12, fontWeight: 700 }}>{ts.user.full_name}</div>
-                                                                    <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>{ts.user.email}</div>
-                                                                </div>
-                                                            </div>
-                                                        ) : <span style={{ color: 'var(--text-dim)', fontSize: 12 }}>—</span>}
-                                                    </td>
-                                                    <td style={{ padding: '12px 14px', fontSize: 13, maxWidth: 200, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={ts.task?.title || ts.title}>
-                                                        <strong>{ts.task ? ts.task.title : ts.title}</strong>
-                                                        {!ts.task && <div style={{ fontSize: 10, color: 'var(--accent)', marginTop: 2 }}>Non-task / Direct</div>}
-                                                    </td>
-                                                    <td style={{ padding: '12px 14px', fontSize: 12, color: 'var(--text-muted)' }}>
-                                                        {ts.task?.end_time ? new Date(ts.task.end_time).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
-                                                    </td>
-                                                    <td style={{ padding: '12px 14px', fontSize: 13, fontWeight: 800, color: 'var(--accent)' }}>
-                                                        {ts.hours_spent}
-                                                    </td>
-                                                    <td style={{ padding: '12px 14px', fontSize: 12, color: 'var(--text-muted)' }}>
-                                                        {ts.notes ? ts.notes : <span style={{ color: 'var(--text-dim)' }}>—</span>}
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            )}
+                            <DataTable
+                                data={tsUserFilter ? timesheets.filter(ts => ts.user?.id === tsUserFilter) : timesheets}
+                                fileName={`${project?.name}_Timesheets`}
+                                columns={[
+                                    {
+                                        label: 'Date',
+                                        key: 'work_date',
+                                        render: (val) => (
+                                            <div style={{ fontSize: '13px', fontWeight: 600, whiteSpace: 'nowrap' }}>
+                                                {val ? new Date(val).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
+                                            </div>
+                                        )
+                                    },
+                                    {
+                                        label: 'Developer',
+                                        key: 'user.full_name',
+                                        render: (val, ts) => (
+                                            ts.user ? (
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                    <Avatar name={ts.user.full_name} i={0} size={24} />
+                                                    <div>
+                                                        <div style={{ fontSize: '12px', fontWeight: 700 }}>{ts.user.full_name}</div>
+                                                        <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>{ts.user.email}</div>
+                                                    </div>
+                                                </div>
+                                            ) : <span style={{ color: 'var(--text-dim)', fontSize: '12px' }}>—</span>
+                                        )
+                                    },
+                                    {
+                                        label: 'Task',
+                                        key: 'task.title',
+                                        render: (val, ts) => (
+                                            <div style={{ fontSize: '13px', maxWidth: '200px', whiteSpace: 'normal' }}>
+                                                <strong>{ts.task ? ts.task.title : ts.title}</strong>
+                                                {!ts.task && <div style={{ fontSize: '10px', color: 'var(--accent)', marginTop: '2px' }}>Non-task / Direct</div>}
+                                            </div>
+                                        )
+                                    },
+                                    {
+                                        label: 'Task Due Date',
+                                        key: 'task.end_time',
+                                        render: (val, ts) => (
+                                            <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+                                                {ts.task?.end_time ? new Date(ts.task.end_time).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
+                                            </div>
+                                        )
+                                    },
+                                    {
+                                        label: 'Hours',
+                                        key: 'hours_spent',
+                                        render: (val) => <div style={{ fontSize: '13px', fontWeight: 800, color: 'var(--accent)' }}>{val}</div>
+                                    },
+                                    {
+                                        label: 'Notes',
+                                        key: 'notes',
+                                        render: (val) => <div style={{ fontSize: '12px', color: 'var(--text-muted)', maxWidth: '300px', whiteSpace: 'normal' }}>{val || <span style={{ color: 'var(--text-dim)' }}>—</span>}</div>
+                                    }
+                                ]}
+                            />
                         </Section>
                     )}
 

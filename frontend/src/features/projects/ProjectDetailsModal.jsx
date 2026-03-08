@@ -3,6 +3,7 @@ import { X, Users, FileText, MessageSquare, Plus, Trash2, Download, CloudUpload,
 import api from '../../lib/api'
 import toast from 'react-hot-toast'
 import { useAuth } from '../../context/AuthContext'
+import DataTable from '../../components/common/DataTable'
 
 export default function ProjectDetailsModal({ project, allUsers, onClose, onSaved }) {
     const { user: currentUser, hasPermission } = useAuth()
@@ -218,27 +219,34 @@ export default function ProjectDetailsModal({ project, allUsers, onClose, onSave
                             )}
 
                             {memberLoading ? <div className="spinner" /> : (
-                                <table className="table">
-                                    <thead><tr><th>Name</th><th>Email</th><th>Role</th>{isAdmin && <th></th>}</tr></thead>
-                                    <tbody>
-                                        {members.length === 0 && <tr><td colSpan={4} style={{ textAlign: 'center', color: 'var(--text-dim)' }}>No members yet</td></tr>}
-                                        {members.map(m => (
-                                            <tr key={m.id}>
-                                                <td><div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                <DataTable
+                                    data={members}
+                                    columns={[
+                                        {
+                                            label: 'Name',
+                                            key: 'user.full_name',
+                                            render: (val, m) => (
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                                                     <div className="user-avatar" style={{ width: 24, height: 24, fontSize: 10 }}>{m.user.full_name[0]}</div>
                                                     <strong>{m.user.full_name}</strong>
-                                                </div></td>
-                                                <td style={{ color: 'var(--text-dim)', fontSize: 12 }}>{m.user.email}</td>
-                                                <td><span className={`badge ${m.role === 'manager' ? 'badge-purple' : 'badge-gray'}`}>{m.role}</span></td>
-                                                {isAdmin && (
-                                                    <td>
-                                                        <button className="btn btn-danger btn-sm btn-icon" onClick={() => handleRemoveMember(m.user.id)}><UserMinus size={14} /></button>
-                                                    </td>
-                                                )}
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
+                                                </div>
+                                            )
+                                        },
+                                        { label: 'Email', key: 'user.email' },
+                                        {
+                                            label: 'Role',
+                                            key: 'role',
+                                            render: (val) => <span className={`badge ${val === 'manager' ? 'badge-purple' : 'badge-gray'}`}>{val}</span>
+                                        },
+                                        {
+                                            label: 'Actions',
+                                            key: 'actions',
+                                            render: (_, m) => isAdmin ? (
+                                                <button className="btn btn-danger btn-sm btn-icon" onClick={() => handleRemoveMember(m.user.id)}><UserMinus size={14} /></button>
+                                            ) : null
+                                        }
+                                    ]}
+                                />
                             )}
                         </div>
                     )}

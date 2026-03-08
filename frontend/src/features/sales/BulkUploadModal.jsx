@@ -3,6 +3,7 @@ import { X, UploadCloud, FileType, CheckCircle2, AlertCircle, Download } from 'l
 import Papa from 'papaparse';
 import { SalesService } from './SalesService';
 import toast from 'react-hot-toast';
+import DataTable from '../../components/common/DataTable';
 
 export default function BulkUploadModal({ isOpen, onClose, onSuccess, agents, currentUser }) {
     const [file, setFile] = useState(null);
@@ -150,12 +151,12 @@ export default function BulkUploadModal({ isOpen, onClose, onSuccess, agents, cu
     const downloadSampleCSV = () => {
         const headers = ['Full Name', 'Phone', 'Company', 'Email', 'Source', 'Status', 'Deal Value', 'Score', 'Assigned BDM', 'Comments', 'Comment Date'];
         const sampleRow = ['John Doe', '+1234567890', 'Acme Corp', 'john@acme.com', 'Website', 'New', '5000', '8', 'Alice Smith', 'Spoke to them last week, very interested.', new Date().toISOString().split('T')[0]];
-        
+
         const csvContent = [
             headers.join(','),
             sampleRow.join(',')
         ].join('\n');
-        
+
         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
@@ -221,8 +222,8 @@ export default function BulkUploadModal({ isOpen, onClose, onSuccess, agents, cu
                                 />
                             </div>
 
-                            <button 
-                                type="button" 
+                            <button
+                                type="button"
                                 className="btn btn-ghost btn-sm"
                                 onClick={downloadSampleCSV}
                                 style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '8px' }}
@@ -313,28 +314,32 @@ export default function BulkUploadModal({ isOpen, onClose, onSuccess, agents, cu
 
                             <div>
                                 <h4 style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '8px' }}>Previewing first 5 records:</h4>
-                                <div className="table-wrapper" style={{ overflowX: 'auto' }}>
-                                    <table style={{ whiteSpace: 'nowrap' }}>
-                                        <thead>
-                                            <tr>
-                                                <th>Name</th>
-                                                <th>Company</th>
-                                                <th>Email</th>
-                                                <th>Phone</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {parsedData.slice(0, 5).map((row, idx) => (
-                                                <tr key={idx}>
-                                                    <td>{row[mapping.name] || <span style={{ color: 'var(--danger)' }}>Missing</span>}</td>
-                                                    <td>{mapping.company ? row[mapping.company] : '-'}</td>
-                                                    <td>{mapping.email ? row[mapping.email] : '-'}</td>
-                                                    <td>{mapping.phone ? row[mapping.phone] : '-'}</td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
+                                <DataTable
+                                    data={parsedData.slice(0, 5)}
+                                    fileName="bulk_upload_preview"
+                                    columns={[
+                                        {
+                                            label: 'Name',
+                                            key: 'name',
+                                            render: (val, row) => row[mapping.name] || <span style={{ color: 'var(--danger)' }}>Missing</span>
+                                        },
+                                        {
+                                            label: 'Company',
+                                            key: 'company',
+                                            render: (val, row) => mapping.company ? row[mapping.company] : '-'
+                                        },
+                                        {
+                                            label: 'Email',
+                                            key: 'email',
+                                            render: (val, row) => mapping.email ? row[mapping.email] : '-'
+                                        },
+                                        {
+                                            label: 'Phone',
+                                            key: 'phone',
+                                            render: (val, row) => mapping.phone ? row[mapping.phone] : '-'
+                                        }
+                                    ]}
+                                />
                             </div>
                         </div>
                     )}

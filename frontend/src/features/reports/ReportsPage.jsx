@@ -7,6 +7,7 @@ import toast from 'react-hot-toast'
 import { SalesService } from '../sales/SalesService'
 import DateRangePicker from '../../components/DateRangePicker'
 import { getISTMonthStartString, getISTTodayString } from '../../lib/dateUtils'
+import DataTable from '../../components/common/DataTable'
 
 export default function ReportsPage() {
     const { hasPermission } = useAuth()
@@ -270,28 +271,16 @@ export default function ReportsPage() {
                             {projectReport.costing_breakdown?.length > 0 && (
                                 <div className="card" style={{ marginBottom: 20 }}>
                                     <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 16 }}>Costing Breakdown</h3>
-                                    <div className="table-wrapper">
-                                        <table className="table-sm">
-                                            <thead style={{ background: 'rgba(var(--accent-rgb), 0.05)' }}>
-                                                <tr>
-                                                    <th>Developer</th>
-                                                    <th className="text-right">Man-Hours</th>
-                                                    <th className="text-right">Rate (₹/h)</th>
-                                                    <th className="text-right">Cost</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {projectReport.costing_breakdown.map(item => (
-                                                    <tr key={item.id}>
-                                                        <td>{item.name}</td>
-                                                        <td className="text-right">{item.totalHours}</td>
-                                                        <td className="text-right">₹{item.hourlyRate}</td>
-                                                        <td className="text-right"><strong>₹{item.totalCost?.toLocaleString()}</strong></td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-                                    </div>
+                                    <DataTable
+                                        data={projectReport.costing_breakdown}
+                                        fileName={`costing_breakdown_${dateRange.startDate}_to_${dateRange.endDate}`}
+                                        columns={[
+                                            { label: 'Developer', key: 'name' },
+                                            { label: 'Man-Hours', key: 'totalHours', render: (val) => <div className="text-right">{val}</div> },
+                                            { label: 'Rate (₹/h)', key: 'hourlyRate', render: (val) => <div className="text-right">₹{val}</div> },
+                                            { label: 'Cost', key: 'totalCost', render: (val) => <div className="text-right"><strong>₹{val?.toLocaleString()}</strong></div> }
+                                        ]}
+                                    />
                                 </div>
                             )}
 
@@ -315,41 +304,29 @@ export default function ReportsPage() {
                                 />
                             </div>
 
-                            <div className="table-wrapper">
-                                <table>
-                                    <thead style={{ background: 'rgba(var(--accent-rgb), 0.05)' }}>
-                                        <tr>
-                                            <th>Task</th>
-                                            {selectedProjectIds.length > 1 && <th>Project</th>}
-                                            <th>Assignee</th>
-                                            <th>Status</th>
-                                            <th className="text-right">Est (h)</th>
-                                            <th className="text-right">Actual (h)</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {(projectReport.tasks || [])
-                                            .filter(t => (taskFilter === 'all' || t.status === taskFilter) &&
-                                                (t.title.toLowerCase().includes(taskSearch.toLowerCase()) ||
-                                                    t.assignee?.full_name?.toLowerCase().includes(taskSearch.toLowerCase())))
-                                            .map(t => (
-                                                <tr key={t.id}
-                                                    onClick={() => setSelectedTask(t)}
-                                                    style={{ cursor: 'pointer' }}
-                                                    className="hover-row"
-                                                >
-                                                    <td style={{ fontSize: 13, fontWeight: 500 }}>{t.title}</td>
-                                                    {selectedProjectIds.length > 1 && (
-                                                        <td style={{ fontSize: 12, color: 'var(--text-muted)' }}>{t.project?.name || '—'}</td>
-                                                    )}
-                                                    <td style={{ fontSize: 12, color: 'var(--text-muted)' }}>{t.assignee?.full_name || '—'}</td>
-                                                    <td><span className={`badge ${STATUS_BADGE[t.status] || 'badge-gray'}`}>{t.status?.replace('_', ' ')}</span></td>
-                                                    <td className="text-right" style={{ fontSize: 12 }}>{t.estimated_hours || '—'}</td>
-                                                    <td className="text-right" style={{ fontSize: 12 }}>{t.actual_hours?.toFixed(2) || '—'}</td>
-                                                </tr>
-                                            ))}
-                                    </tbody>
-                                </table>
+                            <div style={{ marginBottom: 40 }}>
+                                <DataTable
+                                    loading={loading}
+                                    data={(projectReport.tasks || []).filter(t => (taskFilter === 'all' || t.status === taskFilter) &&
+                                        (t.title.toLowerCase().includes(taskSearch.toLowerCase()) ||
+                                            t.assignee?.full_name?.toLowerCase().includes(taskSearch.toLowerCase())))}
+                                    fileName={`project_report_tasks_${dateRange.startDate}_to_${dateRange.endDate}`}
+                                    columns={[
+                                        { label: 'Task', key: 'title', render: (val) => <span style={{ fontSize: 13, fontWeight: 500 }}>{val}</span> },
+                                        ...(selectedProjectIds.length > 1 ? [{ label: 'Project', key: 'project.name', render: (val) => <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{val || '—'}</span> }] : []),
+                                        { label: 'Assignee', key: 'assignee.full_name', render: (val) => <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{val || '—'}</span> },
+                                        { label: 'Status', key: 'status', render: (val) => <span className={`badge ${STATUS_BADGE[val] || 'badge-gray'}`}>{val?.replace('_', ' ')}</span> },
+                                        { label: 'Est (h)', key: 'estimated_hours', render: (val) => <span style={{ fontSize: 12 }}>{val || '—'}</span> },
+                                        { label: 'Actual (h)', key: 'actual_hours', render: (val) => <span style={{ fontSize: 12 }}>{val?.toFixed(2) || '—'}</span> },
+                                        {
+                                            label: 'Action',
+                                            key: 'id',
+                                            render: (_, t) => (
+                                                <button className="btn btn-text" onClick={() => setSelectedTask(t)}>Details</button>
+                                            )
+                                        }
+                                    ]}
+                                />
                             </div>
 
                             {/* Task Detail Modal */}
@@ -451,21 +428,19 @@ export default function ReportsPage() {
                                     </div>
                                 ))}
                             </div>
-                            <div className="table-wrapper">
-                                <table>
-                                    <thead><tr><th>Task</th><th>Project</th><th>Status</th><th>Est (h)</th><th>Actual (h)</th></tr></thead>
-                                    <tbody>
-                                        {(userReport.tasks || []).map(t => (
-                                            <tr key={t.id}>
-                                                <td style={{ fontSize: 13 }}>{t.title}</td>
-                                                <td style={{ fontSize: 12, color: 'var(--text-muted)' }}>{t.project?.name || '—'}</td>
-                                                <td><span className={`badge ${STATUS_BADGE[t.status] || 'badge-gray'}`}>{t.status?.replace('_', ' ')}</span></td>
-                                                <td style={{ fontSize: 12 }}>{t.estimated_hours || '—'}</td>
-                                                <td style={{ fontSize: 12 }}>{t.actual_hours?.toFixed(2) || '—'}</td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
+                            <div style={{ marginBottom: 40 }}>
+                                <DataTable
+                                    loading={loading}
+                                    data={userReport.tasks || []}
+                                    fileName={`user_report_tasks_${dateRange.startDate}_to_${dateRange.endDate}`}
+                                    columns={[
+                                        { label: 'Task', key: 'title', render: (val) => <span style={{ fontSize: 13 }}>{val}</span> },
+                                        { label: 'Project', key: 'project.name', render: (val) => <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{val || '—'}</span> },
+                                        { label: 'Status', key: 'status', render: (val) => <span className={`badge ${STATUS_BADGE[val] || 'badge-gray'}`}>{val?.replace('_', ' ')}</span> },
+                                        { label: 'Est (h)', key: 'estimated_hours', render: (val) => <span style={{ fontSize: 12 }}>{val || '—'}</span> },
+                                        { label: 'Actual (h)', key: 'actual_hours', render: (val) => <span style={{ fontSize: 12 }}>{val?.toFixed(2) || '—'}</span> }
+                                    ]}
+                                />
                             </div>
                         </>
                     )}
@@ -478,58 +453,53 @@ export default function ReportsPage() {
                     {!employeeOverview ? (
                         <div className="page-loader"><div className="spinner" /></div>
                     ) : (
-                        <div className="table-wrapper">
-                            <table>
-                                <thead style={{ background: 'rgba(var(--accent-rgb), 0.05)' }}>
-                                    <tr>
-                                        <th>BDM Name</th>
-                                        <th className="text-right">Period Target</th>
-                                        <th className="text-right">Revenue Achieved</th>
-                                        <th className="text-right">Variance</th>
-                                        <th className="text-center">Conv. %</th>
-                                        <th className="text-center">Action</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {Object.values(employeeOverview)
-                                        .flat()
-                                        .filter(u => u.sales_stats)
-                                        .map(u => (
-                                            <tr key={u.id} className="hover-row">
-                                                <td>
-                                                    <div style={{ fontWeight: 600 }}>{u.full_name}</div>
-                                                    <div style={{ fontSize: 11, color: 'var(--text-dim)' }}>{u.designation}</div>
-                                                </td>
-                                                <td className="text-right" style={{ fontWeight: 600, cursor: 'pointer', color: 'var(--accent)' }} onClick={() => navigate(`/leads?agent=${u.id}&startDate=${dateRange.startDate}&endDate=${dateRange.endDate}`)}>
-                                                    ₹{u.sales_stats.monthly_target?.toLocaleString()}
-                                                </td>
-                                                <td className="text-right" style={{ color: 'var(--success)', fontWeight: 700, cursor: 'pointer' }} onClick={() => navigate(`/leads?agent=${u.id}&status=Won&startDate=${dateRange.startDate}&endDate=${dateRange.endDate}`)}>
-                                                    ₹{u.sales_stats.won_value?.toLocaleString()}
-                                                </td>
-                                                <td className="text-right" style={{
-                                                    color: u.sales_stats.variance >= 0 ? 'var(--success)' : 'var(--danger)',
-                                                    fontWeight: 600,
-                                                    cursor: 'pointer'
-                                                }} onClick={() => navigate(`/leads?agent=${u.id}&status=Won&startDate=${dateRange.startDate}&endDate=${dateRange.endDate}`)}>
-                                                    {u.sales_stats.variance >= 0 ? '+' : '-'}₹{Math.abs(u.sales_stats.variance).toLocaleString()}
-                                                </td>
-                                                <td className="text-center">
-                                                    <div className={`badge ${u.sales_stats.conversion_rate > 15 ? 'badge-green' : 'badge-yellow'}`} style={{ fontSize: 12 }}>
-                                                        {u.sales_stats.conversion_rate?.toFixed(1)}%
-                                                    </div>
-                                                </td>
-                                                <td className="text-center">
-                                                    <button
-                                                        className="btn btn-primary btn-sm"
-                                                        onClick={() => toast.success(`Performance appraisal context ready for ${u.full_name}`)}
-                                                    >
-                                                        Appraisal
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                </tbody>
-                            </table>
+                        <div style={{ marginBottom: 40 }}>
+                            <DataTable
+                                loading={!employeeOverview}
+                                data={Object.values(employeeOverview || {}).flat().filter(u => u.sales_stats)}
+                                fileName={`bdm_performance_${dateRange.startDate}_to_${dateRange.endDate}`}
+                                columns={[
+                                    {
+                                        label: 'BDM Name',
+                                        key: 'full_name',
+                                        render: (val, u) => (
+                                            <div>
+                                                <div style={{ fontWeight: 600 }}>{val}</div>
+                                                <div style={{ fontSize: 11, color: 'var(--text-dim)' }}>{u.designation}</div>
+                                            </div>
+                                        )
+                                    },
+                                    {
+                                        label: 'Period Target',
+                                        key: 'sales_stats.monthly_target',
+                                        render: (val, u) => <span style={{ fontWeight: 600, cursor: 'pointer', color: 'var(--accent)' }} onClick={() => navigate(`/leads?agent=${u.id}&startDate=${dateRange.startDate}&endDate=${dateRange.endDate}`)}>₹{val?.toLocaleString()}</span>
+                                    },
+                                    {
+                                        label: 'Revenue Achieved',
+                                        key: 'sales_stats.won_value',
+                                        render: (val, u) => <span style={{ color: 'var(--success)', fontWeight: 700, cursor: 'pointer' }} onClick={() => navigate(`/leads?agent=${u.id}&status=Won&startDate=${dateRange.startDate}&endDate=${dateRange.endDate}`)}>₹{val?.toLocaleString()}</span>
+                                    },
+                                    {
+                                        label: 'Variance',
+                                        key: 'sales_stats.variance',
+                                        render: (val, u) => (
+                                            <span style={{ color: val >= 0 ? 'var(--success)' : 'var(--danger)', fontWeight: 600, cursor: 'pointer' }} onClick={() => navigate(`/leads?agent=${u.id}&status=Won&startDate=${dateRange.startDate}&endDate=${dateRange.endDate}`)}>
+                                                {val >= 0 ? '+' : '-'}₹{Math.abs(val).toLocaleString()}
+                                            </span>
+                                        )
+                                    },
+                                    {
+                                        label: 'Conv. %',
+                                        key: 'sales_stats.conversion_rate',
+                                        render: (val) => <span className={`badge ${val > 15 ? 'badge-green' : 'badge-yellow'}`} style={{ fontSize: 12 }}>{val?.toFixed(1)}%</span>
+                                    },
+                                    {
+                                        label: 'Action',
+                                        key: 'id',
+                                        render: (_, u) => <button className="btn btn-primary btn-sm" onClick={() => toast.success(`Performance appraisal context ready for ${u.full_name}`)}>Appraisal</button>
+                                    }
+                                ]}
+                            />
                         </div>
                     )}
                 </div>

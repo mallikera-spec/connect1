@@ -99,9 +99,37 @@ export const addEntry = async (timesheetId, entryData) => {
     return data;
 };
 
-export const updateEntry = async (entryId, updates) => {
+export const updateEntry = async (entryId, updates, user) => {
+    // 1. Get current entry state
+    const { data: currentEntry, error: fetchError } = await supabaseAdmin
+        .from('timesheet_entries')
+        .select('*, timesheet:timesheets(user_id)')
+        .eq('id', entryId)
+        .single();
+
+    if (fetchError || !currentEntry) throw new Error('Entry not found');
+
+    // 2. Implement Locking Logic
+    const isAdmin = user?.roles?.some(r =>
+        ['super_admin', 'super admin', 'director', 'project_manager', 'project manager', 'hr', 'hr manager', 'tester'].includes(r.toLowerCase())
+    );
+
+    const isDeveloper = currentEntry.timesheet?.user_id === user?.id;
+    const lockedStatuses = ['done', 'verified']; // 'failed' is also locked until resubmission
+
+    if (!isAdmin && isDeveloper) {
+        if (lockedStatuses.includes(currentEntry.status)) {
+            throw new Error(`Timesheet entry is locked in ${currentEntry.status} status.`);
+        }
+
+        if (currentEntry.status === 'failed' && updates.status !== 'done') {
+            throw new Error('This entry failed QA. You must resubmit it by marking it as "done".');
+        }
+    }
+
     const allowed = ['title', 'status', 'hours_spent', 'notes', 'task_id', 'admin_feedback', 'project_id', 'developer_reply', 'qa_notes'];
     const filtered = Object.fromEntries(Object.entries(updates).filter(([k]) => allowed.includes(k)));
+
     const { data, error } = await supabaseAdmin
         .from('timesheet_entries')
         .update(filtered)

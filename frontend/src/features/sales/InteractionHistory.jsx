@@ -9,6 +9,7 @@ import api from '../../lib/api';
 import toast from 'react-hot-toast';
 import LeadDetailsModal from './LeadDetailsModal';
 import DateRangePicker from '../../components/DateRangePicker';
+import DataTable from '../../components/common/DataTable';
 
 const ExpandableNote = ({ text }) => {
     const [expanded, setExpanded] = useState(false);
@@ -232,9 +233,6 @@ export default function InteractionHistory() {
                         endDate={dateRange.end}
                         onRangeChange={(range) => setDateRange({ start: range.startDate, end: range.endDate })}
                     />
-                    <button className="btn btn-secondary" onClick={handleExportCSV} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <Download size={18} /> Export Activity CSV
-                    </button>
                 </div>
             </div>
 
@@ -358,244 +356,289 @@ export default function InteractionHistory() {
                     <div className="spinner" style={{ margin: '0 auto' }} />
                 </div>
             ) : (
-                <div className="card polished-card" style={{ padding: 0, overflow: 'hidden' }}>
-                    <div style={{ overflowX: 'auto' }}>
-                        <table className="users-table">
-                            <thead>
-                                <tr>
-                                    <th style={{ width: '60px' }}>S.No</th>
-                                    <th style={{ width: '140px', cursor: 'pointer' }} onClick={() => requestSort('created_at')}>
-                                        Logged Date {sortConfig.key === 'created_at' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
-                                    </th>
-                                    <th style={{ width: '220px', cursor: 'pointer' }} onClick={() => requestSort('lead_name')}>
-                                        Name {sortConfig.key === 'lead_name' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
-                                    </th>
-                                    <th style={{ width: '130px', cursor: 'pointer' }} onClick={() => requestSort('type')}>
-                                        Action {sortConfig.key === 'type' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
-                                    </th>
-                                    <th style={{ cursor: 'pointer' }} onClick={() => requestSort('notes')}>
-                                        Interaction Details {sortConfig.key === 'notes' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
-                                    </th>
-                                    <th style={{ width: '100px', cursor: 'pointer' }} onClick={() => requestSort('status')}>
-                                        Status {sortConfig.key === 'status' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
-                                    </th>
-                                    {isAdmin && <th style={{ width: '160px', cursor: 'pointer' }} onClick={() => requestSort('agent_name')}>
-                                        BDM {sortConfig.key === 'agent_name' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
-                                    </th>}
-                                    <th style={{ width: '100px' }}>Actions</th>
-                                </tr>
-                            </thead>
-                            {paginatedGroups.length > 0 ? paginatedGroups.map((group, groupIdx) => {
-                                const lid = group.lead?.id || `group-${groupIdx}`;
-                                const isExpanded = expandedLeads.has(lid);
-                                const hasMultiple = group.items.length > 1;
-                                const globalIndex = (page - 1) * limit + groupIdx + 1;
-
+                <DataTable
+                    data={sortedGroups}
+                    fileName={`BDM_Activity_${dateRange.start}_to_${dateRange.end}`}
+                    loading={loading}
+                    columns={[
+                        {
+                            label: 'Logged Date',
+                            key: 'lastActive',
+                            render: (val) => (
+                                <div style={{ fontWeight: 600, fontSize: '13px' }}>
+                                    {new Date(val).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}
+                                    <div style={{ fontSize: '11px', color: 'var(--text-dim)', marginTop: '2px' }}>
+                                        {new Date(val).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                    </div>
+                                </div>
+                            )
+                        },
+                        {
+                            label: 'Name',
+                            key: 'lead.name',
+                            render: (val, group) => (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    {group.items.length > 1 && (
+                                        <div style={{
+                                            transform: expandedLeads.has(group.lead.id) ? 'rotate(90deg)' : 'rotate(0deg)',
+                                            transition: '0.2s transform ease',
+                                            color: 'var(--accent)',
+                                            display: 'flex',
+                                            alignItems: 'center'
+                                        }}>
+                                            <ChevronRight size={16} strokeWidth={3} />
+                                        </div>
+                                    )}
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                        <div style={{ fontWeight: 800, color: 'var(--accent-light)', fontSize: '15px' }}>
+                                            {val || 'Unknown Lead'}
+                                        </div>
+                                        {group.items.length > 1 && !expandedLeads.has(group.lead.id) && (
+                                            <div style={{ fontSize: '10px', color: 'var(--accent)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                                {group.items.length} Activities Collapsed
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            )
+                        },
+                        {
+                            label: 'Action',
+                            key: 'items.0.type',
+                            render: (val, group) => {
+                                if (expandedLeads.has(group.lead.id)) return <span style={{ opacity: 0.2 }}>--</span>;
                                 return (
-                                    <tbody key={lid} style={{ borderBottom: '1px solid var(--border)' }}>
-                                        {/* Master Client Row */}
-                                        <tr
-                                            className={`clickable-row ${hasMultiple ? 'group-master-row' : ''}`}
-                                            onClick={() => hasMultiple && toggleExpand(lid)}
-                                            style={{ background: isExpanded ? 'rgba(124, 58, 237, 0.04)' : 'transparent' }}
-                                        >
-                                            <td><span style={{ color: 'var(--text-dim)', fontSize: '12px' }}>#{globalIndex}</span></td>
-                                            <td>
-                                                <div style={{ fontWeight: 600, fontSize: '13px' }}>
-                                                    {new Date(group.lastActive).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text)' }}>
+                                        <div style={{ width: '28px', height: '28px', borderRadius: '6px', background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                            {getIcon(val)}
+                                        </div>
+                                        <span style={{ fontSize: '13px', fontWeight: 600 }}>{val}</span>
+                                    </div>
+                                );
+                            }
+                        },
+                        {
+                            label: 'Interaction Details',
+                            key: 'items.0.notes',
+                            render: (val, group) => {
+                                if (expandedLeads.has(group.lead.id)) return <span style={{ opacity: 0.2 }}>--</span>;
+                                return (
+                                    <div className="text-truncate" style={{ maxWidth: '350px', fontSize: '13px', color: 'var(--text-muted)', lineHeight: '1.5' }}>
+                                        <ExpandableNote text={val} />
+                                    </div>
+                                );
+                            }
+                        },
+                        {
+                            label: 'Status',
+                            key: 'lead.status',
+                            render: (val) => (
+                                <span style={{
+                                    padding: '4px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.4px',
+                                    background: val === 'Won' ? 'rgba(34,197,94,0.15)' :
+                                        val === 'Lost' ? 'rgba(239,68,68,0.15)' :
+                                            val === 'Proposal' ? 'rgba(124,58,237,0.15)' : 'rgba(255,255,255,0.06)',
+                                    color: val === 'Won' ? '#22c55e' :
+                                        val === 'Lost' ? '#ef4444' :
+                                            val === 'Proposal' ? '#a78bfa' : '#e4e4e7',
+                                    border: `1px solid ${val === 'Won' ? 'rgba(34,197,94,0.2)' :
+                                        val === 'Lost' ? 'rgba(239,68,68,0.2)' :
+                                            val === 'Proposal' ? 'rgba(124,58,237,0.2)' : 'rgba(255,255,255,0.1)'
+                                        }`
+                                }}>
+                                    {val || 'Active'}
+                                </span>
+                            )
+                        },
+                        ...(isAdmin ? [{
+                            label: 'BDM',
+                            key: 'items.0.agent.full_name',
+                            render: (val) => (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <div className="avatar-xs-circle">{val?.charAt(0)}</div>
+                                    <span style={{ fontSize: '13px' }}>{val}</span>
+                                </div>
+                            )
+                        }] : []),
+                        {
+                            label: 'Actions',
+                            key: 'actions',
+                            render: (_, group) => (
+                                <button
+                                    className="btn btn-sm btn-icon-view"
+                                    onClick={() => setSelectedLeadId(group.lead?.id)}
+                                    title="View Lead Details"
+                                >
+                                    <Eye size={16} />
+                                </button>
+                            )
+                        }
+                    ]}
+                    renderRow={(group, index) => {
+                        const lid = group.lead?.id || `group-${index}`;
+                        const isExpanded = expandedLeads.has(lid);
+                        const hasMultiple = group.items.length > 1;
+
+                        return (
+                            <React.Fragment key={lid}>
+                                <tr
+                                    className={`clickable-row ${hasMultiple ? 'group-master-row' : ''}`}
+                                    onClick={() => hasMultiple && toggleExpand(lid)}
+                                    style={{ background: isExpanded ? 'rgba(124, 58, 237, 0.04)' : 'transparent' }}
+                                >
+                                    <td style={{ padding: '12px 16px' }}><span style={{ color: 'var(--text-dim)', fontSize: '12px' }}>#{index + 1}</span></td>
+                                    <td style={{ padding: '12px 16px' }}>
+                                        <div style={{ fontWeight: 600, fontSize: '13px' }}>
+                                            {new Date(group.lastActive).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}
+                                        </div>
+                                        <div style={{ fontSize: '11px', color: 'var(--text-dim)', marginTop: '2px' }}>
+                                            {new Date(group.lastActive).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                        </div>
+                                    </td>
+                                    <td style={{ padding: '12px 16px' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            {hasMultiple && (
+                                                <div style={{
+                                                    transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
+                                                    transition: '0.2s transform ease',
+                                                    color: 'var(--accent)',
+                                                    display: 'flex',
+                                                    alignItems: 'center'
+                                                }}>
+                                                    <ChevronRight size={16} strokeWidth={3} />
                                                 </div>
-                                                <div style={{ fontSize: '11px', color: 'var(--text-dim)', marginTop: '2px' }}>
-                                                    {new Date(group.lastActive).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                            )}
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                                <div style={{ fontWeight: 800, color: 'var(--accent-light)', fontSize: '15px' }}>
+                                                    {group.lead?.name || 'Unknown Lead'}
                                                 </div>
-                                            </td>
-                                            <td>
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                                    {hasMultiple && (
-                                                        <div style={{
-                                                            transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
-                                                            transition: '0.2s transform ease',
-                                                            color: 'var(--accent)',
-                                                            display: 'flex',
-                                                            alignItems: 'center'
-                                                        }}>
-                                                            <ChevronRight size={16} strokeWidth={3} />
-                                                        </div>
-                                                    )}
-                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                                                        <div style={{ fontWeight: 800, color: 'var(--accent-light)', fontSize: '15px' }}>
-                                                            {group.lead?.name || 'Unknown Lead'}
-                                                        </div>
-                                                        {hasMultiple && !isExpanded && (
-                                                            <div style={{ fontSize: '10px', color: 'var(--accent)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                                                                {group.items.length} Activities Collapsed
-                                                            </div>
-                                                        )}
+                                                {hasMultiple && !isExpanded && (
+                                                    <div style={{ fontSize: '10px', color: 'var(--accent)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                                        {group.items.length} Activities Collapsed
                                                     </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </td>
+                                    {!isExpanded ? (
+                                        <>
+                                            <td style={{ padding: '12px 16px' }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text)' }}>
+                                                    <div style={{ width: '28px', height: '28px', borderRadius: '6px', background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                        {getIcon(group.items[0].type)}
+                                                    </div>
+                                                    <span style={{ fontSize: '13px', fontWeight: 600 }}>{group.items[0].type}</span>
                                                 </div>
                                             </td>
-                                            {!isExpanded ? (
-                                                // Show summary info when collapsed
-                                                <>
-                                                    <td>
-                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text)' }}>
-                                                            <div style={{ width: '28px', height: '28px', borderRadius: '6px', background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                                                {getIcon(group.items[0].type)}
-                                                            </div>
-                                                            <span style={{ fontSize: '13px', fontWeight: 600 }}>{group.items[0].type}</span>
+                                            <td style={{ padding: '12px 16px' }}>
+                                                <div className="text-truncate" style={{ maxWidth: '350px', fontSize: '13px', color: 'var(--text-muted)', lineHeight: '1.5' }}>
+                                                    <ExpandableNote text={group.items[0].notes} />
+                                                </div>
+                                            </td>
+                                            <td style={{ padding: '12px 16px' }}>
+                                                <span style={{
+                                                    padding: '4px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.4px',
+                                                    background: group.lead?.status === 'Won' ? 'rgba(34,197,94,0.15)' :
+                                                        group.lead?.status === 'Lost' ? 'rgba(239,68,68,0.15)' :
+                                                            group.lead?.status === 'Proposal' ? 'rgba(124,58,237,0.15)' : 'rgba(255,255,255,0.06)',
+                                                    color: group.lead?.status === 'Won' ? '#22c55e' :
+                                                        group.lead?.status === 'Lost' ? '#ef4444' :
+                                                            group.lead?.status === 'Proposal' ? '#a78bfa' : '#e4e4e7',
+                                                    border: `1px solid ${group.lead?.status === 'Won' ? 'rgba(34,197,94,0.2)' :
+                                                        group.lead?.status === 'Lost' ? 'rgba(239,68,68,0.2)' :
+                                                            group.lead?.status === 'Proposal' ? 'rgba(124,58,237,0.2)' : 'rgba(255,255,255,0.1)'
+                                                        }`
+                                                }}>
+                                                    {group.lead?.status || 'Active'}
+                                                </span>
+                                            </td>
+                                            {isAdmin && (
+                                                <td style={{ padding: '12px 16px' }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                        <div className="avatar-xs-circle">
+                                                            {group.items[0].agent?.full_name?.charAt(0)}
                                                         </div>
-                                                    </td>
-                                                    <td>
-                                                        <div className="text-truncate" style={{ maxWidth: '350px', fontSize: '13px', color: 'var(--text-muted)', lineHeight: '1.5' }}>
-                                                            <ExpandableNote text={group.items[0].notes} />
-                                                        </div>
-                                                    </td>
-                                                    <td>
-                                                        <span style={{
-                                                            padding: '4px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.4px',
-                                                            background: group.lead?.status === 'Won' ? 'rgba(34,197,94,0.15)' :
-                                                                group.lead?.status === 'Lost' ? 'rgba(239,68,68,0.15)' :
-                                                                    group.lead?.status === 'Proposal' ? 'rgba(124,58,237,0.15)' : 'rgba(255,255,255,0.06)',
-                                                            color: group.lead?.status === 'Won' ? '#22c55e' :
-                                                                group.lead?.status === 'Lost' ? '#ef4444' :
-                                                                    group.lead?.status === 'Proposal' ? '#a78bfa' : '#e4e4e7',
-                                                            border: `1px solid ${group.lead?.status === 'Won' ? 'rgba(34,197,94,0.2)' :
-                                                                group.lead?.status === 'Lost' ? 'rgba(239,68,68,0.2)' :
-                                                                    group.lead?.status === 'Proposal' ? 'rgba(124,58,237,0.2)' : 'rgba(255,255,255,0.1)'
-                                                                }`
-                                                        }}>
-                                                            {group.lead?.status || 'Active'}
-                                                        </span>
-                                                    </td>
-                                                    {isAdmin && (
-                                                        <td>
-                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                                                <div className="avatar-xs-circle">
-                                                                    {group.items[0].agent?.full_name?.charAt(0)}
-                                                                </div>
-                                                                <span style={{ fontSize: '13px' }}>{group.items[0].agent?.full_name}</span>
-                                                            </div>
-                                                        </td>
-                                                    )}
-                                                </>
-                                            ) : (
-                                                <td colSpan={isAdmin ? 4 : 3} style={{ background: 'rgba(124, 58, 237, 0.02)', textAlign: 'center' }}>
-                                                    <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '1px', opacity: 0.6 }}>
-                                                        Activity History for {group.lead?.name}
-                                                    </span>
+                                                        <span style={{ fontSize: '13px' }}>{group.items[0].agent?.full_name}</span>
+                                                    </div>
                                                 </td>
                                             )}
-                                            <td onClick={(e) => e.stopPropagation()}>
-                                                <button
-                                                    className="btn btn-sm btn-icon-view"
-                                                    onClick={() => setSelectedLeadId(group.lead?.id)}
-                                                    title="View Lead Details"
-                                                >
-                                                    <Eye size={16} />
-                                                </button>
-                                            </td>
-                                        </tr>
-
-                                        {/* Sub-items for expanded view */}
-                                        {isExpanded && group.items.map((it, itIdx) => (
-                                            <tr key={it.id} style={{ background: 'rgba(255,255,255,0.01)' }}>
-                                                <td style={{ textAlign: 'right', paddingRight: '12px' }}>
-                                                    <span style={{ fontSize: '10px', opacity: 0.4, fontWeight: 800 }}>{globalIndex}.{itIdx + 1}</span>
-                                                </td>
-                                                <td>
-                                                    <div style={{ fontSize: '12px', opacity: 0.9 }}>
-                                                        {new Date(it.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                                        <div style={{ fontSize: '10px', opacity: 0.5 }}>
-                                                            {new Date(it.created_at).toLocaleDateString([], { month: 'short', day: 'numeric' })}
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td style={{ borderLeft: '2px solid var(--accent)', paddingLeft: '16px' }}>
-                                                    <div style={{ fontSize: '11px', fontWeight: 800, color: 'var(--text-dim)', textTransform: 'uppercase', opacity: 0.6 }}>
-                                                        Log #{group.items.length - itIdx}
-                                                    </div>
-                                                </td>
-                                                <td>
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', opacity: 0.9 }}>
-                                                        {getIcon(it.type)}
-                                                        <span style={{ fontSize: '12px', fontWeight: 600 }}>{it.type}</span>
-                                                    </div>
-                                                </td>
-                                                <td>
-                                                    <div style={{ maxWidth: '350px', fontSize: '12px', color: 'var(--text-muted)', lineHeight: '1.4', whiteSpace: 'pre-wrap' }}>
-                                                        <ExpandableNote text={it.notes} />
-                                                    </div>
-                                                </td>
-                                                <td>
-                                                    <span style={{
-                                                        padding: '2px 8px', borderRadius: '4px', fontSize: '10px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.4px',
-                                                        background: group.lead?.status === 'Won' ? 'rgba(34,197,94,0.1)' :
-                                                            group.lead?.status === 'Lost' ? 'rgba(239,68,68,0.1)' :
-                                                                group.lead?.status === 'Proposal' ? 'rgba(124,58,237,0.1)' : 'rgba(255,255,255,0.04)',
-                                                        color: group.lead?.status === 'Won' ? '#22c55e' :
-                                                            group.lead?.status === 'Lost' ? '#ef4444' :
-                                                                group.lead?.status === 'Proposal' ? '#a78bfa' : '#a1a1aa',
-                                                    }}>
-                                                        {group.lead?.status || 'Active'}
-                                                    </span>
-                                                </td>
-                                                {isAdmin && (
-                                                    <td>
-                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', opacity: 0.8 }}>
-                                                            <div className="avatar-xs-circle" style={{ width: '20px', height: '20px', fontSize: '9px' }}>
-                                                                {it.agent?.full_name?.charAt(0)}
-                                                            </div>
-                                                            <span style={{ fontSize: '12px' }}>{it.agent?.full_name}</span>
-                                                        </div>
-                                                    </td>
-                                                )}
-                                                <td></td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                );
-                            }) : (
-                                <tbody>
-                                    <tr>
-                                        <td colSpan={isAdmin ? 8 : 7} style={{ textAlign: 'center', padding: '120px 0' }}>
-                                            <Clock size={48} style={{ margin: '0 auto 16px', display: 'block', opacity: 0.1 }} />
-                                            <div style={{ color: 'var(--text-dim)', fontWeight: 500 }}>No interaction logs discovered for this period.</div>
+                                        </>
+                                    ) : (
+                                        <td colSpan={isAdmin ? 4 : 3} style={{ background: 'rgba(124, 58, 237, 0.02)', textAlign: 'center', padding: '12px 16px' }}>
+                                            <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '1px', opacity: 0.6 }}>
+                                                Activity History for {group.lead?.name}
+                                            </span>
                                         </td>
+                                    )}
+                                    <td style={{ padding: '12px 16px' }} onClick={(e) => e.stopPropagation()}>
+                                        <button
+                                            className="btn btn-sm btn-icon-view"
+                                            onClick={() => setSelectedLeadId(group.lead?.id)}
+                                            title="View Lead Details"
+                                        >
+                                            <Eye size={16} />
+                                        </button>
+                                    </td>
+                                </tr>
+                                {isExpanded && group.items.map((it, itIdx) => (
+                                    <tr key={it.id} style={{ background: 'rgba(255,255,255,0.01)' }}>
+                                        <td style={{ textAlign: 'right', paddingRight: '12px', padding: '12px 16px' }}>
+                                            <span style={{ fontSize: '10px', opacity: 0.4, fontWeight: 800 }}>{index + 1}.{itIdx + 1}</span>
+                                        </td>
+                                        <td style={{ padding: '12px 16px' }}>
+                                            <div style={{ fontSize: '12px', opacity: 0.9 }}>
+                                                {new Date(it.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                <div style={{ fontSize: '10px', opacity: 0.5 }}>
+                                                    {new Date(it.created_at).toLocaleDateString([], { month: 'short', day: 'numeric' })}
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td style={{ borderLeft: '2px solid var(--accent)', paddingLeft: '16px', padding: '12px 16px' }}>
+                                            <div style={{ fontSize: '11px', fontWeight: 800, color: 'var(--text-dim)', textTransform: 'uppercase', opacity: 0.6 }}>
+                                                Log #{group.items.length - itIdx}
+                                            </div>
+                                        </td>
+                                        <td style={{ padding: '12px 16px' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', opacity: 0.9 }}>
+                                                {getIcon(it.type)}
+                                                <span style={{ fontSize: '12px', fontWeight: 600 }}>{it.type}</span>
+                                            </div>
+                                        </td>
+                                        <td style={{ padding: '12px 16px' }}>
+                                            <div style={{ maxWidth: '350px', fontSize: '12px', color: 'var(--text-muted)', lineHeight: '1.4', whiteSpace: 'pre-wrap' }}>
+                                                <ExpandableNote text={it.notes} />
+                                            </div>
+                                        </td>
+                                        <td style={{ padding: '12px 16px' }}>
+                                            <span style={{
+                                                padding: '2px 8px', borderRadius: '4px', fontSize: '10px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.4px',
+                                                background: group.lead?.status === 'Won' ? 'rgba(34,197,94,0.1)' :
+                                                    group.lead?.status === 'Lost' ? 'rgba(239,68,68,0.1)' :
+                                                        group.lead?.status === 'Proposal' ? 'rgba(124,58,237,0.1)' : 'rgba(255,255,255,0.04)',
+                                                color: group.lead?.status === 'Won' ? '#22c55e' :
+                                                    group.lead?.status === 'Lost' ? '#ef4444' :
+                                                        group.lead?.status === 'Proposal' ? '#a78bfa' : '#a1a1aa',
+                                            }}>
+                                                {group.lead?.status || 'Active'}
+                                            </span>
+                                        </td>
+                                        {isAdmin && (
+                                            <td style={{ padding: '12px 16px' }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', opacity: 0.8 }}>
+                                                    <div className="avatar-xs-circle" style={{ width: '20px', height: '20px', fontSize: '9px' }}>
+                                                        {it.agent?.full_name?.charAt(0)}
+                                                    </div>
+                                                    <span style={{ fontSize: '12px' }}>{it.agent?.full_name}</span>
+                                                </div>
+                                            </td>
+                                        )}
+                                        <td style={{ padding: '12px 16px' }}></td>
                                     </tr>
-                                </tbody>
-                            )}
-                        </table>
-                    </div>
-
-                    {/* Pagination Controls */}
-                    {totalPages > 1 && (
-                        <div style={{ padding: '16px 20px', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <span style={{ fontSize: '12px', color: 'var(--text-dim)' }}>
-                                Showing {(page - 1) * limit + 1} to {Math.min(page * limit, sortedGroups.length)} of {sortedGroups.length} groups
-                            </span>
-                            <div style={{ display: 'flex', gap: '8px' }}>
-                                <button
-                                    className="btn btn-secondary"
-                                    onClick={() => setPage(p => Math.max(1, p - 1))}
-                                    disabled={page === 1}
-                                    style={{ padding: '6px' }}
-                                >
-                                    <ChevronLeft size={16} />
-                                </button>
-                                <div style={{ display: 'flex', alignItems: 'center', padding: '0 12px', background: 'rgba(255,255,255,0.05)', borderRadius: '6px', fontSize: '12px', fontWeight: 600 }}>
-                                    {page} / {totalPages}
-                                </div>
-                                <button
-                                    className="btn btn-secondary"
-                                    onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                                    disabled={page === totalPages}
-                                    style={{ padding: '6px' }}
-                                >
-                                    <ChevronRight size={16} />
-                                </button>
-                            </div>
-                        </div>
-                    )}
-                </div>
+                                ))}
+                            </React.Fragment>
+                        );
+                    }}
+                />
             )}
 
             {selectedLeadId && (

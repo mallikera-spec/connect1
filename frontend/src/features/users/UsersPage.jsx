@@ -4,7 +4,7 @@ import { Plus, Pencil, Trash2, Search, UserPlus, ShieldPlus, X, Users, FileText,
 import api from '../../lib/api'
 import toast from 'react-hot-toast'
 import { useAuth } from '../../context/AuthContext'
-import { useSortable, SortableHeader } from '../../hooks/useSortable'
+import DataTable from '../../components/common/DataTable'
 
 function Modal({ title, onClose, onSubmit, loading, children, saveLabel = 'Save' }) {
     return (
@@ -254,34 +254,55 @@ export default function UsersPage() {
         u.email?.toLowerCase().includes(search.toLowerCase())
     )
 
-    const { sorted: sortedUsers, sortKey, sortDir, toggleSort } = useSortable(filtered, 'full_name', 'asc')
-
-    const handleExportCSV = () => {
-        if (!sortedUsers.length) return toast.error('No data to export')
-        const headers = ['Name', 'Email', 'Department', 'Designation', 'Roles']
-        const rows = sortedUsers.map(u => [
-            `"${u.full_name || ''}"`,
-            `"${u.email || ''}"`,
-            `"${u.department || ''}"`,
-            `"${u.designation || ''}"`,
-            `"${(u.roles || []).join(', ')}"`
-        ])
-        const csv = [headers, ...rows].map(r => r.join(',')).join('\n')
-        const link = document.createElement('a')
-        link.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }))
-        link.download = `employees_${new Date().toISOString().split('T')[0]}.csv`
-        link.click()
-    }
-
-    const handleExportPDF = () => window.print()
+    const columns = [
+        { label: 'Name', key: 'full_name', sortable: true, render: (val) => <strong>{val}</strong> },
+        { label: 'Email', key: 'email', sortable: true, render: (val) => <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>{val}</span> },
+        { label: 'Department', key: 'department', sortable: true, render: (val) => <span style={{ fontSize: 13 }}>{val || <span style={{ color: 'var(--text-dim)' }}>—</span>}</span> },
+        { label: 'Designation', key: 'designation', sortable: true, render: (val) => <span style={{ fontSize: 13 }}>{val || <span style={{ color: 'var(--text-dim)' }}>—</span>}</span> },
+        {
+            label: 'Roles',
+            key: 'roles',
+            render: (roles) => (
+                roles?.length > 0
+                    ? <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                        {roles.map(r => <span key={r} className="badge badge-purple">{r}</span>)}
+                    </div>
+                    : <span style={{ color: 'var(--text-dim)', fontSize: 12 }}>No roles</span>
+            )
+        },
+        {
+            label: 'Actions',
+            key: 'actions',
+            render: (_, u) => (
+                <div className="actions-cell">
+                    {hasPermission('assign_role') && (
+                        <button className="btn btn-ghost btn-sm btn-icon" onClick={() => openRole(u)} title="Manage Roles"><UserPlus size={14} /></button>
+                    )}
+                    {hasPermission('manage_user_permissions') && (
+                        <button className="btn btn-ghost btn-sm btn-icon" onClick={() => openPerms(u)} title="Manage Permissions"><ShieldPlus size={14} /></button>
+                    )}
+                    {hasPermission('view_reports') && (
+                        <button className="btn btn-ghost btn-sm btn-icon" onClick={() => navigate(`/profile/${u.id}`)} title="View Stats & Activity"><FileText size={14} /></button>
+                    )}
+                    {hasPermission('view_timesheets') && (
+                        <button className="btn btn-ghost btn-sm btn-icon" onClick={() => navigate(`/timesheet?userId=${u.id}`)} title="View Timesheets"><Calendar size={14} /></button>
+                    )}
+                    {hasPermission('edit_user') && (
+                        <button className="btn btn-ghost btn-sm btn-icon" onClick={() => openEdit(u)} title="Edit"><Pencil size={14} /></button>
+                    )}
+                    {hasPermission('delete_user') && (
+                        <button className="btn btn-danger btn-sm btn-icon" onClick={() => openDelete(u)} title="Delete"><Trash2 size={14} /></button>
+                    )}
+                </div>
+            )
+        }
+    ];
 
     return (
         <div>
             <div className="page-header">
                 <div><h1>Employees</h1><p>Manage employees, roles and access</p></div>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                    <button className="btn btn-outline btn-sm" onClick={handleExportCSV} style={{ display: 'flex', alignItems: 'center', gap: 4 }}><Download size={14} /> CSV</button>
-                    <button className="btn btn-outline btn-sm" onClick={handleExportPDF} style={{ display: 'flex', alignItems: 'center', gap: 4 }}><FileText size={14} /> PDF</button>
                     {hasPermission('create_user') && (
                         <button className="btn btn-primary" onClick={openCreate}><Plus size={16} />New Employee</button>
                     )}
@@ -296,61 +317,12 @@ export default function UsersPage() {
                     </div>
                 </div>
 
-                {loading ? <div className="page-loader"><div className="spinner" /></div> : (
-                    <table>
-                        <thead><tr>
-                            <SortableHeader sortKey="full_name" label="Name" currentSortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
-                            <SortableHeader sortKey="email" label="Email" currentSortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
-                            <SortableHeader sortKey="department" label="Department" currentSortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
-                            <SortableHeader sortKey="designation" label="Designation" currentSortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
-                            <th>Roles</th>
-                            <th>Actions</th>
-                        </tr></thead>
-                        <tbody>
-                            {sortedUsers.length === 0 && (
-                                <tr><td colSpan={6}><div className="empty-state"><p>No users found</p></div></td></tr>
-                            )}
-                            {sortedUsers.map(u => (
-                                <tr key={u.id}>
-                                    <td><strong>{u.full_name}</strong></td>
-                                    <td style={{ color: 'var(--text-muted)', fontSize: 13 }}>{u.email}</td>
-                                    <td style={{ fontSize: 13 }}>{u.department || <span style={{ color: 'var(--text-dim)' }}>—</span>}</td>
-                                    <td style={{ fontSize: 13 }}>{u.designation || <span style={{ color: 'var(--text-dim)' }}>—</span>}</td>
-                                    <td>
-                                        {u.roles?.length > 0
-                                            ? <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-                                                {u.roles.map(r => <span key={r} className="badge badge-purple">{r}</span>)}
-                                            </div>
-                                            : <span style={{ color: 'var(--text-dim)', fontSize: 12 }}>No roles</span>
-                                        }
-                                    </td>
-                                    <td>
-                                        <div className="actions-cell">
-                                            {hasPermission('assign_role') && (
-                                                <button className="btn btn-ghost btn-sm btn-icon" onClick={() => openRole(u)} title="Manage Roles"><UserPlus size={14} /></button>
-                                            )}
-                                            {hasPermission('manage_user_permissions') && (
-                                                <button className="btn btn-ghost btn-sm btn-icon" onClick={() => openPerms(u)} title="Manage Permissions"><ShieldPlus size={14} /></button>
-                                            )}
-                                            {hasPermission('view_reports') && (
-                                                <button className="btn btn-ghost btn-sm btn-icon" onClick={() => navigate(`/profile/${u.id}`)} title="View Stats & Activity"><FileText size={14} /></button>
-                                            )}
-                                            {hasPermission('view_timesheets') && (
-                                                <button className="btn btn-ghost btn-sm btn-icon" onClick={() => navigate(`/timesheet?userId=${u.id}`)} title="View Timesheets"><Calendar size={14} /></button>
-                                            )}
-                                            {hasPermission('edit_user') && (
-                                                <button className="btn btn-ghost btn-sm btn-icon" onClick={() => openEdit(u)} title="Edit"><Pencil size={14} /></button>
-                                            )}
-                                            {hasPermission('delete_user') && (
-                                                <button className="btn btn-danger btn-sm btn-icon" onClick={() => openDelete(u)} title="Delete"><Trash2 size={14} /></button>
-                                            )}
-                                        </div>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                )}
+                <DataTable
+                    data={filtered}
+                    columns={columns}
+                    fileName="employees-list"
+                    loading={loading}
+                />
             </div>
 
             {modal === 'create' && (

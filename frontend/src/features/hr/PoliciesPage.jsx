@@ -1,4 +1,5 @@
 import { Shield, Clock, Calendar, CheckCircle2, Info, Gift, Coffee, Sparkles, Smile, Shirt, ShieldAlert, HeartPulse } from 'lucide-react';
+import DataTable from '../../components/common/DataTable';
 
 export default function PoliciesPage() {
     const categories = [
@@ -161,35 +162,30 @@ export default function PoliciesPage() {
                         <h2 style={{ fontSize: '22px', fontWeight: 700, margin: 0 }}>Holiday Calendar 2026</h2>
                     </div>
 
-                    <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
-                            <thead>
-                                <tr style={{ background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid var(--border)' }}>
-                                    <th style={{ textAlign: 'left', padding: '12px 20px', color: 'var(--text-muted)' }}>Date</th>
-                                    <th style={{ textAlign: 'left', padding: '12px 20px', color: 'var(--text-muted)' }}>Holiday Name</th>
-                                    <th style={{ textAlign: 'center', padding: '12px 20px', color: 'var(--text-muted)' }}>Status</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {holidays.map((h, i) => (
-                                    <tr key={i} style={{ borderBottom: '1px solid var(--border)', background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.01)' }}>
-                                        <td style={{ padding: '12px 20px', fontWeight: 500 }}>{h.date} ({h.day.substring(0, 3)})</td>
-                                        <td style={{ padding: '12px 20px' }}>{h.desc}</td>
-                                        <td style={{ padding: '12px 20px', textAlign: 'center' }}>
-                                            <span style={{
-                                                padding: '3px 8px', borderRadius: '4px', fontSize: '10px', fontWeight: 800,
-                                                background: 'rgba(34,197,94,0.1)', color: '#22c55e'
-                                            }}>PAID OFF</span>
-                                        </td>
-                                    </tr>
-                                ))}
-                                <tr style={{ background: 'rgba(234,179,8,0.03)' }}>
-                                    <td colSpan="3" style={{ padding: '12px 20px', fontSize: '12px', color: 'var(--text-dim)', fontStyle: 'italic' }}>
-                                        <strong>Working Holidays:</strong> {workingHolidays.join(', ')}. Standard office rules apply.
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
+                    <div className="card polished-card" style={{ padding: 0, overflow: 'hidden' }}>
+                        <DataTable
+                            data={holidays}
+                            fileName="holiday_calendar_2026"
+                            columns={[
+                                { label: 'Date', key: 'date', render: (val, h) => `${val} (${h.day.substring(0, 3)})` },
+                                { label: 'Holiday Name', key: 'desc' },
+                                {
+                                    label: 'Status',
+                                    key: 'status',
+                                    render: () => (
+                                        <span style={{
+                                            padding: '3px 8px', borderRadius: '4px', fontSize: '10px', fontWeight: 800,
+                                            background: 'rgba(34,197,94,0.1)', color: '#22c55e'
+                                        }}>PAID OFF</span>
+                                    )
+                                }
+                            ]}
+                        />
+                        <div style={{ background: 'rgba(234,179,8,0.03)', padding: '12px 20px', borderTop: '1px solid var(--border)' }}>
+                            <div style={{ fontSize: '12px', color: 'var(--text-dim)', fontStyle: 'italic' }}>
+                                <strong>Working Holidays:</strong> {workingHolidays.join(', ')}. Standard office rules apply.
+                            </div>
+                        </div>
                     </div>
                 </section>
 

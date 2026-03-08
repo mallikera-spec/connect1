@@ -5,6 +5,8 @@ import api from '../../lib/api'
 import toast from 'react-hot-toast'
 import { useAuth } from '../../context/AuthContext'
 import DateRangePicker from '../../components/DateRangePicker'
+import QAFeedbackTrail from '../../components/common/QAFeedbackTrail'
+import DataTable from '../../components/common/DataTable'
 
 const STATUS_BADGE = {
     pending: 'badge-gray',
@@ -115,6 +117,13 @@ export default function TestingTasks() {
                 qa_notes: qaReport.notes
             }
             await api.patch(`/tasks/${selectedTask.id}`, updates)
+
+            // Add to feedback trail
+            await api.post(`/tasks/${selectedTask.id}/feedback`, {
+                content: qaReport.notes || (qaReport.status === 'verified' ? 'Verified by QA' : 'Failed QA'),
+                new_status: qaReport.status
+            });
+
             setTasks(prev => prev.map(t => t.id === selectedTask.id ? { ...t, ...updates } : t))
             toast.success(`Task marked as ${qaReport.status.toUpperCase()}`)
             setModal(null)
@@ -136,24 +145,6 @@ export default function TestingTasks() {
         }
     }
 
-    const handleExportCSV = () => {
-        if (!filtered.length) return
-        const headers = ['Title', 'Assignee', 'Project', 'Status', 'Priority', 'Created']
-        const rows = filtered.map(t => [
-            `"${t.title || ''}"`,
-            `"${t.assignee?.full_name || ''}"`,
-            `"${t.project?.name || ''}"`,
-            t.status || '',
-            t.priority || '',
-            t.created_at ? new Date(t.created_at).toLocaleDateString() : ''
-        ])
-        const csv = [headers, ...rows].map(r => r.join(',')).join('\n')
-        const link = document.createElement('a')
-        link.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }))
-        link.download = `testing_tasks_${new Date().toISOString().split('T')[0]}.csv`
-        link.click()
-    }
-
     const handleExportPDF = () => window.print()
 
     return (
@@ -172,8 +163,14 @@ export default function TestingTasks() {
                             setEndDate(range.endDate);
                         }}
                     />
-                    <button className="btn btn-outline btn-sm" onClick={handleExportCSV} style={{ display: 'flex', alignItems: 'center', gap: 4 }}><Download size={14} /> CSV</button>
-                    <button className="btn btn-outline btn-sm" onClick={handleExportPDF} style={{ display: 'flex', alignItems: 'center', gap: 4 }}><FileText size={14} /> PDF</button>
+                    <DateRangePicker
+                        startDate={startDate}
+                        endDate={endDate}
+                        onRangeChange={(range) => {
+                            setStartDate(range.startDate);
+                            setEndDate(range.endDate);
+                        }}
+                    />
                 </div>
             </div>
 
@@ -223,86 +220,55 @@ export default function TestingTasks() {
                 </div>
             </div>
 
-            <div className="table-wrapper shadow-sm">
-                {loading ? (
-                    <div className="page-loader" style={{ height: 200 }}><div className="spinner" /></div>
-                ) : filtered.length === 0 ? (
-                    <div className="empty-state-card">
-                        <ListTodo size={48} style={{ opacity: 0.1, marginBottom: 16 }} />
-                        <h3>Inbox is clear!</h3>
-                        <p>No tasks found for this view.</p>
-                    </div>
-                ) : (
-                    <table className="compact-table">
-                        <thead>
-                            <tr>
-                                <th style={{ width: 100 }}>Created</th>
-                                <th style={{ width: 130 }}>Assignee</th>
-                                <th style={{ width: 120 }}>Project</th>
-                                <th>Task Details</th>
-                                <th style={{ width: 60 }}>Pri</th>
-                                <th style={{ width: 100 }}>Status</th>
-                                <th style={{ width: 90, textAlign: 'right' }}>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {filtered.map(t => (
-                                <tr key={t.id} onClick={() => openQaModal(t, t.status === 'done' ? 'verified' : t.status)} className="clickable-row">
-                                    <td style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)' }}>{fmt(t.created_at)}</td>
-                                    <td style={{ fontSize: 13, fontWeight: 600 }}>{t.assignee?.full_name || 'Unassigned'}</td>
-                                    <td>
-                                        <span className="badge-pill badge-purple" style={{ fontSize: 9 }}>
-                                            {(t.project?.name || 'Unknown').toUpperCase()}
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <div className="todo-cell">
-                                            <span style={{ fontWeight: 600 }}>{t.title}</span>
-                                            {t.qa_notes && (
-                                                <span className="qa-flag" style={{
-                                                    color: t.status === 'verified' ? 'var(--text-muted)' : '#ef4444',
-                                                    background: t.status === 'verified' ? 'rgba(255,255,255,0.05)' : 'rgba(239, 68, 68, 0.08)'
-                                                }}>
-                                                    🚩 {t.qa_notes.slice(0, 35)}...
-                                                </span>
-                                            )}
-                                            {t.developer_reply && (
-                                                <span className="qa-flag" style={{
-                                                    color: 'var(--accent)',
-                                                    background: 'rgba(59, 130, 246, 0.05)',
-                                                    marginTop: 4
-                                                }}>
-                                                    💬 {t.developer_reply.slice(0, 35)}...
-                                                </span>
+            <div style={{ marginBottom: 40 }}>
+                <DataTable
+                    loading={loading}
+                    data={filtered}
+                    fileName={`testing_tasks_${new Date().toISOString().split('T')[0]}`}
+                    columns={[
+                        { label: 'Created', key: 'created_at', render: (val) => <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)' }}>{fmt(val)}</span>, exportValue: (val) => val },
+                        { label: 'Assignee', key: 'assignee.full_name', render: (val) => <span style={{ fontSize: 13, fontWeight: 600 }}>{val || 'Unassigned'}</span> },
+                        { label: 'Project', key: 'project.name', render: (val) => <span className="badge-pill badge-purple" style={{ fontSize: 9 }}>{(val || 'Unknown').toUpperCase()}</span> },
+                        {
+                            label: 'Task Details',
+                            key: 'title',
+                            render: (val, t) => (
+                                <div className="todo-cell">
+                                    <span style={{ fontWeight: 600 }}>{val}</span>
+                                    {t.qa_notes && (
+                                        <span className="qa-flag" style={{ color: t.status === 'verified' ? 'var(--text-muted)' : '#ef4444', background: t.status === 'verified' ? 'rgba(255,255,255,0.05)' : 'rgba(239, 68, 68, 0.08)' }}>🚩 {t.qa_notes.slice(0, 35)}...</span>
+                                    )}
+                                    {t.developer_reply && (
+                                        <span className="qa-flag" style={{ color: 'var(--accent)', background: 'rgba(59, 130, 246, 0.05)', marginTop: 4 }}>💬 {t.developer_reply.slice(0, 35)}...</span>
+                                    )}
+                                </div>
+                            )
+                        },
+                        { label: 'Priority', key: 'priority', render: (val) => <span className={`badge-pill badge-${val === 'high' ? 'red' : val === 'medium' ? 'yellow' : 'blue'}`} style={{ fontSize: 9 }}>{val.toUpperCase()}</span> },
+                        { label: 'Status', key: 'status', render: (val) => <span className={`badge-pill ${STATUS_BADGE[val]}`} style={{ fontSize: 9 }}>{val.toUpperCase()}</span> },
+                        {
+                            label: 'Actions',
+                            key: 'id',
+                            render: (_, t) => (
+                                <div style={{ textAlign: 'right' }}>
+                                    {t.status === 'done' ? (
+                                        <div className="quick-actions">
+                                            <button className="btn-icon-sm pass" onClick={(e) => { e.stopPropagation(); openQaModal(t, 'verified'); }}><ShieldCheck size={16} /></button>
+                                            <button className="btn-icon-sm fail" onClick={(e) => { e.stopPropagation(); openQaModal(t, 'failed'); }}><AlertCircle size={16} /></button>
+                                        </div>
+                                    ) : (
+                                        <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+                                            <button className="btn-icon-sm" onClick={(e) => { e.stopPropagation(); openQaModal(t, t.status); }} title="Details"><Search size={16} /></button>
+                                            {(hasRole('super_admin') || hasRole('director') || hasRole('Director')) && (
+                                                <button className="btn-icon-sm danger" onClick={(e) => { e.stopPropagation(); handleDeleteTask(t.id); }} title="Delete Task"><Trash2 size={16} /></button>
                                             )}
                                         </div>
-                                    </td>
-                                    <td><span className={`badge-pill badge-${t.priority === 'high' ? 'red' : t.priority === 'medium' ? 'yellow' : 'blue'}`} style={{ fontSize: 9 }}>{t.priority.toUpperCase()}</span></td>
-                                    <td>
-                                        <span className={`badge-pill ${STATUS_BADGE[t.status]}`} style={{ fontSize: 9 }}>
-                                            {t.status.toUpperCase()}
-                                        </span>
-                                    </td>
-                                    <td style={{ textAlign: 'right' }}>
-                                        {t.status === 'done' ? (
-                                            <div className="quick-actions">
-                                                <button className="btn-icon-sm pass" onClick={(e) => { e.stopPropagation(); openQaModal(t, 'verified'); }}><ShieldCheck size={16} /></button>
-                                                <button className="btn-icon-sm fail" onClick={(e) => { e.stopPropagation(); openQaModal(t, 'failed'); }}><AlertCircle size={16} /></button>
-                                            </div>
-                                        ) : (
-                                            <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
-                                                <button className="btn-icon-sm" onClick={(e) => { e.stopPropagation(); openQaModal(t, t.status); }} title="Details"><Search size={16} /></button>
-                                                {(hasRole('super_admin') || hasRole('director') || hasRole('Director')) && (
-                                                    <button className="btn-icon-sm danger" onClick={(e) => { e.stopPropagation(); handleDeleteTask(t.id); }} title="Delete Task"><Trash2 size={16} /></button>
-                                                )}
-                                            </div>
-                                        )}
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                )}
+                                    )}
+                                </div>
+                            )
+                        }
+                    ]}
+                />
             </div>
 
             {modal === 'qa_report' && selectedTask && (
@@ -314,31 +280,23 @@ export default function TestingTasks() {
                         </div>
                         <form onSubmit={handleQaReport}>
                             <div className="modal-body split-body">
-                                <div className="detail-panel">
-                                    <h4 className="modal-subtitle">Context</h4>
-                                    <div className="data-grid">
-                                        <div className="data-item"><label>Developer</label><p>{selectedTask.assignee?.full_name}</p></div>
-                                        <div className="data-item"><label>Project</label><p>{selectedTask.project?.name}</p></div>
-                                        <div className="data-item"><label>Priority</label><p style={{ textTransform: 'capitalize' }}>{selectedTask.priority}</p></div>
-                                        <div className="data-item"><label>Est Hours</label><p>{selectedTask.estimated_hours || '—'}</p></div>
-                                    </div>
-                                    <div className="data-item full">
-                                        <p className="emphasis-text">{selectedTask.title}</p>
-                                    </div>
-                                    {selectedTask.developer_reply && (
-                                        <div className="data-item full" style={{ background: 'rgba(59, 130, 246, 0.05)', padding: 12, borderRadius: 8, marginTop: 12 }}>
-                                            <label style={{ color: 'var(--accent)' }}>Developer's Reply</label>
-                                            <p style={{ fontSize: 13, margin: 0 }}>{selectedTask.developer_reply}</p>
+                                <div className="history-panel" style={{ padding: '32px', background: 'rgba(0,0,0,0.1)', borderRight: '1px solid var(--border)', overflowY: 'auto', maxH: '60vh' }}>
+                                    <h4 className="modal-subtitle">Communication Logs</h4>
+                                    <div className="data-item full" style={{ marginBottom: 20 }}>
+                                        <p className="emphasis-text" style={{ fontSize: '16px', marginBottom: 8 }}>{selectedTask.title}</p>
+                                        <div style={{ display: 'flex', gap: 16, fontSize: 11, color: 'var(--text-dim)', marginBottom: 12 }}>
+                                            <span><strong>Dev:</strong> {selectedTask.assignee?.full_name}</span>
+                                            <span><strong>Project:</strong> {selectedTask.project?.name}</span>
                                         </div>
-                                    )}
-                                    {selectedTask.description && (
-                                        <div className="data-item full">
-                                            <label>Description</label>
-                                            <div className="text-quote">{selectedTask.description}</div>
-                                        </div>
-                                    )}
+                                        {selectedTask.notes && (
+                                            <div style={{ fontSize: '12px', color: 'var(--text-muted)', background: 'rgba(255,255,255,0.02)', padding: '12px', borderRadius: '8px', border: '1px solid var(--border)', fontStyle: 'italic' }}>
+                                                {selectedTask.notes}
+                                            </div>
+                                        )}
+                                    </div>
+                                    <QAFeedbackTrail type="task" itemId={selectedTask.id} />
                                 </div>
-                                <div className="action-panel">
+                                <div className="action-panel" style={{ padding: '32px', background: 'var(--bg)' }}>
                                     <h4 className="modal-subtitle">Assessment</h4>
                                     <div className="decision-toggle">
                                         <button type="button" className={`toggle-option pass ${qaReport.status === 'verified' ? 'active' : ''}`} onClick={() => setQaReport(p => ({ ...p, status: 'verified' }))}>
@@ -352,7 +310,7 @@ export default function TestingTasks() {
                                         <label className="form-label">QA Notes / Feedback</label>
                                         <textarea
                                             className="form-textarea"
-                                            rows={8}
+                                            rows={12}
                                             value={qaReport.notes}
                                             onChange={e => setQaReport(p => ({ ...p, notes: e.target.value }))}
                                             placeholder={qaReport.status === 'verified' ? "Optional notes..." : "Why did it fail?"}

@@ -6,6 +6,7 @@ import DateRangePicker from '../../components/DateRangePicker';
 import { getISTMonthStartString, getISTTodayString } from '../../lib/dateUtils';
 import { Search, Filter, FileSpreadsheet, Clock, CheckCircle, XCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
+import DataTable from '../../components/common/DataTable';
 
 export default function AttendanceReport() {
     const { user } = useAuth();
@@ -142,70 +143,54 @@ export default function AttendanceReport() {
                 </div>
             </div>
 
-            <div className="card polished-card" style={{ padding: 0, overflow: 'hidden' }}>
-                <div className="table-container">
-                    <table className="table">
-                        <thead>
-                            <tr>
-                                <th>Date</th>
-                                {isAdminOrHR && <th>Employee</th>}
-                                <th>Clock In</th>
-                                <th>Clock Out</th>
-                                <th>Hours</th>
-                                <th>Status</th>
-                                <th>Approval</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {loading ? (
-                                <tr>
-                                    <td colSpan={isAdminOrHR ? 7 : 6} style={{ textAlign: 'center', padding: 40 }}>
-                                        <div className="spinner" style={{ margin: '0 auto' }} />
-                                    </td>
-                                </tr>
-                            ) : records.length === 0 ? (
-                                <tr>
-                                    <td colSpan={isAdminOrHR ? 7 : 6} style={{ textAlign: 'center', padding: 40, color: 'var(--text-dim)' }}>
-                                        No attendance records found for this period.
-                                    </td>
-                                </tr>
-                            ) : (
-                                records.map(record => (
-                                    <tr key={record.id}>
-                                        <td style={{ fontWeight: 500 }}>{new Date(record.date).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })}</td>
-                                        {isAdminOrHR && (
-                                            <td>
-                                                <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                                    <span style={{ fontWeight: 600 }}>{record.user?.full_name || 'Unknown'}</span>
-                                                    <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>{record.user?.email}</span>
-                                                </div>
-                                            </td>
-                                        )}
-                                        <td>{formatTime(record.check_in_time)}</td>
-                                        <td>{formatTime(record.check_out_time)}</td>
-                                        <td style={{ fontFamily: 'monospace' }}>{calculateWorkedHours(record.check_in_time, record.check_out_time)}</td>
-                                        <td>{statusBadge(record.status)}</td>
-                                        <td>
-                                            {record.status === 'Pending' ? (
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--warning)', fontSize: 12 }}>
-                                                    <Clock size={14} /> Pending
-                                                </div>
-                                            ) : record.is_approved ? (
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--success)', fontSize: 12 }}>
-                                                    <CheckCircle size={14} /> Approved
-                                                </div>
-                                            ) : (
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--danger)', fontSize: 12 }}>
-                                                    <XCircle size={14} /> Rejected
-                                                </div>
-                                            )}
-                                        </td>
-                                    </tr>
-                                ))
+            <div className="card polished-card" style={{ padding: 0 }}>
+                <DataTable
+                    data={records}
+                    fileName="attendance-report"
+                    loading={loading}
+                    columns={[
+                        { label: 'Date', key: 'date' },
+                        ...(isAdminOrHR ? [{ label: 'Employee', key: 'user' }] : []),
+                        { label: 'Clock In', key: 'check_in_time' },
+                        { label: 'Clock Out', key: 'check_out_time' },
+                        { label: 'Hours', key: 'hours' },
+                        { label: 'Status', key: 'status' },
+                        { label: 'Approval', key: 'is_approved' }
+                    ]}
+                    renderRow={(record, index) => (
+                        <tr key={record.id}>
+                            <td style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--text-dim)' }}>{index + 1}</td>
+                            <td style={{ padding: '12px 16px', fontWeight: 500 }}>{new Date(record.date).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })}</td>
+                            {isAdminOrHR && (
+                                <td style={{ padding: '12px 16px' }}>
+                                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                        <span style={{ fontWeight: 600 }}>{record.user?.full_name || 'Unknown'}</span>
+                                        <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>{record.user?.email}</span>
+                                    </div>
+                                </td>
                             )}
-                        </tbody>
-                    </table>
-                </div>
+                            <td style={{ padding: '12px 16px' }}>{formatTime(record.check_in_time)}</td>
+                            <td style={{ padding: '12px 16px' }}>{formatTime(record.check_out_time)}</td>
+                            <td style={{ padding: '12px 16px', fontFamily: 'monospace' }}>{calculateWorkedHours(record.check_in_time, record.check_out_time)}</td>
+                            <td style={{ padding: '12px 16px' }}>{statusBadge(record.status)}</td>
+                            <td style={{ padding: '12px 16px' }}>
+                                {record.status === 'Pending' ? (
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--warning)', fontSize: 12 }}>
+                                        <Clock size={14} /> Pending
+                                    </div>
+                                ) : record.is_approved ? (
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--success)', fontSize: 12 }}>
+                                        <CheckCircle size={14} /> Approved
+                                    </div>
+                                ) : (
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--danger)', fontSize: 12 }}>
+                                        <XCircle size={14} /> Rejected
+                                    </div>
+                                )}
+                            </td>
+                        </tr>
+                    )}
+                />
             </div>
         </div>
     );

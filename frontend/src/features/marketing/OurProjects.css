@@ -1,0 +1,221 @@
+.our-projects-container {
+    padding: 24px;
+    max-width: 1400px;
+    margin: 0 auto;
+    background-color: var(--bg-main, #f8fafc);
+    min-height: 100vh;
+}
+
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 32px;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.page-header h1 {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--text-primary, #1e293b);
+    margin: 0 0 8px 0;
+}
+
+.page-header p {
+    color: var(--text-muted, #64748b);
+    margin: 0;
+    font-size: 1rem;
+}
+
+.search-wrapper {
+    position: relative;
+    max-width: 400px;
+    width: 100%;
+}
+
+.search-icon {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-muted, #94a3b8);
+    pointer-events: none;
+}
+
+.search-wrapper input {
+    width: 100%;
+    padding: 12px 16px 12px 42px;
+    border-radius: 12px;
+    border: 1px solid var(--border-color, #e2e8f0);
+    background-color: white;
+    font-size: 0.95rem;
+    transition: all 0.2s ease;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.search-wrapper input:focus {
+    outline: none;
+    border-color: var(--accent, #3b82f6);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.apps-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 24px;
+}
+
+.app-card {
+    background-color: white;
+    border-radius: 16px;
+    padding: 24px;
+    border: 1px solid var(--border-color, #e2e8f0);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    overflow: hidden;
+}
+
+.app-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 24px -8px rgba(0, 0, 0, 0.1);
+    border-color: var(--accent, #3b82f6);
+}
+
+.app-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 20px;
+}
+
+.app-icon-wrapper {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    background-color: rgba(59, 130, 246, 0.08);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.3s ease;
+}
+
+.app-card:hover .app-icon-wrapper {
+    transform: scale(1.1) rotate(-5deg);
+}
+
+.port-badge {
+    background-color: var(--bg-hover, #f1f5f9);
+    color: var(--text-muted, #475569);
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    border: 1px solid var(--border-color, #e2e8f0);
+}
+
+.app-card-body {
+    flex-grow: 1;
+}
+
+.app-card-body h3 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--text-primary, #1e293b);
+    margin: 0 0 6px 0;
+}
+
+.category-tag {
+    display: inline-block;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--accent, #3b82f6);
+    font-weight: 700;
+    margin-bottom: 12px;
+}
+
+.app-card-body p {
+    color: var(--text-muted, #64748b);
+    font-size: 0.9rem;
+    line-height: 1.6;
+    margin-bottom: 20px;
+}
+
+.app-card-footer {
+    padding-top: 16px;
+    border-top: 1px solid var(--border-color, #f1f5f9);
+}
+
+.open-app-btn {
+    width: 100%;
+    background-color: var(--accent, #3b82f6);
+    color: white;
+    border: none;
+    padding: 10px 16px;
+    border-radius: 10px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: all 0.2s ease;
+}
+
+.open-app-btn:hover {
+    background-color: var(--accent-hover, #2563eb);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25);
+}
+
+.open-app-btn:active {
+    transform: translateY(0);
+}
+
+.no-results {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 80px 20px;
+    text-align: center;
+    background-color: white;
+    border-radius: 16px;
+    border: 1px dashed var(--border-color, #e2e8f0);
+}
+
+.no-results h3 {
+    font-size: 1.25rem;
+    color: var(--text-primary, #1e293b);
+    margin: 16px 0 8px 0;
+}
+
+.no-results p {
+    color: var(--text-muted, #64748b);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .our-projects-container {
+        padding: 16px;
+    }
+
+    .page-header {
+        flex-direction: column;
+        align-items: flex-start;
+        margin-bottom: 24px;
+    }
+
+    .search-wrapper {
+        max-width: 100%;
+    }
+
+    .apps-grid {
+        grid-template-columns: 1fr;
+    }
+}

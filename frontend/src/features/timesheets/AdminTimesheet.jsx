@@ -4,6 +4,8 @@ import { useLocation } from 'react-router-dom'
 import api from '../../lib/api'
 import toast from 'react-hot-toast'
 import { useAuth } from '../../context/AuthContext'
+import QAFeedbackTrail from '../../components/common/QAFeedbackTrail'
+import DataTable from '../../components/common/DataTable'
 
 const STATUS_BADGE = {
     todo: 'badge-gray',
@@ -144,6 +146,13 @@ export default function AdminTimesheet() {
                 qa_notes: qaReport.notes
             }
             await api.patch(`/timesheets/entries/${selectedEntry.id}`, updates)
+
+            // Add to feedback trail
+            await api.post(`/timesheets/entries/${selectedEntry.id}/feedback`, {
+                content: qaReport.notes || (qaReport.status === 'verified' ? 'Verified by QA' : 'Failed QA'),
+                new_status: qaReport.status
+            });
+
             setAllEntries(prev => prev.map(e => e.id === selectedEntry.id ? { ...e, ...updates } : e))
             toast.success(`Todo marked as ${qaReport.status}`)
             setModal(null)
@@ -153,30 +162,6 @@ export default function AdminTimesheet() {
             setSavingId(null)
         }
     }
-
-    const handleExportCSV = () => {
-        if (allEntries.length === 0) return toast.error('No data to export');
-        const headers = ['Date', 'Employee', 'Plan Submitted', 'Project', 'Activity', 'Hours', 'Status', 'QA Result', 'QA Notes', 'Admin Feedback'];
-        const rows = allEntries.map(e => [
-            e.date,
-            e.userName,
-            e.submittedAt ? new Date(e.submittedAt).toLocaleTimeString('en-IN') : 'N/A',
-            e.project?.name || e.task?.project?.name || 'In-House Project',
-            e.title,
-            e.hours_spent,
-            e.status,
-            ['verified', 'failed'].includes(e.status) ? e.status.toUpperCase() : 'PENDING',
-            (e.qa_notes || '').replace(/\n/g, ' '),
-            (e.admin_feedback || '').replace(/\n/g, ' ')
-        ]);
-        const csvContent = [headers, ...rows].map(r => r.join(',')).join('\n');
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.setAttribute('href', url);
-        link.setAttribute('download', `admin_timesheet_${startDate}.csv`);
-        link.click();
-    };
 
     const handleExportPDF = () => {
         window.print();
@@ -261,179 +246,176 @@ export default function AdminTimesheet() {
                     </div>
                 </div>
 
-                <div className="export-btns">
-                    <button className="export-btn csv" onClick={handleExportCSV}>CSV</button>
-                    <button className="export-btn pdf" onClick={handleExportPDF}>PDF</button>
+                <div className="export-btns" style={{ display: 'none' }}>
+                    {/* DataTable already provides these */}
                 </div>
             </div>
 
-            {/* Main Table */}
-            <div className="table-wrapper shadow-sm">
-                {loading ? <div className="page-loader"><div className="spinner" /></div> : (
-                    <table className="compact-ts-table">
-                        <thead>
-                            <tr>
-                                <th style={{ width: 100 }}>Date</th>
-                                <th style={{ width: 60 }}>Hrs</th>
-                                <th style={{ width: 130 }}>Employee</th>
-                                <th style={{ width: 120 }}>Project</th>
-                                <th>Task / Notes</th>
-                                <th style={{ width: 90 }}>Submitted</th>
-                                <th style={{ width: 110 }}>Status</th>
-                                <th style={{ width: 120 }}>QA Result</th>
-                                <th style={{ width: 180 }}>QA Notes</th>
-                                <th style={{ width: 200 }}>Admin Feedback</th>
-                                <th style={{ width: 80, textAlign: 'right' }}>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {(() => {
-                                let filtered = allEntries;
-                                if (selectedProjectId) {
-                                    filtered = filtered.filter(e =>
-                                        e.project_id === selectedProjectId ||
-                                        e.task?.project_id === selectedProjectId
-                                    );
-                                }
-                                if (statusFilter) {
-                                    filtered = filtered.filter(e => e.status === statusFilter);
-                                }
-                                if (qaFilter) {
-                                    if (qaFilter === 'passed') {
-                                        filtered = filtered.filter(e => e.status === 'verified');
-                                    } else if (qaFilter === 'failed') {
-                                        filtered = filtered.filter(e => e.status === 'failed');
-                                    } else if (qaFilter === 'pending') {
-                                        filtered = filtered.filter(e => !['verified', 'failed'].includes(e.status));
-                                    }
-                                }
+            <div style={{ marginBottom: 40 }}>
+                {(() => {
+                    let filtered = allEntries;
+                    if (selectedProjectId) {
+                        filtered = filtered.filter(e =>
+                            e.project_id === selectedProjectId ||
+                            e.task?.project_id === selectedProjectId
+                        );
+                    }
+                    if (statusFilter) {
+                        filtered = filtered.filter(e => e.status === statusFilter);
+                    }
+                    if (qaFilter) {
+                        if (qaFilter === 'passed') {
+                            filtered = filtered.filter(e => e.status === 'verified');
+                        } else if (qaFilter === 'failed') {
+                            filtered = filtered.filter(e => e.status === 'failed');
+                        } else if (qaFilter === 'pending') {
+                            filtered = filtered.filter(e => !['verified', 'failed'].includes(e.status));
+                        }
+                    }
 
-                                if (filtered.length === 0) {
-                                    return <tr><td colSpan={11}><div className="empty-state">No entries found for criteria</div></td></tr>;
-                                }
-
-                                return filtered.map(e => (
-                                    <tr key={e.id}>
-                                        <td>
-                                            <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)' }}>
-                                                {new Date(e.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
-                                            </div>
-                                            <div style={{ fontSize: 10, color: 'var(--text-dim)' }}>
-                                                {new Date(e.date).toLocaleDateString('en-IN', { weekday: 'short' })}
-                                            </div>
-                                        </td>
-                                        <td>
-                                            <span style={{ fontWeight: 800, color: 'var(--accent)', fontSize: 15 }}>{e.hours_spent}</span>
+                    return (
+                        <DataTable
+                            loading={loading}
+                            data={filtered}
+                            fileName={`admin_timesheet_${startDate}`}
+                            columns={[
+                                {
+                                    label: 'Date',
+                                    key: 'date',
+                                    render: (val) => (
+                                        <div>
+                                            <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)' }}>{new Date(val).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</div>
+                                            <div style={{ fontSize: 10, color: 'var(--text-dim)' }}>{new Date(val).toLocaleDateString('en-IN', { weekday: 'short' })}</div>
+                                        </div>
+                                    ),
+                                    exportValue: (val) => val
+                                },
+                                {
+                                    label: 'Hrs',
+                                    key: 'hours_spent',
+                                    render: (val) => (
+                                        <span>
+                                            <span style={{ fontWeight: 800, color: 'var(--accent)', fontSize: 15 }}>{val}</span>
                                             <span style={{ fontSize: 9, color: 'var(--text-dim)', marginLeft: 2 }}>h</span>
-                                        </td>
-                                        <td style={{ fontSize: 12, fontWeight: 600 }}>{e.userName}</td>
-                                        <td>
-                                            <span className="badge-pill badge-purple" style={{ fontSize: 9, padding: '2px 7px', fontWeight: 700 }}>
-                                                {(e.project?.name || e.task?.project?.name || 'In-House').toUpperCase()}
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <div style={{ fontWeight: 600, fontSize: 13 }}>{e.title}</div>
-                                            {e.notes && (
-                                                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2, maxWidth: 360, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                                    {e.notes}
-                                                </div>
+                                        </span>
+                                    )
+                                },
+                                { label: 'Employee', key: 'userName', render: (val) => <span style={{ fontSize: 12, fontWeight: 600 }}>{val}</span> },
+                                { label: 'Project', key: 'project.name', render: (val) => <span className="badge-pill badge-purple" style={{ fontSize: 9, padding: '2px 7px', fontWeight: 700 }}>{(val || 'In-House').toUpperCase()}</span> },
+                                {
+                                    label: 'Task / Notes',
+                                    key: 'title',
+                                    render: (val, e) => (
+                                        <div style={{ maxWidth: 360 }}>
+                                            <div style={{ fontWeight: 600, fontSize: 13 }}>{val}</div>
+                                            {e.notes && <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.notes}</div>}
+                                            {e.developer_reply && <div style={{ fontSize: 10, color: '#34d399', marginTop: 2, fontWeight: 600 }}>↩ {e.developer_reply}</div>}
+                                        </div>
+                                    )
+                                },
+                                {
+                                    label: 'Submitted',
+                                    key: 'created_at',
+                                    render: (val) => <span style={{ fontSize: 11, color: val ? 'var(--success)' : 'var(--text-dim)', fontWeight: 600 }}>{val ? new Date(val).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : '—'}</span>,
+                                    exportValue: (val) => val ? new Date(val).toLocaleTimeString('en-IN') : 'N/A'
+                                },
+                                { label: 'Status', key: 'status', render: (val) => <span className={`badge-pill ${STATUS_BADGE[val]}`} style={{ fontSize: 10, padding: '3px 9px', fontWeight: 700 }}>{val?.replace('_', ' ').toUpperCase()}</span> },
+                                {
+                                    label: 'QA Result',
+                                    key: 'status',
+                                    render: (val) => {
+                                        if (val === 'verified') return <span className="badge-pill badge-green" style={{ fontSize: '9px' }}>PASSED</span>;
+                                        if (val === 'failed') return <span className="badge-pill badge-red" style={{ fontSize: '9px' }}>FAILED</span>;
+                                        return <span style={{ opacity: 0.3 }}>—</span>;
+                                    },
+                                    exportValue: (val) => val === 'verified' ? 'PASSED' : val === 'failed' ? 'FAILED' : 'PENDING'
+                                },
+                                { label: 'QA Notes', key: 'qa_notes', render: (val, e) => <span style={{ fontSize: 10, color: e.status === 'verified' ? 'var(--text-muted)' : '#fb7185', fontWeight: 600 }}>{val ? `🚩 ${val}` : <span style={{ opacity: 0.3 }}>—</span>}</span> },
+                                {
+                                    label: 'Admin Feedback',
+                                    key: 'admin_feedback',
+                                    render: (val, e) => (
+                                        <div style={{ position: 'relative' }}>
+                                            <input
+                                                className="feedback-input"
+                                                placeholder={val ? '' : 'Add feedback…'}
+                                                defaultValue={val || ''}
+                                                onBlur={ev => handleUpdate(e.id, { admin_feedback: ev.target.value })}
+                                                title={val || 'Add admin feedback'}
+                                            />
+                                            {savingId === e.id && modal !== 'qa_report' && <div className="spinner-sm" style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)' }} />}
+                                        </div>
+                                    )
+                                },
+                                {
+                                    label: 'Actions',
+                                    key: 'id',
+                                    render: (_, e) => (
+                                        <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
+                                            {(hasRole('Tester') || hasRole('super_admin') || hasRole('director') || hasRole('Director')) && (e.status === 'done' || e.status === 'verified' || e.status === 'failed') && (
+                                                <>
+                                                    <button className={`btn-icon-ts ${e.status === 'verified' ? 'active-pass' : ''}`} onClick={() => openQaModal(e, 'verified')} title="Pass / Verify"><ShieldCheck size={16} /></button>
+                                                    <button className={`btn-icon-ts ${e.status === 'failed' ? 'active-fail' : ''}`} onClick={() => openQaModal(e, 'failed')} title="Fail / Rejected"><AlertCircle size={16} /></button>
+                                                </>
                                             )}
-                                            {e.developer_reply && (
-                                                <div style={{ fontSize: 10, color: '#34d399', marginTop: 2, fontWeight: 600 }}>
-                                                    ↩ {e.developer_reply}
-                                                </div>
+                                            {(hasRole('super_admin') || hasRole('director') || hasRole('Director')) && (
+                                                <button className="btn-icon-ts danger-hover" onClick={() => handleDeleteEntry(e.id)} title="Delete Entry" style={{ color: 'var(--text-dim)' }}><Trash2 size={16} /></button>
                                             )}
-                                        </td>
-                                        <td style={{ fontSize: 11, color: e.created_at ? 'var(--success)' : 'var(--text-dim)', fontWeight: 600 }}>
-                                            {e.created_at ? new Date(e.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : '—'}
-                                        </td>
-                                        <td>
-                                            <span className={`badge-pill ${STATUS_BADGE[e.status]}`} style={{ fontSize: 10, padding: '3px 9px', fontWeight: 700 }}>
-                                                {e.status?.replace('_', ' ').toUpperCase()}
-                                            </span>
-                                        </td>
-                                        <td>
-                                            {e.status === 'verified' && <span className="badge-pill badge-green" style={{ fontSize: '9px' }}>PASSED</span>}
-                                            {e.status === 'failed' && <span className="badge-pill badge-red" style={{ fontSize: '9px' }}>FAILED</span>}
-                                            {!['verified', 'failed'].includes(e.status) && <span style={{ opacity: 0.3 }}>—</span>}
-                                        </td>
-                                        <td style={{ fontSize: 10, color: e.status === 'verified' ? 'var(--text-muted)' : '#fb7185', fontWeight: 600 }}>
-                                            {e.qa_notes ? `🚩 ${e.qa_notes}` : <span style={{ opacity: 0.3 }}>—</span>}
-                                        </td>
-                                        <td>
-                                            <div style={{ position: 'relative' }}>
-                                                <input
-                                                    className="feedback-input"
-                                                    placeholder={e.admin_feedback ? '' : 'Add feedback…'}
-                                                    defaultValue={e.admin_feedback || ''}
-                                                    onBlur={ev => handleUpdate(e.id, { admin_feedback: ev.target.value })}
-                                                    title={e.admin_feedback || 'Add admin feedback'}
-                                                />
-                                                {savingId === e.id && modal !== 'qa_report' && <div className="spinner-sm" style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)' }} />}
-                                            </div>
-                                        </td>
-                                        <td style={{ textAlign: 'right' }}>
-                                            <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
-                                                {/* Tester Actions */}
-                                                {(hasRole('Tester') || hasRole('super_admin') || hasRole('director') || hasRole('Director')) && (e.status === 'done' || e.status === 'verified' || e.status === 'failed') && (
-                                                    <>
-                                                        <button
-                                                            className={`btn-icon-ts ${e.status === 'verified' ? 'active-pass' : ''}`}
-                                                            onClick={() => openQaModal(e, 'verified')}
-                                                            title="Pass / Verify"
-                                                        >
-                                                            <ShieldCheck size={16} />
-                                                        </button>
-                                                        <button
-                                                            className={`btn-icon-ts ${e.status === 'failed' ? 'active-fail' : ''}`}
-                                                            onClick={() => openQaModal(e, 'failed')}
-                                                            title="Fail / Rejected"
-                                                        >
-                                                            <AlertCircle size={16} />
-                                                        </button>
-                                                    </>
-                                                )}
-                                                {(hasRole('super_admin') || hasRole('director') || hasRole('Director')) && (
-                                                    <button
-                                                        className="btn-icon-ts danger-hover"
-                                                        onClick={() => handleDeleteEntry(e.id)}
-                                                        title="Delete Entry"
-                                                        style={{ color: 'var(--text-dim)' }}
-                                                    >
-                                                        <Trash2 size={16} />
-                                                    </button>
-                                                )}
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))
-                            })()}
-                        </tbody>
-                    </table>
-                )}
+                                        </div>
+                                    )
+                                }
+                            ]}
+                        />
+                    );
+                })()}
             </div>
 
             {/* QA Report Modal */}
-            {
-                modal === 'qa_report' && selectedEntry && (
-                    <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setModal(null)}>
-                        <div className="modal" style={{ maxWidth: 450 }}>
-                            <div className="modal-header">
-                                <h2 className="modal-title">QA Report: {qaReport.status === 'verified' ? 'Pass' : 'Fail'}</h2>
-                                <button className="btn-icon" onClick={() => setModal(null)}><X size={18} /></button>
-                            </div>
-                            <form onSubmit={handleQaReport}>
-                                <div className="modal-body">
-                                    <p style={{ fontSize: 13, marginBottom: 12, color: 'var(--text-muted)' }}>
-                                        Todo: <strong>{selectedEntry.title}</strong>
-                                    </p>
+            {modal === 'qa_report' && selectedEntry && (
+                <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setModal(null)}>
+                    <div className="modal modal-lg" style={{ maxWidth: 900, display: 'flex', flexDirection: 'column', maxHeight: '90vh' }}>
+                        <div className="modal-header">
+                            <h2 className="modal-title">Verification Report: {qaReport.status === 'verified' ? 'Pass' : 'Fail'}</h2>
+                            <button className="btn-icon" onClick={() => setModal(null)}><X size={18} /></button>
+                        </div>
+                        <form onSubmit={handleQaReport} style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
+                            <div className="modal-body split-body">
+                                {/* Left Side: History */}
+                                <div className="history-panel" style={{ padding: '32px', background: 'rgba(0,0,0,0.1)', borderRight: '1px solid var(--border)', overflowY: 'auto', maxHeight: '60vh' }}>
+                                    <h4 className="modal-subtitle">Communication Logs</h4>
+                                    <div className="data-item full" style={{ marginBottom: 20 }}>
+                                        <p className="emphasis-text" style={{ fontSize: '16px', marginBottom: 8 }}>{selectedEntry.title}</p>
+                                        <div style={{ display: 'flex', gap: 16, fontSize: 11, color: 'var(--text-dim)', marginBottom: 12 }}>
+                                            <span><strong>Dev:</strong> {selectedEntry.userName}</span>
+                                            <span><strong>Project:</strong> {selectedEntry.project?.name || 'In-House'}</span>
+                                        </div>
+                                        {selectedEntry.notes && (
+                                            <div style={{ fontSize: '12px', color: 'var(--text-dim)', background: 'rgba(255,255,255,0.02)', padding: '12px', borderRadius: '8px', border: '1px solid var(--border)', fontStyle: 'italic', marginBottom: 8 }}>
+                                                <strong>Note:</strong> {selectedEntry.notes}
+                                            </div>
+                                        )}
+                                        {selectedEntry.developer_reply && (
+                                            <div style={{ fontSize: '12px', color: 'var(--accent-light)', background: 'rgba(59, 130, 246, 0.05)', padding: '12px', borderRadius: '8px', border: '1px solid rgba(59, 130, 246, 0.2)', marginBottom: 8 }}>
+                                                <strong>Reply:</strong> {selectedEntry.developer_reply}
+                                            </div>
+                                        )}
+                                        {selectedEntry.admin_feedback && (
+                                            <div style={{ fontSize: '12px', color: 'var(--warning)', background: 'rgba(245, 158, 11, 0.05)', padding: '12px', borderRadius: '8px', border: '1px solid rgba(245, 158, 11, 0.2)' }}>
+                                                <strong>Admin:</strong> {selectedEntry.admin_feedback}
+                                            </div>
+                                        )}
+                                    </div>
+                                    <QAFeedbackTrail type="todo" itemId={selectedEntry.id} />
+                                </div>
+
+                                {/* Right Side: Action */}
+                                <div className="action-panel" style={{ padding: '32px', background: 'var(--bg)' }}>
+                                    <h4 className="modal-subtitle">Assessment</h4>
                                     <div className="form-group">
-                                        <label className="form-label">QA Notes / Reason</label>
+                                        <label className="form-label">QA Notes / Feedback</label>
                                         <textarea
                                             className="form-textarea"
-                                            style={{ width: '100%', padding: '10px', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text)' }}
-                                            rows={4}
+                                            rows={12}
                                             value={qaReport.notes}
                                             onChange={e => setQaReport(p => ({ ...p, notes: e.target.value }))}
                                             placeholder={qaReport.status === 'verified' ? 'Optional: Testing notes...' : 'Required: Why did it fail?'}
@@ -441,29 +423,32 @@ export default function AdminTimesheet() {
                                         />
                                     </div>
                                 </div>
-                                <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, padding: '16px 24px', borderTop: '1px solid var(--border)' }}>
-                                    <button type="button" className="btn btn-ghost" onClick={() => setModal(null)}>Cancel</button>
-                                    <button
-                                        type="submit"
-                                        className={`btn ${qaReport.status === 'verified' ? 'btn-success' : 'btn-danger'}`}
-                                        disabled={savingId === selectedEntry.id}
-                                        style={{
-                                            padding: '8px 20px',
-                                            borderRadius: 8,
-                                            fontWeight: 600,
-                                            background: qaReport.status === 'verified' ? '#10b981' : '#ef4444',
-                                            color: '#fff',
-                                            border: 'none'
-                                        }}
-                                    >
-                                        {savingId === selectedEntry.id ? 'Saving...' : `Submit ${qaReport.status === 'verified' ? 'Pass' : 'Fail'}`}
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
+                            </div>
+                            <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, padding: '16px 24px', borderTop: '1px solid var(--border)' }}>
+                                <button type="button" className="btn btn-ghost" onClick={() => setModal(null)}>Cancel</button>
+                                <button
+                                    type="submit"
+                                    className="btn"
+                                    disabled={savingId === selectedEntry.id}
+                                    style={{
+                                        padding: '10px 24px',
+                                        borderRadius: 8,
+                                        fontWeight: 800,
+                                        background: qaReport.status === 'verified' ? '#10b981' : '#ef4444',
+                                        color: '#fff',
+                                        border: 'none',
+                                        fontSize: 13,
+                                        textTransform: 'uppercase',
+                                        letterSpacing: '0.02em'
+                                    }}
+                                >
+                                    {savingId === selectedEntry.id ? 'Saving...' : `Confirm ${qaReport.status === 'verified' ? 'Pass' : 'Fail'}`}
+                                </button>
+                            </div>
+                        </form>
                     </div>
-                )
-            }
+                </div>
+            )}
 
             <style>{`
                 .custom-multi-select {
@@ -571,10 +556,17 @@ export default function AdminTimesheet() {
                     align-items: center;
                 }
                 .modal-body { padding: 24px; }
+                .modal-body.split-body, .split-body { display: grid; grid-template-columns: 1fr 1fr; gap: 0; padding: 0 !important; }
+                .history-panel { padding: 32px; border-right: 1px solid var(--border); background: rgba(0,0,0,0.1); }
+                .action-panel { padding: 32px; background: var(--bg); }
+                
+                .modal-subtitle { font-size: 11px; font-weight: 800; text-transform: uppercase; color: var(--accent-light); margin-bottom: 24px; letter-spacing: 0.1em; border-left: 3px solid var(--accent); padding-left: 12px; }
+                .emphasis-text { font-size: 18px !important; font-weight: 800 !important; color: var(--accent-light) !important; line-height: 1.4; }
+                .data-item.full { grid-column: 1 / -1; margin-top: 12px; }
                 .btn-icon { background: none; border: none; color: var(--text-dim); cursor: pointer; }
                 .btn-icon:hover { color: var(--text); }
             `}</style>
-        </div >
+        </div>
     )
 }
 

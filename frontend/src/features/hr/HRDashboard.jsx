@@ -4,6 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import { HRService } from './HRService';
 import { Clock, Calendar, FileText, AlertCircle, X } from 'lucide-react';
 import { AttendanceWidget } from '../dashboard/DashboardComponents';
+import DataTable from '../../components/common/DataTable';
 import toast from 'react-hot-toast';
 
 export default function HRDashboard() {
@@ -173,35 +174,29 @@ export default function HRDashboard() {
                 </div>
             </div>
 
-            {/* Leave History */}
-            <div className="table-wrapper">
-                <div className="table-toolbar">
-                    <h2 style={{ fontSize: 15, fontWeight: 600 }}>My Leave History</h2>
-                </div>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Type</th>
-                            <th>Start</th>
-                            <th>End</th>
-                            <th>Reason</th>
-                            <th>Status</th>
+            <div className="card polished-card" style={{ padding: 0 }}>
+                <DataTable
+                    data={myLeaves}
+                    loading={loading}
+                    fileName="my_leaves"
+                    columns={[
+                        { label: 'Type', key: 'type' },
+                        { label: 'Start', key: 'start_date' },
+                        { label: 'End', key: 'end_date' },
+                        { label: 'Reason', key: 'reason' },
+                        { label: 'Status', key: 'status' }
+                    ]}
+                    renderRow={(leave, idx) => (
+                        <tr key={leave.id}>
+                            <td style={{ padding: '12px 16px', color: 'var(--text-dim)', fontSize: 12 }}>{idx + 1}</td>
+                            <td style={{ padding: '12px 16px' }}><strong>{leave.type}</strong></td>
+                            <td style={{ padding: '12px 16px', color: 'var(--text-muted)', fontSize: 13 }}>{new Date(leave.start_date).toLocaleDateString()}</td>
+                            <td style={{ padding: '12px 16px', color: 'var(--text-muted)', fontSize: 13 }}>{new Date(leave.end_date).toLocaleDateString()}</td>
+                            <td style={{ padding: '12px 16px', color: 'var(--text-muted)', fontSize: 13 }}>{leave.reason}</td>
+                            <td style={{ padding: '12px 16px' }}>{statusBadge(leave.status)}</td>
                         </tr>
-                    </thead>
-                    <tbody>
-                        {myLeaves.length > 0 ? myLeaves.map(leave => (
-                            <tr key={leave.id}>
-                                <td><strong>{leave.type}</strong></td>
-                                <td style={{ color: 'var(--text-muted)', fontSize: 13 }}>{new Date(leave.start_date).toLocaleDateString()}</td>
-                                <td style={{ color: 'var(--text-muted)', fontSize: 13 }}>{new Date(leave.end_date).toLocaleDateString()}</td>
-                                <td style={{ color: 'var(--text-muted)', fontSize: 13 }}>{leave.reason}</td>
-                                <td>{statusBadge(leave.status)}</td>
-                            </tr>
-                        )) : (
-                            <tr><td colSpan="5"><div className="empty-state"><p>No leave requests yet</p></div></td></tr>
-                        )}
-                    </tbody>
-                </table>
+                    )}
+                />
             </div>
 
             {/* Leave Modal */}

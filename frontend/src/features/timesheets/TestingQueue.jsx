@@ -5,6 +5,8 @@ import api from '../../lib/api'
 import toast from 'react-hot-toast'
 import { useAuth } from '../../context/AuthContext'
 import DateRangePicker from '../../components/DateRangePicker'
+import QAFeedbackTrail from '../../components/common/QAFeedbackTrail'
+import DataTable from '../../components/common/DataTable'
 
 const STATUS_BADGE = {
     todo: 'badge-gray',
@@ -147,24 +149,6 @@ export default function TestingQueue() {
         }
     }
 
-    const handleExportCSV = () => {
-        if (!filtered.length) return
-        const headers = ['Date', 'Developer', 'Project', 'Title', 'Hours', 'Status']
-        const rows = filtered.map(e => [
-            e.date ? new Date(e.date + 'T00:00:00').toLocaleDateString() : '',
-            `"${e.userName || ''}"`,
-            `"${e.project?.name || 'In-House'}"`,
-            `"${e.title || ''}"`,
-            e.hours_spent || '',
-            e.status || ''
-        ])
-        const csv = [headers, ...rows].map(r => r.join(',')).join('\n')
-        const link = document.createElement('a')
-        link.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }))
-        link.download = `testing_queue_${new Date().toISOString().split('T')[0]}.csv`
-        link.click()
-    }
-
     const handleExportPDF = () => window.print()
 
     return (
@@ -183,8 +167,14 @@ export default function TestingQueue() {
                             setEndDate(range.endDate);
                         }}
                     />
-                    <button className="btn btn-outline btn-sm" onClick={handleExportCSV} style={{ display: 'flex', alignItems: 'center', gap: 4 }}><Download size={14} /> CSV</button>
-                    <button className="btn btn-outline btn-sm" onClick={handleExportPDF} style={{ display: 'flex', alignItems: 'center', gap: 4 }}><FileText size={14} /> PDF</button>
+                    <DateRangePicker
+                        startDate={startDate}
+                        endDate={endDate}
+                        onRangeChange={(range) => {
+                            setStartDate(range.startDate);
+                            setEndDate(range.endDate);
+                        }}
+                    />
                 </div>
             </div>
 
@@ -261,85 +251,50 @@ export default function TestingQueue() {
                 </div>
             </div>
 
-            {/* Table View */}
-            <div className="table-wrapper shadow-sm">
-                {loading ? (
-                    <div className="page-loader" style={{ height: 200 }}><div className="spinner" /></div>
-                ) : filtered.length === 0 ? (
-                    <div className="empty-state-card">
-                        <CheckCircle2 size={48} style={{ opacity: 0.1, marginBottom: 16 }} />
-                        <h3>Inbox is clear!</h3>
-                        <p>No verification tasks found.</p>
-                    </div>
-                ) : (
-                    <table className="compact-table">
-                        <thead>
-                            <tr>
-                                <th style={{ width: 100 }}>Date</th>
-                                <th style={{ width: 130 }}>Developer</th>
-                                <th style={{ width: 120 }}>Project</th>
-                                <th>Todo Details</th>
-                                <th style={{ width: 60 }}>Hrs</th>
-                                <th style={{ width: 100 }}>Status</th>
-                                <th style={{ width: 90, textAlign: 'right' }}>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {filtered.map(entry => (
-                                <tr key={entry.id} onClick={() => openQaModal(entry, entry.status === 'done' ? 'verified' : entry.status)} className="clickable-row">
-                                    <td style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)' }}>{fmt(entry.date)}</td>
-                                    <td style={{ fontSize: 13, fontWeight: 600 }}>{entry.userName}</td>
-                                    <td>
-                                        <span className="badge-pill badge-purple" style={{ fontSize: 9 }}>
-                                            {(entry.project?.name || 'In-House').toUpperCase()}
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <div className="todo-cell">
-                                            <span style={{ fontWeight: 600 }}>{entry.title}</span>
-                                            {entry.qa_notes && (
-                                                <span
-                                                    className="qa-flag"
-                                                    style={{
-                                                        color: entry.status === 'verified' ? 'var(--text-muted)' : '#ef4444',
-                                                        background: entry.status === 'verified' ? 'rgba(255,255,255,0.05)' : 'rgba(239, 68, 68, 0.08)'
-                                                    }}
-                                                >
-                                                    🚩 {entry.qa_notes.slice(0, 35)}...
-                                                </span>
-                                            )}
-                                            {entry.developer_reply && (
-                                                <span className="qa-flag" style={{
-                                                    color: 'var(--accent)',
-                                                    background: 'rgba(59, 130, 246, 0.05)',
-                                                    marginTop: 4
-                                                }}>
-                                                    💬 {entry.developer_reply.slice(0, 35)}...
-                                                </span>
-                                            )}
+            <div style={{ marginBottom: 40 }}>
+                <DataTable
+                    loading={loading}
+                    data={filtered}
+                    fileName={`testing_queue_${new Date().toISOString().split('T')[0]}`}
+                    columns={[
+                        { label: 'Date', key: 'date', render: (val) => <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)' }}>{fmt(val)}</span>, exportValue: (val) => val },
+                        { label: 'Developer', key: 'userName', render: (val) => <span style={{ fontSize: 13, fontWeight: 600 }}>{val}</span> },
+                        { label: 'Project', key: 'project.name', render: (val) => <span className="badge-pill badge-purple" style={{ fontSize: 9 }}>{(val || 'In-House').toUpperCase()}</span> },
+                        {
+                            label: 'Todo Details',
+                            key: 'title',
+                            render: (val, entry) => (
+                                <div className="todo-cell">
+                                    <span style={{ fontWeight: 600 }}>{val}</span>
+                                    {entry.qa_notes && (
+                                        <span className="qa-flag" style={{ color: entry.status === 'verified' ? 'var(--text-muted)' : '#ef4444', background: entry.status === 'verified' ? 'rgba(255,255,255,0.05)' : 'rgba(239, 68, 68, 0.08)' }}>🚩 {entry.qa_notes.slice(0, 35)}...</span>
+                                    )}
+                                    {entry.developer_reply && (
+                                        <span className="qa-flag" style={{ color: 'var(--accent)', background: 'rgba(59, 130, 246, 0.05)', marginTop: 4 }}>💬 {entry.developer_reply.slice(0, 35)}...</span>
+                                    )}
+                                </div>
+                            )
+                        },
+                        { label: 'Hrs', key: 'hours_spent', render: (val) => <span style={{ fontWeight: 800, color: 'var(--accent)' }}>{val}</span> },
+                        { label: 'Status', key: 'status', render: (val) => <span className={`badge-pill ${STATUS_BADGE[val]}`} style={{ fontSize: 9 }}>{val.toUpperCase()}</span> },
+                        {
+                            label: 'Actions',
+                            key: 'id',
+                            render: (_, entry) => (
+                                <div style={{ textAlign: 'right' }}>
+                                    {entry.status === 'done' ? (
+                                        <div className="quick-actions">
+                                            <button className="btn-icon-sm pass" onClick={(e) => { e.stopPropagation(); openQaModal(entry, 'verified'); }}><ShieldCheck size={16} /></button>
+                                            <button className="btn-icon-sm fail" onClick={(e) => { e.stopPropagation(); openQaModal(entry, 'failed'); }}><AlertCircle size={16} /></button>
                                         </div>
-                                    </td>
-                                    <td style={{ fontWeight: 800, color: 'var(--accent)' }}>{entry.hours_spent}</td>
-                                    <td>
-                                        <span className={`badge-pill ${STATUS_BADGE[entry.status]}`} style={{ fontSize: 9 }}>
-                                            {entry.status.toUpperCase()}
-                                        </span>
-                                    </td>
-                                    <td style={{ textAlign: 'right' }}>
-                                        {entry.status === 'done' ? (
-                                            <div className="quick-actions">
-                                                <button className="btn-icon-sm pass" onClick={(e) => { e.stopPropagation(); openQaModal(entry, 'verified'); }}><ShieldCheck size={16} /></button>
-                                                <button className="btn-icon-sm fail" onClick={(e) => { e.stopPropagation(); openQaModal(entry, 'failed'); }}><AlertCircle size={16} /></button>
-                                            </div>
-                                        ) : (
-                                            <button className="btn-icon-sm" onClick={(e) => { e.stopPropagation(); openQaModal(entry, entry.status); }}><Search size={16} /></button>
-                                        )}
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                )}
+                                    ) : (
+                                        <button className="btn-icon-sm" onClick={(e) => { e.stopPropagation(); openQaModal(entry, entry.status); }}><Search size={16} /></button>
+                                    )}
+                                </div>
+                            )
+                        }
+                    ]}
+                />
             </div>
 
             {/* QA Report Modal */}
@@ -352,41 +307,31 @@ export default function TestingQueue() {
                         </div>
                         <form onSubmit={handleQaReport}>
                             <div className="modal-body split-body">
-                                <div className="detail-panel">
-                                    <h4 className="modal-subtitle">Context</h4>
-                                    <div className="data-grid">
-                                        <div className="data-item">
-                                            <label>Developer</label>
-                                            <p>{selectedEntry.userName}</p>
+                                <div className="history-panel" style={{ padding: '32px', background: 'rgba(0,0,0,0.1)', borderRight: '1px solid var(--border)', overflowY: 'auto', maxHeight: '60vh' }}>
+                                    <h4 className="modal-subtitle">Communication Logs</h4>
+                                    <div className="data-item full" style={{ marginBottom: 20 }}>
+                                        <p className="emphasis-text" style={{ fontSize: '16px', marginBottom: 8 }}>{selectedEntry.title}</p>
+                                        <div style={{ display: 'flex', gap: 16, fontSize: 11, color: 'var(--text-dim)', marginBottom: 12 }}>
+                                            <span><strong>Dev:</strong> {selectedEntry.userName}</span>
+                                            <span><strong>Project:</strong> {selectedEntry.project?.name || 'In-House'}</span>
                                         </div>
-                                        <div className="data-item">
-                                            <label>Project</label>
-                                            <p>{selectedEntry.project?.name || 'In-House'}</p>
-                                        </div>
-                                        <div className="data-item">
-                                            <label>Date</label>
-                                            <p>{fmt(selectedEntry.date)}</p>
-                                        </div>
-                                        <div className="data-item">
-                                            <label>Time Logged</label>
-                                            <p>{selectedEntry.hours_spent} hrs</p>
-                                        </div>
+                                        {selectedEntry.notes && (
+                                            <div style={{ fontSize: '12px', color: 'var(--text-dim)', background: 'rgba(255,255,255,0.02)', padding: '12px', borderRadius: '8px', border: '1px solid var(--border)', fontStyle: 'italic', marginBottom: 8 }}>
+                                                <strong>Note:</strong> {selectedEntry.notes}
+                                            </div>
+                                        )}
+                                        {selectedEntry.developer_reply && (
+                                            <div style={{ fontSize: '12px', color: 'var(--accent-light)', background: 'rgba(59, 130, 246, 0.05)', padding: '12px', borderRadius: '8px', border: '1px solid rgba(59, 130, 246, 0.2)', marginBottom: 8 }}>
+                                                <strong>Reply:</strong> {selectedEntry.developer_reply}
+                                            </div>
+                                        )}
+                                        {selectedEntry.admin_feedback && (
+                                            <div style={{ fontSize: '12px', color: 'var(--warning)', background: 'rgba(245, 158, 11, 0.05)', padding: '12px', borderRadius: '8px', border: '1px solid rgba(245, 158, 11, 0.2)' }}>
+                                                <strong>Admin:</strong> {selectedEntry.admin_feedback}
+                                            </div>
+                                        )}
                                     </div>
-                                    <div className="data-item full">
-                                        <p className="emphasis-text">{selectedEntry.title}</p>
-                                    </div>
-                                    {selectedEntry.developer_reply && (
-                                        <div className="data-item full" style={{ background: 'rgba(59, 130, 246, 0.05)', padding: 12, borderRadius: 8, marginTop: 8 }}>
-                                            <label style={{ color: 'var(--accent)' }}>Developer's Reply</label>
-                                            <p style={{ fontSize: 13, margin: 0 }}>{selectedEntry.developer_reply}</p>
-                                        </div>
-                                    )}
-                                    {selectedEntry.notes && (
-                                        <div className="data-item full">
-                                            <label>Developer's Notes</label>
-                                            <div className="text-quote">{selectedEntry.notes}</div>
-                                        </div>
-                                    )}
+                                    <QAFeedbackTrail type="todo" itemId={selectedEntry.id} />
                                 </div>
 
                                 <div className="action-panel">
@@ -466,7 +411,7 @@ export default function TestingQueue() {
 
                 /* Split Modal Styling */
                 .split-body { display: grid; grid-template-columns: 1fr 1fr; gap: 0; padding: 0 !important; }
-                .detail-panel { padding: 32px; border-right: 1px solid var(--border); background: rgba(0,0,0,0.1); }
+                .history-panel { padding: 32px; border-right: 1px solid var(--border); background: rgba(0,0,0,0.1); }
                 .action-panel { padding: 32px; background: var(--bg); }
                 
                 .modal-subtitle { font-size: 11px; font-weight: 800; text-transform: uppercase; color: var(--accent-light); margin-bottom: 24px; letter-spacing: 0.1em; border-left: 3px solid var(--accent); padding-left: 12px; }

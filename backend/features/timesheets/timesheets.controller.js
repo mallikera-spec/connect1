@@ -74,7 +74,7 @@ export const addEntry = async (req, res) => {
 // PATCH /timesheets/entries/:entryId
 export const updateEntry = async (req, res) => {
     const body = updateEntrySchema.parse(req.body);
-    const data = await svc.updateEntry(req.params.entryId, body);
+    const data = await svc.updateEntry(req.params.entryId, body, req.user);
     successResponse(res, data, 'Entry updated');
 };
 

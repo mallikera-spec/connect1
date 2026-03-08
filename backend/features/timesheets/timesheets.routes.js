@@ -5,6 +5,7 @@ import {
     getProjectTimesheets
 } from './timesheets.controller.js';
 import { authMiddleware } from '../../middleware/auth.middleware.js';
+import { addFeedback, getFeedback } from '../qa-feedback/qa-feedback.controller.js';
 import { requirePermission } from '../../middleware/permission.middleware.js';
 
 const router = Router();
@@ -21,6 +22,10 @@ router.get('/project/:projectId', getProjectTimesheets);
 router.post('/:id/entries', addEntry);
 router.patch('/entries/:entryId', updateEntry);
 router.delete('/entries/:entryId', requirePermission('delete_timesheet_entry'), deleteEntry);
+
+// QA Feedback (for entries/todos)
+router.post('/entries/:entryId/feedback', addFeedback('todo'));
+router.get('/entries/:entryId/feedback', getFeedback('todo'));
 
 // Admin: view all
 router.get('/', requirePermission('view_timesheets'), getAllTimesheets);

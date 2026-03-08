@@ -4,6 +4,7 @@ import { HRService } from './HRService';
 import { Clock, Calendar, FileText, Check, X, Download } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useSortable, SortableHeader } from '../../hooks/useSortable';
+import DataTable from '../../components/common/DataTable';
 
 export default function HRAdminPanel() {
     const location = useLocation();
@@ -332,131 +333,138 @@ export default function HRAdminPanel() {
 
             {/* Attendance Tab */}
             {activeTab === 'attendance' && (
-                <div className="table-wrapper">
-                    <div className="table-toolbar">
-                        <h2 style={{ fontSize: 15, fontWeight: 600 }}>Pending Attendance Records</h2>
-                        <button className="btn btn-outline btn-sm" onClick={handleExportAttendanceCSV} style={{ display: 'flex', alignItems: 'center', gap: 4 }}><Download size={14} /> CSV</button>
-                    </div>
-                    <table>
-                        <thead>
-                            <tr>
-                                <SortableHeader sortKey="user.full_name" label="Employee" currentSortKey={attSK} sortDir={attSD} onSort={attSort} />
-                                <SortableHeader sortKey="date" label="Date" currentSortKey={attSK} sortDir={attSD} onSort={attSort} />
-                                <SortableHeader sortKey="check_in_time" label="Check In" currentSortKey={attSK} sortDir={attSD} onSort={attSort} />
-                                <SortableHeader sortKey="check_out_time" label="Check Out" currentSortKey={attSK} sortDir={attSD} onSort={attSort} />
-                                <th>Duration</th>
-                                <th style={{ textAlign: 'right' }}>Action</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {sortedAttendance.length > 0 ? sortedAttendance.map(rec => {
-                                let duration = 0;
-                                if (rec.check_in_time && rec.check_out_time) {
-                                    duration = (new Date(rec.check_out_time) - new Date(rec.check_in_time)) / (1000 * 60 * 60);
+                <div className="card polished-card" style={{ padding: 0 }}>
+                    <DataTable
+                        data={sortedAttendance}
+                        fileName="pending-attendance"
+                        loading={loading}
+                        columns={[
+                            {
+                                label: 'Employee',
+                                key: 'user.full_name',
+                                render: (_, rec) => <strong>{rec.user?.full_name || '—'}</strong>
+                            },
+                            {
+                                label: 'Date',
+                                key: 'date',
+                                render: (val) => <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>{new Date(val).toLocaleDateString()}</span>
+                            },
+                            {
+                                label: 'Check In',
+                                key: 'check_in_time',
+                                render: (val) => <span style={{ fontSize: 13 }}>{val ? new Date(val).toLocaleTimeString() : '—'}</span>
+                            },
+                            {
+                                label: 'Check Out',
+                                key: 'check_out_time',
+                                render: (val) => <span style={{ fontSize: 13 }}>{val ? new Date(val).toLocaleTimeString() : '—'}</span>
+                            },
+                            {
+                                label: 'Duration',
+                                key: 'id',
+                                render: (_, rec) => {
+                                    let duration = 0;
+                                    if (rec.check_in_time && rec.check_out_time) {
+                                        duration = (new Date(rec.check_out_time) - new Date(rec.check_in_time)) / (1000 * 60 * 60);
+                                    }
+                                    return duration > 0 ? (
+                                        <span style={{ color: duration < 9 ? 'var(--danger)' : 'var(--success)', fontWeight: 600, fontSize: 13 }}>
+                                            {duration.toFixed(2)}h
+                                        </span>
+                                    ) : <span style={{ color: 'var(--text-muted)' }}>—</span>;
                                 }
-                                return (
-                                    <tr key={rec.id}>
-                                        <td><strong>{rec.user?.full_name || '—'}</strong></td>
-                                        <td style={{ color: 'var(--text-muted)', fontSize: 13 }}>{new Date(rec.date).toLocaleDateString()}</td>
-                                        <td style={{ fontSize: 13 }}>{rec.check_in_time ? new Date(rec.check_in_time).toLocaleTimeString() : '—'}</td>
-                                        <td style={{ fontSize: 13 }}>{rec.check_out_time ? new Date(rec.check_out_time).toLocaleTimeString() : '—'}</td>
-                                        <td>
-                                            {duration > 0 ? (
-                                                <span style={{ color: duration < 9 ? 'var(--danger)' : 'var(--success)', fontWeight: 600, fontSize: 13 }}>
-                                                    {duration.toFixed(2)}h
-                                                </span>
-                                            ) : <span style={{ color: 'var(--text-muted)' }}>—</span>}
-                                        </td>
-                                        <td style={{ textAlign: 'right' }}>
-                                            <div className="actions-cell" style={{ justifyContent: 'flex-end' }}>
-                                                <button className="btn btn-primary btn-sm" onClick={() => openApprovalModal('attendance', rec, 'Present')}>
-                                                    Present
-                                                </button>
-                                                <button className="btn btn-ghost btn-sm" onClick={() => openApprovalModal('attendance', rec, 'Half Day')}>
-                                                    Half Day
-                                                </button>
-                                                <button className="btn btn-danger btn-sm" onClick={() => openApprovalModal('attendance', rec, 'Absent')}>
-                                                    Absent
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                );
-                            }) : (
-                                <tr><td colSpan="6"><div className="empty-state"><p>No pending attendance records</p></div></td></tr>
-                            )}
-                        </tbody>
-                    </table>
+                            },
+                            {
+                                label: 'Action',
+                                key: 'id',
+                                render: (_, rec) => (
+                                    <div className="actions-cell" style={{ justifyContent: 'flex-end' }}>
+                                        <button className="btn btn-primary btn-sm" onClick={() => openApprovalModal('attendance', rec, 'Present')}>
+                                            Present
+                                        </button>
+                                        <button className="btn btn-ghost btn-sm" onClick={() => openApprovalModal('attendance', rec, 'Half Day')}>
+                                            Half Day
+                                        </button>
+                                        <button className="btn btn-danger btn-sm" onClick={() => openApprovalModal('attendance', rec, 'Absent')}>
+                                            Absent
+                                        </button>
+                                    </div>
+                                )
+                            }
+                        ]}
+                    />
                 </div>
             )}
 
             {/* Leaves Tab */}
             {activeTab === 'leaves' && (
-                <div className="table-wrapper">
-                    <div className="table-toolbar">
-                        <h2 style={{ fontSize: 15, fontWeight: 600 }}>Pending Leave Requests</h2>
-                        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                            <button className="btn btn-outline btn-sm" onClick={handleExportLeavesCSV} style={{ display: 'flex', alignItems: 'center', gap: 4 }}><Download size={14} /> CSV</button>
-                            <NavLink to="/leave-tracker" className="btn btn-ghost btn-sm">View Full Report</NavLink>
-                        </div>
-                    </div>
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>S.No</th>
-                                <SortableHeader sortKey="user.full_name" label="Employee" currentSortKey={lvSK} sortDir={lvSD} onSort={lvSort} />
-                                <SortableHeader sortKey="type" label="Type" currentSortKey={lvSK} sortDir={lvSD} onSort={lvSort} />
-                                <SortableHeader sortKey="start_date" label="From" currentSortKey={lvSK} sortDir={lvSD} onSort={lvSort} />
-                                <SortableHeader sortKey="end_date" label="To" currentSortKey={lvSK} sortDir={lvSD} onSort={lvSort} />
-                                <th>Days</th>
-                                <th>Reason</th>
-                                <th style={{ textAlign: 'right' }}>Action</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {sortedLeaves.length > 0 ? sortedLeaves.map((req, index) => {
-                                const days = Math.ceil(Math.abs(new Date(req.end_date) - new Date(req.start_date)) / (1000 * 60 * 60 * 24)) + 1;
-                                return (
-                                    <tr key={req.id}>
-                                        <td>{index + 1}</td>
-                                        <td><strong>{req.user?.full_name || '—'}</strong></td>
-                                        <td>
-                                            <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                                                <span className="badge badge-purple">{req.type}</span>
-                                                {req.leave_type && <span style={{ fontSize: 10, color: 'var(--text-dim)', fontWeight: 600 }}>Policy: {req.leave_type.name}</span>}
-                                            </div>
-                                        </td>
-                                        <td style={{ color: 'var(--text-muted)', fontSize: 13 }}>{new Date(req.start_date).toLocaleDateString()}</td>
-                                        <td style={{ color: 'var(--text-muted)', fontSize: 13 }}>{new Date(req.end_date).toLocaleDateString()}</td>
-                                        <td style={{ fontWeight: 600 }}>{days}</td>
-                                        <td style={{ color: 'var(--text-muted)', fontSize: 13, maxWidth: 200 }} title={req.reason}>{req.reason}</td>
-                                        <td style={{ textAlign: 'right' }}>
-                                            <div className="actions-cell" style={{ justifyContent: 'flex-end' }}>
-                                                <button className="btn btn-ghost btn-sm btn-icon" title="Approve"
-                                                    style={{ color: 'var(--success)' }}
-                                                    onClick={() => openApprovalModal('leave', req, 'Approved')}>
-                                                    <Check size={15} />
-                                                </button>
-                                                <button className="btn btn-danger btn-sm btn-icon" title="Reject"
-                                                    onClick={() => openApprovalModal('leave', req, 'Rejected')}>
-                                                    <X size={15} />
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                );
-                            }) : (
-                                <tr><td colSpan="8"><div className="empty-state"><p>No pending leave requests</p></div></td></tr>
-                            )}
-                        </tbody>
-                    </table>
+                <div className="card polished-card" style={{ padding: 0 }}>
+                    <DataTable
+                        data={sortedLeaves}
+                        fileName="pending-leaves"
+                        loading={loading}
+                        columns={[
+                            {
+                                label: 'Employee',
+                                key: 'user.full_name',
+                                render: (_, req) => <strong>{req.user?.full_name || '—'}</strong>
+                            },
+                            {
+                                label: 'Type',
+                                key: 'type',
+                                render: (val, req) => (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                        <span className="badge badge-purple">{val}</span>
+                                        {req.leave_type && <span style={{ fontSize: 10, color: 'var(--text-dim)', fontWeight: 600 }}>Policy: {req.leave_type.name}</span>}
+                                    </div>
+                                )
+                            },
+                            {
+                                label: 'From',
+                                key: 'start_date',
+                                render: (val) => <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>{new Date(val).toLocaleDateString()}</span>
+                            },
+                            {
+                                label: 'To',
+                                key: 'end_date',
+                                render: (val) => <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>{new Date(val).toLocaleDateString()}</span>
+                            },
+                            {
+                                label: 'Days',
+                                key: 'id',
+                                render: (_, req) => Math.ceil(Math.abs(new Date(req.end_date) - new Date(req.start_date)) / (1000 * 60 * 60 * 24)) + 1
+                            },
+                            {
+                                label: 'Reason',
+                                key: 'reason',
+                                render: (val) => <span style={{ color: 'var(--text-muted)', fontSize: 13, maxWidth: 200 }} title={val}>{val}</span>
+                            },
+                            {
+                                label: 'Action',
+                                key: 'id',
+                                render: (_, req) => (
+                                    <div className="actions-cell" style={{ justifyContent: 'flex-end' }}>
+                                        <button className="btn btn-ghost btn-sm btn-icon" title="Approve"
+                                            style={{ color: 'var(--success)' }}
+                                            onClick={() => openApprovalModal('leave', req, 'Approved')}>
+                                            <Check size={15} />
+                                        </button>
+                                        <button className="btn btn-danger btn-sm btn-icon" title="Reject"
+                                            onClick={() => openApprovalModal('leave', req, 'Rejected')}>
+                                            <X size={15} />
+                                        </button>
+                                    </div>
+                                )
+                            }
+                        ]}
+                    />
                 </div>
             )}
 
             {/* Payroll Tab */}
             {activeTab === 'payroll' && (
-                <div className="table-wrapper">
-                    <div className="table-toolbar">
+                <div className="card polished-card" style={{ padding: 0 }}>
+                    <div className="table-toolbar" style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)' }}>
                         <h2 style={{ fontSize: 15, fontWeight: 600 }}>Salary Slips</h2>
                         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                             <button className="btn btn-primary btn-sm"
@@ -465,8 +473,7 @@ export default function HRAdminPanel() {
                                 style={{ marginRight: 8 }}>
                                 {generatingPayroll ? <span className="spinner" style={{ width: 14, height: 14 }} /> : 'Generate Payroll'}
                             </button>
-                            <button className="btn btn-outline btn-sm" onClick={handleExportPayrollCSV} style={{ display: 'flex', alignItems: 'center', gap: 4 }}><Download size={14} /> CSV</button>
-                            <select className="form-select" style={{ height: 36, fontSize: 13, width: 120 }}
+                            <select className="form-select" style={{ height: 36, fontSize: 13, width: 120, background: 'var(--card-bg)', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: 6, padding: '0 8px' }}
                                 value={payrollMonth} onChange={e => setPayrollMonth(e.target.value)}>
                                 {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
                                     <option key={m} value={m}>
@@ -474,7 +481,7 @@ export default function HRAdminPanel() {
                                     </option>
                                 ))}
                             </select>
-                            <select className="form-select" style={{ height: 36, fontSize: 13, width: 90 }}
+                            <select className="form-select" style={{ height: 36, fontSize: 13, width: 90, background: 'var(--card-bg)', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: 6, padding: '0 8px' }}
                                 value={payrollYear} onChange={e => setPayrollYear(e.target.value)}>
                                 {[now.getFullYear() - 1, now.getFullYear(), now.getFullYear() + 1].map(y => (
                                     <option key={y} value={y}>{y}</option>
@@ -482,32 +489,43 @@ export default function HRAdminPanel() {
                             </select>
                         </div>
                     </div>
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Employee</th>
-                                <th>Period</th>
-                                <th>Base Salary</th>
-                                <th>Deductions</th>
-                                <th>Net Salary</th>
-                                <th>Status</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {sortedSlips.length > 0 ? sortedSlips.map(slip => (
-                                <tr key={slip.id}>
-                                    <td><strong>{slip.user?.full_name || '—'}</strong></td>
-                                    <td style={{ color: 'var(--text-muted)', fontSize: 13 }}>{slip.month}/{slip.year}</td>
-                                    <td style={{ fontSize: 13 }}>Rs {parseFloat(slip.base_salary).toLocaleString()}</td>
-                                    <td style={{ color: 'var(--danger)', fontSize: 13 }}>-Rs {parseFloat(slip.deductions).toLocaleString()}</td>
-                                    <td style={{ fontWeight: 700, color: 'var(--success)' }}>Rs {parseFloat(slip.net_salary).toLocaleString()}</td>
-                                    <td>{statusBadge(slip.status)}</td>
-                                </tr>
-                            )) : (
-                                <tr><td colSpan="6"><div className="empty-state"><p>No salary slips for this period</p></div></td></tr>
-                            )}
-                        </tbody>
-                    </table>
+                    <DataTable
+                        data={sortedSlips}
+                        fileName={`payroll_${payrollMonth}_${payrollYear}`}
+                        loading={loading}
+                        columns={[
+                            {
+                                label: 'Employee',
+                                key: 'user.full_name',
+                                render: (_, slip) => <strong>{slip.user?.full_name || '—'}</strong>
+                            },
+                            {
+                                label: 'Period',
+                                key: 'id',
+                                render: (_, slip) => <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>{slip.month}/{slip.year}</span>
+                            },
+                            {
+                                label: 'Base Salary',
+                                key: 'base_salary',
+                                render: (val) => <span style={{ fontSize: 13 }}>Rs {parseFloat(val).toLocaleString()}</span>
+                            },
+                            {
+                                label: 'Deductions',
+                                key: 'deductions',
+                                render: (val) => <span style={{ color: 'var(--danger)', fontSize: 13 }}>-Rs {parseFloat(val).toLocaleString()}</span>
+                            },
+                            {
+                                label: 'Net Salary',
+                                key: 'net_salary',
+                                render: (val) => <span style={{ fontWeight: 700, color: 'var(--success)', fontSize: 13 }}>Rs {parseFloat(val).toLocaleString()}</span>
+                            },
+                            {
+                                label: 'Status',
+                                key: 'status',
+                                render: (val) => statusBadge(val)
+                            }
+                        ]}
+                    />
                 </div>
             )}
 

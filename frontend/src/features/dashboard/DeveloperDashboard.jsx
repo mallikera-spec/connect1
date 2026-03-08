@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { FolderKanban, ListTodo, CheckCircle2, Clock, AlertCircle, Timer } from 'lucide-react';
 import api from '../../lib/api';
 import { StatCard, AttendanceWidget, NotificationCard } from './DashboardComponents';
+import DataTable from '../../components/common/DataTable';
 
 export default function DeveloperDashboard({ dateRange }) {
     const [stats, setStats] = useState(null);
@@ -221,50 +222,43 @@ export default function DeveloperDashboard({ dateRange }) {
                     </h3>
                     <Link to="/tasks" className="btn btn-ghost btn-sm" style={{ textDecoration: 'none' }}>View All</Link>
                 </div>
-                <div className="table-wrapper" style={{ margin: 0, boxShadow: 'none', border: '1px solid var(--border)' }}>
-                    <table style={{ fontSize: 13 }}>
-                        <thead>
-                            <tr>
-                                <th>Task Title</th>
-                                <th>Project</th>
-                                <th>Status</th>
-                                <th>Priority</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {(stats.tasks || []).filter(t => ['pending', 'in_progress', 'failed'].includes(t.status)).slice(0, 5).map(task => (
-                                <tr key={task.id}>
-                                    <td>
-                                        <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                            <span style={{ fontWeight: 600 }}>{task.title}</span>
-                                            {task.qa_notes && (
-                                                <span style={{ fontSize: 11, color: '#ef4444', display: 'flex', alignItems: 'center', gap: 4, marginTop: 4 }}>
-                                                    <AlertCircle size={10} /> {task.qa_notes.slice(0, 40)}...
-                                                </span>
-                                            )}
-                                        </div>
-                                    </td>
-                                    <td style={{ color: 'var(--text-muted)' }}>{task.projectName || '—'}</td>
-                                    <td>
-                                        <span className={`badge ${task.status === 'failed' ? 'badge-red' : task.status === 'in_progress' ? 'badge-yellow' : 'badge-gray'}`}>
-                                            {task.status?.replace('_', ' ')}
+                <DataTable
+                    data={(stats.tasks || []).filter(t => ['pending', 'in_progress', 'failed'].includes(t.status))}
+                    loading={loading}
+                    fileName="active_tasks"
+                    columns={[
+                        { label: 'Task Title', key: 'title' },
+                        { label: 'Project', key: 'projectName' },
+                        { label: 'Status', key: 'status' },
+                        { label: 'Priority', key: 'priority' }
+                    ]}
+                    renderRow={(task, idx) => (
+                        <tr key={task.id}>
+                            <td style={{ padding: '12px 16px', color: 'var(--text-dim)', fontSize: 12 }}>{idx + 1}</td>
+                            <td style={{ padding: '12px 16px' }}>
+                                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                    <span style={{ fontWeight: 600 }}>{task.title}</span>
+                                    {task.qa_notes && (
+                                        <span style={{ fontSize: 11, color: '#ef4444', display: 'flex', alignItems: 'center', gap: 4, marginTop: 4 }}>
+                                            <AlertCircle size={10} /> {task.qa_notes.slice(0, 40)}...
                                         </span>
-                                    </td>
-                                    <td>
-                                        <span className={`badge ${task.priority === 'high' ? 'badge-red' : task.priority === 'medium' ? 'badge-yellow' : 'badge-blue'}`}>
-                                            {task.priority}
-                                        </span>
-                                    </td>
-                                </tr>
-                            ))}
-                            {(!stats.tasks || stats.tasks.filter(t => ['pending', 'in_progress', 'failed'].includes(t.status)).length === 0) && (
-                                <tr>
-                                    <td colSpan="4" style={{ textAlign: 'center', color: 'var(--text-dim)', padding: '20px' }}>No active tasks</td>
-                                </tr>
-                            )}
-                        </tbody>
-                    </table>
-                </div>
+                                    )}
+                                </div>
+                            </td>
+                            <td style={{ padding: '12px 16px', color: 'var(--text-muted)' }}>{task.projectName || '—'}</td>
+                            <td style={{ padding: '12px 16px' }}>
+                                <span className={`badge ${task.status === 'failed' ? 'badge-red' : task.status === 'in_progress' ? 'badge-yellow' : 'badge-gray'}`}>
+                                    {task.status?.replace('_', ' ')}
+                                </span>
+                            </td>
+                            <td style={{ padding: '12px 16px' }}>
+                                <span className={`badge ${task.priority === 'high' ? 'badge-red' : task.priority === 'medium' ? 'badge-yellow' : 'badge-blue'}`}>
+                                    {task.priority}
+                                </span>
+                            </td>
+                        </tr>
+                    )}
+                />
             </div>
 
             {/* Todos Section */}
@@ -276,39 +270,32 @@ export default function DeveloperDashboard({ dateRange }) {
                     </h3>
                     <Link to="/timesheet" className="btn btn-ghost btn-sm" style={{ textDecoration: 'none' }}>View All</Link>
                 </div>
-                <div className="table-wrapper" style={{ margin: 0, boxShadow: 'none', border: '1px solid var(--border)' }}>
-                    <table style={{ fontSize: 13 }}>
-                        <thead>
-                            <tr>
-                                <th>Date</th>
-                                <th>Title</th>
-                                <th>Hours</th>
-                                <th>Status</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {(stats.todos || []).slice(0, 5).map(todo => (
-                                <tr key={todo.id}>
-                                    <td style={{ color: 'var(--text-muted)' }}>
-                                        {new Date(todo.work_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
-                                    </td>
-                                    <td><span style={{ fontWeight: 600 }}>{todo.title}</span></td>
-                                    <td>{todo.hours_spent}h</td>
-                                    <td>
-                                        <span className={`badge ${todo.status === 'failed' ? 'badge-red' : todo.status === 'done' ? 'badge-green' : 'badge-yellow'}`}>
-                                            {todo.status}
-                                        </span>
-                                    </td>
-                                </tr>
-                            ))}
-                            {(!stats.todos || stats.todos.length === 0) && (
-                                <tr>
-                                    <td colSpan="4" style={{ textAlign: 'center', color: 'var(--text-dim)', padding: '20px' }}>No recent todos</td>
-                                </tr>
-                            )}
-                        </tbody>
-                    </table>
-                </div>
+                <DataTable
+                    data={stats.todos || []}
+                    loading={loading}
+                    fileName="recent_todos"
+                    columns={[
+                        { label: 'Date', key: 'work_date' },
+                        { label: 'Title', key: 'title' },
+                        { label: 'Hours', key: 'hours_spent' },
+                        { label: 'Status', key: 'status' }
+                    ]}
+                    renderRow={(todo, idx) => (
+                        <tr key={todo.id || idx}>
+                            <td style={{ padding: '12px 16px', color: 'var(--text-dim)', fontSize: 12 }}>{idx + 1}</td>
+                            <td style={{ padding: '12px 16px', color: 'var(--text-muted)' }}>
+                                {new Date(todo.work_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                            </td>
+                            <td style={{ padding: '12px 16px' }}><span style={{ fontWeight: 600 }}>{todo.title}</span></td>
+                            <td style={{ padding: '12px 16px' }}>{todo.hours_spent}h</td>
+                            <td style={{ padding: '12px 16px' }}>
+                                <span className={`badge ${todo.status === 'failed' ? 'badge-red' : todo.status === 'done' ? 'badge-green' : 'badge-yellow'}`}>
+                                    {todo.status}
+                                </span>
+                            </td>
+                        </tr>
+                    )}
+                />
             </div>
         </div>
     );

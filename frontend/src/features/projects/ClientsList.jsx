@@ -4,6 +4,7 @@ import { ClientsService } from './ClientsService';
 import { useAuth } from '../../context/AuthContext';
 import toast from 'react-hot-toast';
 import LeadJourneyView from '../sales/LeadJourneyView';
+import DataTable from '../../components/common/DataTable';
 
 export default function ClientsList() {
     const { user: currentUser } = useAuth();
@@ -117,142 +118,123 @@ export default function ClientsList() {
                 </div>
             </div>
 
-            <div className="card polished-card" style={{ padding: 0, overflow: 'hidden' }}>
+            <div className="card polished-card" style={{ padding: 0 }}>
                 {loading ? (
                     <div className="page-loader" style={{ minHeight: '300px' }}><div className="spinner" /></div>
                 ) : (
-                    <div style={{ overflowX: 'auto' }}>
-                        <table className="users-table">
-                            <thead>
-                                <tr>
-                                    <th style={{ width: '50px', paddingLeft: '24px' }}>S.No</th>
-                                    <th style={{ cursor: 'pointer', width: '180px' }} onClick={() => handleSort('company_name')}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                            Company {sortBy === 'company_name' && (sortOrder === 'asc' ? <ChevronUp size={12} /> : <ChevronDown size={12} />)}
+                    <DataTable
+                        data={clients}
+                        fileName="clients-list"
+                        loading={loading}
+                        columns={[
+                            {
+                                label: 'Company',
+                                key: 'company_name',
+                                render: (val, client) => (
+                                    <div>
+                                        <div style={{ fontWeight: 600, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                            <Building size={14} color="var(--accent)" />
+                                            {val}
                                         </div>
-                                    </th>
-                                    <th style={{ width: '150px' }}>Acquisition Date</th>
-                                    <th style={{ width: '120px' }}>Value (Rs)</th>
-                                    <th style={{ cursor: 'pointer', width: '150px' }} onClick={() => handleSort('contact_name')}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                            Contact {sortBy === 'contact_name' && (sortOrder === 'asc' ? <ChevronUp size={12} /> : <ChevronDown size={12} />)}
+                                        <div style={{ fontSize: 10, color: 'var(--text-dim)', marginTop: 2 }}>
+                                            Created: {new Date(client.created_at).toLocaleDateString()}
                                         </div>
-                                    </th>
-                                    <th style={{ width: '180px' }}>Project Service Types</th>
-                                    <th>Description</th>
-                                    <th style={{ width: '100px' }}>Status</th>
-                                    <th style={{ width: '120px' }}>BDM / Owner</th>
-                                    <th style={{ textAlign: 'right', paddingRight: '24px', width: '100px' }}>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {clients.length > 0 ? clients.map((client, index) => {
-                                    // Get primary project (most recent)
-                                    const primaryProject = client.projects && client.projects.length > 0
-                                        ? [...client.projects].sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0]
-                                        : null;
-
+                                    </div>
+                                )
+                            },
+                            {
+                                label: 'Acquisition Date',
+                                key: 'id',
+                                render: (_, client) => {
+                                    const primaryProject = client.projects?.sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
+                                    return primaryProject?.acquisition_date ? (
+                                        <span style={{ fontSize: 13, fontWeight: 500 }}>
+                                            {new Date(primaryProject.acquisition_date).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}
+                                        </span>
+                                    ) : <span style={{ opacity: 0.3 }}>--</span>;
+                                }
+                            },
+                            {
+                                label: 'Value (Rs)',
+                                key: 'deal_value',
+                                render: (val, client) => {
+                                    const primaryProject = client.projects?.sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
+                                    const finalVal = val || primaryProject?.deal_value;
+                                    return finalVal ? (
+                                        <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--accent-light)' }}>₹{finalVal.toLocaleString()}</span>
+                                    ) : <span style={{ opacity: 0.3 }}>--</span>;
+                                }
+                            },
+                            {
+                                label: 'Contact',
+                                key: 'contact_name',
+                                render: (val, client) => (
+                                    <div>
+                                        <div style={{ fontWeight: 500, fontSize: 13 }}>{val || '--'}</div>
+                                        <div style={{ fontSize: 10, color: 'var(--text-dim)', display: 'flex', gap: 6, marginTop: 2 }}>
+                                            {client.phone && <span>{client.phone}</span>}
+                                        </div>
+                                    </div>
+                                )
+                            },
+                            {
+                                label: 'Project Service Types',
+                                key: 'id',
+                                render: (_, client) => {
+                                    const primaryProject = client.projects?.sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
                                     return (
-                                        <tr key={client.id}>
-                                            <td style={{ paddingLeft: '24px', color: 'var(--text-dim)', fontSize: '13px' }}>
-                                                {index + 1}
-                                            </td>
-                                            <td>
-                                                <div style={{ fontWeight: 600, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                                    <Building size={14} color="var(--accent)" />
-                                                    {client.company_name}
-                                                </div>
-                                                <div style={{ fontSize: '10px', color: 'var(--text-dim)', marginTop: '2px' }}>
-                                                    Created: {new Date(client.created_at).toLocaleDateString()}
-                                                </div>
-                                            </td>
-                                            <td style={{ fontSize: '13px', fontWeight: 500 }}>
-                                                {primaryProject?.acquisition_date ? (
-                                                    new Date(primaryProject.acquisition_date).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })
-                                                ) : (
-                                                    <span style={{ opacity: 0.3 }}>--</span>
-                                                )}
-                                            </td>
-                                            <td style={{ fontSize: '13px', fontWeight: 700, color: 'var(--accent-light)' }}>
-                                                {client.deal_value || primaryProject?.deal_value ? (
-                                                    `₹${(client.deal_value || primaryProject?.deal_value).toLocaleString()}`
-                                                ) : (
-                                                    <span style={{ opacity: 0.3 }}>--</span>
-                                                )}
-                                            </td>
-                                            <td>
-                                                <div style={{ fontWeight: 500, fontSize: '13px' }}>{client.contact_name || '--'}</div>
-                                                <div style={{ fontSize: '10px', color: 'var(--text-dim)', display: 'flex', gap: '6px', marginTop: '2px' }}>
-                                                    {client.phone && <span>{client.phone}</span>}
-                                                </div>
-                                            </td>
-                                            <td>
-                                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-                                                    {primaryProject?.sub_types && primaryProject.sub_types.length > 0 ? (
-                                                        primaryProject.sub_types.map((type, i) => (
-                                                            <span key={i} style={{
-                                                                fontSize: '9px',
-                                                                background: 'rgba(108, 92, 231, 0.1)',
-                                                                color: 'var(--accent-light)',
-                                                                padding: '1px 6px',
-                                                                borderRadius: '4px',
-                                                                fontWeight: 700,
-                                                                textTransform: 'uppercase'
-                                                            }}>
-                                                                {type}
-                                                            </span>
-                                                        ))
-                                                    ) : (
-                                                        <span style={{ opacity: 0.3, fontSize: '12px' }}>--</span>
-                                                    )}
-                                                </div>
-                                            </td>
-                                            <td style={{ maxWidth: '250px' }}>
-                                                <div style={{ fontSize: '12px', color: 'var(--text-dim)', fontStyle: 'italic', lineHeight: '1.4' }}>
-                                                    {primaryProject?.description ? (
-                                                        <ExpandableClientDesc text={primaryProject.description} />
-                                                    ) : (
-                                                        <span style={{ opacity: 0.3 }}>No description provided.</span>
-                                                    )}
-                                                </div>
-                                            </td>
-                                            <td>
-                                                <span className={`status-badge ${client.status.toLowerCase()}`}>
-                                                    {client.status}
+                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                                            {primaryProject?.sub_types?.map((type, i) => (
+                                                <span key={i} style={{ fontSize: 9, background: 'rgba(108, 92, 231, 0.1)', color: 'var(--accent-light)', padding: '1px 6px', borderRadius: 4, fontWeight: 700, textTransform: 'uppercase' }}>
+                                                    {type}
                                                 </span>
-                                            </td>
-                                            <td>
-                                                <div style={{ fontSize: '13px', fontWeight: 500 }}>
-                                                    {client.owner?.full_name || 'System'}
-                                                </div>
-                                            </td>
-                                            <td style={{ textAlign: 'right', paddingRight: '24px' }}>
-                                                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '4px' }}>
-                                                    {client.lead_id && (
-                                                        <button className="btn-icon" style={{ padding: '6px' }} title="View Full Journey" onClick={() => setViewJourneyLeadId(client.lead_id)}>
-                                                            <TrendingUp size={15} color="var(--accent)" />
-                                                        </button>
-                                                    )}
-                                                    {isAdmin && (
-                                                        <button className="btn-icon" style={{ padding: '6px' }} title="Delete" onClick={() => handleDelete(client.id)}>
-                                                            <Trash2 size={15} color="var(--danger)" />
-                                                        </button>
-                                                    )}
-                                                </div>
-                                            </td>
-                                        </tr>
+                                            )) || <span style={{ opacity: 0.3, fontSize: 12 }}>--</span>}
+                                        </div>
                                     );
-                                }) : (
-                                    <tr>
-                                        <td colSpan={10} style={{ textAlign: 'center', padding: '60px 0', color: 'var(--text-dim)' }}>
-                                            <div style={{ fontSize: '32px', marginBottom: '16px', color: 'var(--success)' }}><CheckCircle size={32} /></div>
-                                            <div>No clients found. Win some deals to populate this module!</div>
-                                        </td>
-                                    </tr>
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
+                                }
+                            },
+                            {
+                                label: 'Description',
+                                key: 'id',
+                                render: (_, client) => {
+                                    const primaryProject = client.projects?.sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
+                                    return (
+                                        <div style={{ fontSize: 12, color: 'var(--text-dim)', fontStyle: 'italic', lineHeight: 1.4, maxWidth: 250 }}>
+                                            {primaryProject?.description ? <ExpandableClientDesc text={primaryProject.description} /> : <span style={{ opacity: 0.3 }}>No description provided.</span>}
+                                        </div>
+                                    );
+                                }
+                            },
+                            {
+                                label: 'Status',
+                                key: 'status',
+                                render: (val) => <span className={`status-badge ${val.toLowerCase()}`}>{val}</span>
+                            },
+                            {
+                                label: 'BDM / Owner',
+                                key: 'owner.full_name',
+                                render: (val) => <span style={{ fontSize: 13, fontWeight: 500 }}>{val || 'System'}</span>
+                            },
+                            {
+                                label: 'Actions',
+                                key: 'id',
+                                render: (_, client) => (
+                                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 4 }}>
+                                        {client.lead_id && (
+                                            <button className="btn-icon" style={{ padding: 6 }} title="View Full Journey" onClick={() => setViewJourneyLeadId(client.lead_id)}>
+                                                <TrendingUp size={15} color="var(--accent)" />
+                                            </button>
+                                        )}
+                                        {isAdmin && (
+                                            <button className="btn-icon" style={{ padding: 6 }} title="Delete" onClick={() => handleDelete(client.id)}>
+                                                <Trash2 size={15} color="var(--danger)" />
+                                            </button>
+                                        )}
+                                    </div>
+                                )
+                            }
+                        ]}
+                    />
                 )}
             </div>
 

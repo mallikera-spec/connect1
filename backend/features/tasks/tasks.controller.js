@@ -50,7 +50,7 @@ export const updateTask = async (req, res) => {
     }
 
     const body = updateTaskSchema.parse(req.body);
-    const data = await tasksService.updateTask(req.params.id, body);
+    const data = await tasksService.updateTask(req.params.id, body, req.user);
     successResponse(res, data, 'Task updated');
 };
 

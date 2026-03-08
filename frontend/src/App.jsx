@@ -37,6 +37,7 @@ import TesterPage from './features/dashboard/TesterPage'
 import TestingReports from './features/timesheets/TestingReports'
 import PoliciesPage from './features/hr/PoliciesPage'
 import LeaveTracker from './features/hr/LeaveTracker'
+import OurProjects from './features/marketing/OurProjects'
 import DeviceGuard from './components/DeviceGuard'
 
 function AdminLayout({ children }) {
@@ -144,6 +145,9 @@ export default function App() {
       } />
       <Route path="/interaction-history" element={
         <AdminLayout><PermissionGate perm="view_leads" excludeRoles={['HR Manager']}><InteractionHistory /></PermissionGate></AdminLayout>
+      } />
+      <Route path="/our-projects" element={
+        <AdminLayout><PermissionGate perm="view_leads" excludeRoles={['HR Manager']}><OurProjects /></PermissionGate></AdminLayout>
       } />
 
       {/* Fallback */}

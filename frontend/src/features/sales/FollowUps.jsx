@@ -9,6 +9,7 @@ import { useAuth } from '../../context/AuthContext';
 import api from '../../lib/api';
 import toast from 'react-hot-toast';
 import LeadDetailsModal from './LeadDetailsModal';
+import DataTable from '../../components/common/DataTable';
 
 /**
  * EditFollowUpModal — Inline modal to edit an existing follow-up.
@@ -377,233 +378,276 @@ export default function FollowUps() {
                     <div className="spinner" style={{ margin: '0 auto' }} />
                 </div>
             ) : (
-                <div className="card polished-card" style={{ padding: 0 }}>
-                    <table className="users-table">
-                        <thead>
-                            <tr>
-                                <th style={{ width: '50px', paddingLeft: '24px' }}>S.No</th>
-                                <th style={{ width: '150px' }}>Due Date</th>
-                                <th style={{ width: '220px' }}>Lead Information</th>
-                                <th style={{ width: '150px' }}>Phone</th>
-                                <th style={{ width: '120px' }}>Type</th>
-                                <th>Interaction Notes</th>
-                                {isAdmin && <th style={{ width: '150px' }}>Assigned To</th>}
-                                <th style={{ textAlign: 'right', paddingRight: '24px', width: '140px' }}>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {sortedGroups.length > 0 ? sortedGroups.map((group, index) => {
+                <DataTable
+                    data={sortedGroups}
+                    fileName="followups-list"
+                    loading={loading}
+                    columns={[
+                        {
+                            label: 'Due Date',
+                            key: 'scheduled_at',
+                            sortKey: 'items.0.scheduled_at', // Approximate sorting for grouped data
+                            render: (val, group) => {
+                                const items = group.items;
+                                if (items.length > 1) {
+                                    const minDate = new Date(Math.min(...items.map(i => new Date(i.scheduled_at))));
+                                    return (
+                                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                            <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text)' }}>
+                                                {minDate.toLocaleDateString([], { month: 'short', day: 'numeric' })}
+                                            </span>
+                                            <span style={{ fontSize: '10px', color: 'var(--accent)', fontWeight: 800 }}>GROUP</span>
+                                        </div>
+                                    );
+                                }
+                                const fu = items[0];
+                                const isOverdue = new Date(fu.scheduled_at) < new Date() && fu.status === 'Pending';
+                                return (
+                                    <>
+                                        <div style={{
+                                            display: 'flex', alignItems: 'center', gap: '6px',
+                                            color: isOverdue ? 'var(--danger)' : 'var(--text)',
+                                            fontWeight: 600, fontSize: '12px'
+                                        }}>
+                                            {isOverdue && <AlertCircle size={12} />}
+                                            {new Date(fu.scheduled_at).toLocaleDateString([], { month: 'short', day: 'numeric' })}
+                                        </div>
+                                        <div style={{ fontSize: '10px', color: 'var(--text-dim)', marginTop: '2px' }}>
+                                            {new Date(fu.scheduled_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                        </div>
+                                    </>
+                                );
+                            }
+                        },
+                        {
+                            label: 'Lead Information',
+                            key: 'lead.name',
+                            render: (val, group) => {
                                 const lead = group.lead;
                                 const items = group.items;
-                                const isExpanded = expandedLeadIds[lead.id];
-                                const hasMultiple = items.length > 1;
+                                return (
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                        {items.length > 1 && (
+                                            <div onClick={() => toggleLead(lead.id)} style={{ cursor: 'pointer', color: 'var(--accent)' }}>
+                                                {expandedLeadIds[lead.id] ? <ChevronUpIcon size={16} /> : <ChevronDownIcon size={16} />}
+                                            </div>
+                                        )}
+                                        <div>
+                                            <div style={{ fontWeight: 800, fontSize: '14px', color: 'var(--text)' }}>
+                                                {lead.name}
+                                                {items.length > 1 && (
+                                                    <span style={{ fontSize: '9px', background: 'var(--accent)', color: '#fff', padding: '1px 5px', borderRadius: '4px', fontWeight: 800, marginLeft: '8px', verticalAlign: 'middle' }}>
+                                                        {items.length}
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <div style={{ fontSize: '11px', color: 'var(--text-dim)' }}>{lead.company || '--'}</div>
+                                        </div>
+                                    </div>
+                                );
+                            }
+                        },
+                        {
+                            label: 'Phone',
+                            key: 'lead.phone',
+                            render: (val) => val ? (
+                                <span style={{ fontSize: '13px', color: 'var(--accent-light)', fontWeight: 600 }}>
+                                    {val}
+                                </span>
+                            ) : <span style={{ opacity: 0.3 }}>--</span>
+                        },
+                        {
+                            label: 'Type',
+                            key: 'items.0.type',
+                            render: (val, group) => {
+                                if (group.items.length > 1) return <span style={{ opacity: 0.2 }}>--</span>;
+                                const fu = group.items[0];
+                                return (
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--accent-light)' }}>
+                                        {getIcon(fu.type)}
+                                        <span style={{ fontSize: '11px', fontWeight: 600 }}>{fu.type}</span>
+                                    </div>
+                                );
+                            }
+                        },
+                        {
+                            label: 'Interaction Notes',
+                            key: 'items.0.notes',
+                            render: (val, group) => {
+                                const items = group.items;
+                                if (items.length > 1) {
+                                    const latestNote = items.sort((a, b) => new Date(b.scheduled_at) - new Date(a.scheduled_at))[0]?.notes;
+                                    return (
+                                        <div style={{ fontSize: '12px', color: 'var(--text-dim)', fontStyle: 'italic' }}>
+                                            <ExpandableNote text={latestNote} limit={60} />
+                                        </div>
+                                    );
+                                }
+                                return (
+                                    <p style={{ fontSize: '13px', margin: 0, whiteSpace: 'pre-wrap', color: 'var(--text-muted)' }}>
+                                        {items[0].notes || 'No notes provided.'}
+                                    </p>
+                                );
+                            }
+                        },
+                        ...(isAdmin ? [{
+                            label: 'Assigned To',
+                            key: 'agent.full_name',
+                            render: (val) => <div style={{ fontSize: '12px', fontWeight: 600 }}>{val}</div>
+                        }] : []),
+                        {
+                            label: 'Actions',
+                            key: 'actions',
+                            render: (_, group) => {
+                                const items = group.items;
+                                const lead = group.lead;
+                                if (items.length > 1) {
+                                    return (
+                                        <button
+                                            className="btn btn-sm btn-ghost"
+                                            onClick={(e) => { e.stopPropagation(); setViewLeadId(lead.id); }}
+                                            title="View Lead Details"
+                                        >
+                                            <ExternalLink size={14} />
+                                        </button>
+                                    );
+                                }
+                                const fu = items[0];
+                                return (
+                                    <div style={{ display: 'flex', gap: '4px', justifyContent: 'flex-end' }}>
+                                        <button className="btn btn-sm btn-ghost" onClick={() => setEditingFollowUp(fu)} title="Edit"><Edit2 size={13} /></button>
+                                        {fu.status === 'Pending' && <button className="btn btn-sm btn-ghost" style={{ color: 'var(--success)' }} onClick={() => handleComplete(fu)} title="Complete"><CheckCircle size={13} /></button>}
+                                        <button className="btn btn-sm btn-ghost" onClick={() => setViewLeadId(lead.id)} title="View Lead"><ExternalLink size={13} /></button>
+                                        <button className="btn btn-sm btn-ghost" style={{ color: 'var(--danger)' }} onClick={() => handleDeleteFollowUp(fu)} title="Delete"><Trash2 size={13} /></button>
+                                    </div>
+                                );
+                            }
+                        }
+                    ]}
+                    renderRow={(group, index) => {
+                        const lead = group.lead;
+                        const items = group.items;
+                        const isExpanded = expandedLeadIds[lead.id];
+                        const hasMultiple = items.length > 1;
 
-                                if (!hasMultiple) {
-                                    // Single Interaction: Just show 1 unified row
-                                    const fu = items[0];
+                        if (!hasMultiple) {
+                            const fu = items[0];
+                            return (
+                                <tr key={fu.id} className="interaction-row clickable-row">
+                                    <td style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--text-dim)', fontSize: '12px' }}>{index + 1}</td>
+                                    <td style={{ padding: '12px 16px' }}>
+                                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                            <div style={{
+                                                display: 'flex', alignItems: 'center', gap: '6px',
+                                                color: (new Date(fu.scheduled_at) < new Date() && fu.status === 'Pending') ? 'var(--danger)' : 'var(--text)',
+                                                fontWeight: 600, fontSize: '12px'
+                                            }}>
+                                                {new Date(fu.scheduled_at) < new Date() && fu.status === 'Pending' && <AlertCircle size={12} />}
+                                                {new Date(fu.scheduled_at).toLocaleDateString([], { month: 'short', day: 'numeric' })}
+                                            </div>
+                                            <div style={{ fontSize: '10px', color: 'var(--text-dim)', marginTop: '2px' }}>
+                                                {new Date(fu.scheduled_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td style={{ padding: '12px 16px' }}>
+                                        <div style={{ fontWeight: 800, fontSize: '14px', color: 'var(--text)' }}>{lead.name}</div>
+                                        <div style={{ fontSize: '11px', color: 'var(--text-dim)' }}>{lead.company || '--'}</div>
+                                    </td>
+                                    <td style={{ padding: '12px 16px' }}>
+                                        {lead.phone ? <span style={{ fontSize: '13px', color: 'var(--accent-light)', fontWeight: 600 }}>{lead.phone}</span> : <span style={{ opacity: 0.3 }}>--</span>}
+                                    </td>
+                                    <td style={{ padding: '12px 16px' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--accent-light)' }}>
+                                            {getIcon(fu.type)}
+                                            <span style={{ fontSize: '11px', fontWeight: 600 }}>{fu.type}</span>
+                                        </div>
+                                    </td>
+                                    <td style={{ padding: '12px 16px', maxWidth: '300px' }}>
+                                        <p style={{ fontSize: '13px', margin: 0, whiteSpace: 'pre-wrap', color: 'var(--text-muted)' }}>{fu.notes || 'No notes provided.'}</p>
+                                    </td>
+                                    {isAdmin && <td style={{ padding: '12px 16px' }}><div style={{ fontSize: '12px', fontWeight: 600 }}>{group.agent?.full_name}</div></td>}
+                                    <td style={{ padding: '12px 16px', textAlign: 'right' }}>
+                                        <div style={{ display: 'flex', gap: '4px', justifyContent: 'flex-end' }}>
+                                            <button className="btn btn-sm btn-ghost" onClick={() => setEditingFollowUp(fu)} title="Edit"><Edit2 size={13} /></button>
+                                            {fu.status === 'Pending' && <button className="btn btn-sm btn-ghost" style={{ color: 'var(--success)' }} onClick={() => handleComplete(fu)} title="Complete"><CheckCircle size={13} /></button>}
+                                            <button className="btn btn-sm btn-ghost" onClick={() => setViewLeadId(lead.id)} title="View Lead"><ExternalLink size={13} /></button>
+                                            <button className="btn btn-sm btn-ghost" style={{ color: 'var(--danger)' }} onClick={() => handleDeleteFollowUp(fu)} title="Delete"><Trash2 size={13} /></button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            );
+                        }
+
+                        return (
+                            <React.Fragment key={lead.id}>
+                                <tr className="lead-header-row" onClick={() => toggleLead(lead.id)} style={{ cursor: 'pointer', background: 'rgba(255,255,255,0.03)' }}>
+                                    <td style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--text-dim)', fontSize: '12px' }}>{index + 1}</td>
+                                    <td style={{ padding: '12px 16px' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            {isExpanded ? <ChevronUpIcon size={16} color="var(--accent)" /> : <ChevronDownIcon size={16} color="var(--accent)" />}
+                                            <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                                <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text)' }}>
+                                                    {new Date(Math.min(...items.map(i => new Date(i.scheduled_at)))).toLocaleDateString([], { month: 'short', day: 'numeric' })}
+                                                </span>
+                                                <span style={{ fontSize: '10px', color: 'var(--accent)', fontWeight: 800 }}>GROUP</span>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td style={{ padding: '12px 16px' }}>
+                                        <div style={{ fontWeight: 800, fontSize: '14px', color: 'var(--text)' }}>
+                                            {lead.name}
+                                            <span style={{ fontSize: '9px', background: 'var(--accent)', color: '#fff', padding: '1px 5px', borderRadius: '4px', fontWeight: 800, marginLeft: '8px', verticalAlign: 'middle' }}>{items.length}</span>
+                                        </div>
+                                        <div style={{ fontSize: '11px', color: 'var(--text-dim)' }}>{lead.company || '--'}</div>
+                                    </td>
+                                    <td style={{ padding: '12px 16px' }}>
+                                        {lead.phone ? <span style={{ fontSize: '13px', color: 'var(--accent-light)', fontWeight: 600 }}>{lead.phone}</span> : <span style={{ opacity: 0.3 }}>--</span>}
+                                    </td>
+                                    <td style={{ padding: '12px 16px' }}><span style={{ opacity: 0.2 }}>--</span></td>
+                                    <td style={{ padding: '12px 16px' }}>
+                                        <div style={{ fontSize: '12px', color: 'var(--text-dim)', fontStyle: 'italic' }}>
+                                            <ExpandableNote text={items.sort((a, b) => new Date(b.scheduled_at) - new Date(a.scheduled_at))[0]?.notes} limit={60} />
+                                        </div>
+                                    </td>
+                                    {isAdmin && <td style={{ padding: '12px 16px' }}><div style={{ fontSize: '12px', fontWeight: 600 }}>{group.agent?.full_name}</div></td>}
+                                    <td style={{ padding: '12px 16px', textAlign: 'right' }}>
+                                        <button className="btn btn-sm btn-ghost" onClick={(e) => { e.stopPropagation(); setViewLeadId(lead.id); }} title="View Lead Details"><ExternalLink size={14} /></button>
+                                    </td>
+                                </tr>
+                                {isExpanded && items.sort((a, b) => new Date(b.scheduled_at) - new Date(a.scheduled_at)).map(fu => {
                                     const isOverdue = new Date(fu.scheduled_at) < new Date() && fu.status === 'Pending';
                                     return (
-                                        <tr key={fu.id} className="interaction-row clickable-row">
-                                            <td style={{ paddingLeft: '24px', fontWeight: 600, color: 'var(--text-dim)' }}>
-                                                {index + 1}
-                                            </td>
-                                            <td>
-                                                <div style={{
-                                                    display: 'flex', alignItems: 'center', gap: '6px',
-                                                    color: isOverdue ? 'var(--danger)' : 'var(--text)',
-                                                    fontWeight: 600, fontSize: '12px'
-                                                }}>
+                                        <tr key={fu.id} className="interaction-row" style={{ borderLeft: '3px solid var(--accent)' }}>
+                                            <td style={{ padding: '12px 16px' }}></td>
+                                            <td style={{ padding: '12px 16px', paddingLeft: '24px' }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: isOverdue ? 'var(--danger)' : 'var(--text)', fontWeight: 600, fontSize: '12px' }}>
                                                     {isOverdue && <AlertCircle size={12} />}
                                                     {new Date(fu.scheduled_at).toLocaleDateString([], { month: 'short', day: 'numeric' })}
                                                 </div>
-                                                <div style={{ fontSize: '10px', color: 'var(--text-dim)', marginTop: '2px' }}>
-                                                    {new Date(fu.scheduled_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                                </div>
+                                                <div style={{ fontSize: '10px', color: 'var(--text-dim)' }}>{new Date(fu.scheduled_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
                                             </td>
-                                            <td>
-                                                <div style={{ fontWeight: 800, fontSize: '14px', color: 'var(--text)' }}>{lead.name}</div>
-                                                <div style={{ fontSize: '11px', color: 'var(--text-dim)' }}>{lead.company || '--'}</div>
+                                            <td style={{ padding: '12px 16px' }}><div style={{ fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', color: 'var(--text-dim)', opacity: 0.7 }}>Interaction Detail</div></td>
+                                            <td style={{ padding: '12px 16px' }}><span style={{ opacity: 0.3 }}>--</span></td>
+                                            <td style={{ padding: '12px 16px' }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--accent-light)' }}>{getIcon(fu.type)}<span style={{ fontSize: '12px', fontWeight: 600 }}>{fu.type}</span></div>
                                             </td>
-                                            <td>
-                                                {lead.phone ? (
-                                                    <span style={{ fontSize: '13px', color: 'var(--accent-light)', fontWeight: 600 }}>
-                                                        {lead.phone}
-                                                    </span>
-                                                ) : (
-                                                    <span style={{ opacity: 0.3 }}>--</span>
-                                                )}
-                                            </td>
-                                            <td>
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--accent-light)' }}>
-                                                    {getIcon(fu.type)}
-                                                    <span style={{ fontSize: '11px', fontWeight: 600 }}>{fu.type}</span>
-                                                </div>
-                                            </td>
-                                            <td style={{ maxWidth: '300px' }}>
-                                                <p style={{ fontSize: '13px', margin: 0, whiteSpace: 'pre-wrap', color: 'var(--text-muted)' }}>
-                                                    {fu.notes || 'No notes provided.'}
-                                                </p>
-                                            </td>
-                                            {isAdmin && (
-                                                <td>
-                                                    <div style={{ fontSize: '12px', fontWeight: 600 }}>{group.agent?.full_name}</div>
-                                                </td>
-                                            )}
-                                            <td style={{ textAlign: 'right', paddingRight: '24px' }}>
+                                            <td style={{ padding: '12px 16px', maxWidth: '300px' }}><p style={{ fontSize: '13px', margin: 0, whiteSpace: 'pre-wrap', color: 'var(--text-muted)' }}><ExpandableNote text={fu.notes} /></p></td>
+                                            {isAdmin && <td style={{ padding: '12px 16px' }}></td>}
+                                            <td style={{ padding: '12px 16px', textAlign: 'right' }}>
                                                 <div style={{ display: 'flex', gap: '4px', justifyContent: 'flex-end' }}>
-                                                    <button className="btn btn-sm btn-ghost" onClick={() => setEditingFollowUp(fu)} title="Edit"><Edit2 size={13} /></button>
-                                                    {fu.status === 'Pending' && <button className="btn btn-sm btn-ghost" style={{ color: 'var(--success)' }} onClick={() => handleComplete(fu)} title="Complete"><CheckCircle size={13} /></button>}
-                                                    <button className="btn btn-sm btn-ghost" onClick={() => setViewLeadId(lead.id)} title="View Lead"><ExternalLink size={13} /></button>
-                                                    <button className="btn btn-sm btn-ghost" style={{ color: 'var(--danger)' }} onClick={() => handleDeleteFollowUp(fu)} title="Delete"><Trash2 size={13} /></button>
+                                                    <button className="btn btn-sm btn-ghost" style={{ color: 'var(--accent-light)', padding: '4px' }} onClick={() => setEditingFollowUp(fu)} title="Edit"><Edit2 size={13} /></button>
+                                                    {fu.status === 'Pending' && <button className="btn btn-sm btn-ghost" style={{ color: 'var(--success)', padding: '4px' }} onClick={() => handleComplete(fu)} title="Complete"><CheckCircle size={13} /></button>}
+                                                    <button className="btn btn-sm btn-ghost" style={{ color: 'var(--danger)', padding: '4px' }} onClick={() => handleDeleteFollowUp(fu)} title="Delete"><Trash2 size={13} /></button>
                                                 </div>
                                             </td>
                                         </tr>
                                     );
-                                }
-
-                                return (
-                                    <React.Fragment key={lead.id}>
-                                        {/* Lead Header Row (Multi-interaction only) */}
-                                        <tr className="lead-header-row" onClick={() => toggleLead(lead.id)} style={{ cursor: 'pointer', background: 'rgba(255,255,255,0.03)' }}>
-                                            <td style={{ paddingLeft: '24px', fontWeight: 600, color: 'var(--text-dim)' }}>
-                                                {index + 1}
-                                            </td>
-                                            <td>
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                                    {isExpanded ? <ChevronUpIcon size={16} color="var(--accent)" /> : <ChevronDownIcon size={16} color="var(--accent)" />}
-                                                    <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                                        <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text)' }}>
-                                                            {new Date(Math.min(...items.map(i => new Date(i.scheduled_at)))).toLocaleDateString([], { month: 'short', day: 'numeric' })}
-                                                        </span>
-                                                        <span style={{ fontSize: '10px', color: 'var(--accent)', fontWeight: 800 }}>GROUP</span>
-                                                    </div>
-                                                </div>
-                                            </td>
-                                            <td>
-                                                <div style={{ fontWeight: 800, fontSize: '14px', color: 'var(--text)' }}>
-                                                    {lead.name}
-                                                    <span style={{ fontSize: '9px', background: 'var(--accent)', color: '#fff', padding: '1px 5px', borderRadius: '4px', fontWeight: 800, marginLeft: '8px', verticalAlign: 'middle' }}>
-                                                        {items.length}
-                                                    </span>
-                                                </div>
-                                                <div style={{ fontSize: '11px', color: 'var(--text-dim)' }}>{lead.company || '--'}</div>
-                                            </td>
-                                            <td>
-                                                {lead.phone ? (
-                                                    <span style={{ fontSize: '13px', color: 'var(--accent-light)', fontWeight: 600 }}>
-                                                        {lead.phone}
-                                                    </span>
-                                                ) : (
-                                                    <span style={{ opacity: 0.3 }}>--</span>
-                                                )}
-                                            </td>
-                                            <td><span style={{ opacity: 0.2 }}>--</span></td>
-                                            <td>
-                                                {/* Summary of the most recent note in the group */}
-                                                <div style={{ fontSize: '12px', color: 'var(--text-dim)', fontStyle: 'italic' }}>
-                                                    <ExpandableNote text={items.sort((a, b) => new Date(b.scheduled_at) - new Date(a.scheduled_at))[0]?.notes} limit={60} />
-                                                </div>
-                                            </td>
-                                            {isAdmin && (
-                                                <td>
-                                                    <div style={{ fontSize: '12px', fontWeight: 600 }}>{group.agent?.full_name}</div>
-                                                </td>
-                                            )}
-                                            <td style={{ textAlign: 'right', paddingRight: '24px' }}>
-                                                <button
-                                                    className="btn btn-sm btn-ghost"
-                                                    onClick={(e) => { e.stopPropagation(); setViewLeadId(lead.id); }}
-                                                    title="View Lead Details"
-                                                >
-                                                    <ExternalLink size={14} />
-                                                </button>
-                                            </td>
-                                        </tr>
-
-                                        {/* Interaction Rows - Latest on Top */}
-                                        {isExpanded && items.sort((a, b) => new Date(b.scheduled_at) - new Date(a.scheduled_at)).map(fu => {
-                                            const isOverdue = new Date(fu.scheduled_at) < new Date() && fu.status === 'Pending';
-                                            return (
-                                                <tr key={fu.id} className="interaction-row" style={{ borderLeft: '3px solid var(--accent)' }}>
-                                                    <td></td>
-                                                    <td style={{ paddingLeft: '24px' }}>
-                                                        <div style={{
-                                                            display: 'flex', alignItems: 'center', gap: '6px',
-                                                            color: isOverdue ? 'var(--danger)' : 'var(--text)',
-                                                            fontWeight: 600, fontSize: '12px'
-                                                        }}>
-                                                            {isOverdue && <AlertCircle size={12} />}
-                                                            {new Date(fu.scheduled_at).toLocaleDateString([], { month: 'short', day: 'numeric' })}
-                                                        </div>
-                                                        <div style={{ fontSize: '10px', color: 'var(--text-dim)' }}>
-                                                            {new Date(fu.scheduled_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                                        </div>
-                                                    </td>
-                                                    <td>
-                                                        <div style={{ fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', color: 'var(--text-dim)', opacity: 0.7 }}>
-                                                            Interaction Detail
-                                                        </div>
-                                                    </td>
-                                                    <td><span style={{ opacity: 0.3 }}>--</span></td>
-                                                    <td>
-                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--accent-light)' }}>
-                                                            {getIcon(fu.type)}
-                                                            <span style={{ fontSize: '12px', fontWeight: 600 }}>{fu.type}</span>
-                                                        </div>
-                                                    </td>
-                                                    <td style={{ maxWidth: '300px' }}>
-                                                        <p style={{ fontSize: '13px', margin: 0, whiteSpace: 'pre-wrap', color: 'var(--text-muted)' }}>
-                                                            <ExpandableNote text={fu.notes} />
-                                                        </p>
-                                                    </td>
-                                                    {isAdmin && <td></td>}
-                                                    <td style={{ textAlign: 'right', paddingRight: '24px' }}>
-                                                        <div style={{ display: 'flex', gap: '4px', justifyContent: 'flex-end' }}>
-                                                            <button
-                                                                className="btn btn-sm btn-ghost"
-                                                                style={{ color: 'var(--accent-light)', padding: '4px' }}
-                                                                onClick={() => setEditingFollowUp(fu)}
-                                                                title="Edit"
-                                                            >
-                                                                <Edit2 size={13} />
-                                                            </button>
-                                                            {fu.status === 'Pending' && (
-                                                                <button
-                                                                    className="btn btn-sm btn-ghost"
-                                                                    style={{ color: 'var(--success)', padding: '4px' }}
-                                                                    onClick={() => handleComplete(fu)}
-                                                                    title="Complete"
-                                                                >
-                                                                    <CheckCircle size={13} />
-                                                                </button>
-                                                            )}
-                                                            <button
-                                                                className="btn btn-sm btn-ghost"
-                                                                style={{ color: 'var(--danger)', padding: '4px' }}
-                                                                onClick={() => handleDeleteFollowUp(fu)}
-                                                                title="Delete"
-                                                            >
-                                                                <Trash2 size={13} />
-                                                            </button>
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                            );
-                                        })}
-                                    </React.Fragment>
-                                );
-
-                            }) : (
-                                <tr>
-                                    <td colSpan={isAdmin ? 8 : 7} style={{ textAlign: 'center', padding: '100px 0', opacity: 0.5 }}>
-                                        <Clock size={48} style={{ margin: '0 auto 16px', display: 'block', opacity: 0.2 }} />
-                                        No follow-ups found for the selected criteria.
-                                    </td>
-                                </tr>
-                            )}
-                        </tbody>
-                    </table>
-                </div>
+                                })}
+                            </React.Fragment>
+                        );
+                    }}
+                />
             )}
 
             {/* Lead Details Modal — inline, closing stays on Follow-ups page */}

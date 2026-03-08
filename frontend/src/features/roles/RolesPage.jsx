@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Plus, Pencil, Trash2, Key, X, Download, FileText } from 'lucide-react'
 import api from '../../lib/api'
+import DataTable from '../../components/common/DataTable'
 import toast from 'react-hot-toast'
 
 function Modal({ title, onClose, onSubmit, loading, children }) {
@@ -133,57 +134,46 @@ export default function RolesPage() {
 
     const f = (k) => (e) => setForm(p => ({ ...p, [k]: e.target.value }))
 
-    const handleExportCSV = () => {
-        if (!roles.length) return
-        const headers = ['Role', 'Description', 'Permissions Count']
-        const rows = roles.map(r => [`"${r.name}"`, `"${r.description || ''}"`, (r.role_permissions || []).length])
-        const csv = [headers, ...rows].map(r => r.join(',')).join('\n')
-        const link = document.createElement('a')
-        link.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }))
-        link.download = `roles_${new Date().toISOString().split('T')[0]}.csv`
-        link.click()
-    }
 
-    const handleExportPDF = () => window.print()
 
     return (
         <div>
             <div className="page-header">
                 <div><h1>Roles</h1><p>Define roles and their permission sets</p></div>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                    <button className="btn btn-outline btn-sm" onClick={handleExportCSV} style={{ display: 'flex', alignItems: 'center', gap: 4 }}><Download size={14} /> CSV</button>
-                    <button className="btn btn-outline btn-sm" onClick={handleExportPDF} style={{ display: 'flex', alignItems: 'center', gap: 4 }}><FileText size={14} /> PDF</button>
                     <button className="btn btn-primary" onClick={openCreate}><Plus size={16} />New Role</button>
                 </div>
             </div>
 
             <div className="table-wrapper">
-                {loading ? <div className="page-loader"><div className="spinner" /></div> : (
-                    <table>
-                        <thead><tr>
-                            <th>Role</th><th>Description</th><th>Permissions</th><th>Actions</th>
-                        </tr></thead>
-                        <tbody>
-                            {roles.length === 0 && <tr><td colSpan={4}><div className="empty-state"><p>No roles yet</p></div></td></tr>}
-                            {roles.map(r => (
-                                <tr key={r.id}>
-                                    <td><strong>{r.name}</strong></td>
-                                    <td style={{ color: 'var(--text-muted)', fontSize: 13 }}>{r.description || '—'}</td>
-                                    <td>
-                                        <span className="badge badge-purple">{(r.role_permissions || []).length} permissions</span>
-                                    </td>
-                                    <td>
-                                        <div className="actions-cell">
-                                            <button className="btn btn-ghost btn-sm" onClick={() => openPerms(r)}><Key size={14} />Permissions</button>
-                                            <button className="btn btn-ghost btn-sm btn-icon" onClick={() => openEdit(r)}><Pencil size={14} /></button>
-                                            <button className="btn btn-danger btn-sm btn-icon" onClick={() => openDelete(r)}><Trash2 size={14} /></button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                )}
+                <DataTable
+                    data={roles}
+                    loading={loading}
+                    fileName="roles"
+                    columns={[
+                        { label: 'Role', key: 'name' },
+                        { label: 'Description', key: 'description' },
+                        { label: 'Permissions', key: 'permissions_count', sortKey: 'role_permissions.length' },
+                        { label: 'Actions', key: 'actions' }
+                    ]}
+                    renderRow={(r, idx) => (
+                        <tr key={r.id}>
+                            <td style={{ padding: '12px 16px', color: 'var(--text-dim)', fontSize: 12 }}>{idx + 1}</td>
+                            <td style={{ padding: '12px 16px' }}><strong>{r.name}</strong></td>
+                            <td style={{ padding: '12px 16px', color: 'var(--text-muted)', fontSize: 13 }}>{r.description || '—'}</td>
+                            <td style={{ padding: '12px 16px' }}>
+                                <span className="badge badge-purple">{(r.role_permissions || []).length} permissions</span>
+                            </td>
+                            <td style={{ padding: '12px 16px' }}>
+                                <div className="actions-cell">
+                                    <button className="btn btn-ghost btn-sm" onClick={() => openPerms(r)}><Key size={14} />Permissions</button>
+                                    <button className="btn btn-ghost btn-sm btn-icon" onClick={() => openEdit(r)}><Pencil size={14} /></button>
+                                    <button className="btn btn-danger btn-sm btn-icon" onClick={() => openDelete(r)}><Trash2 size={14} /></button>
+                                </div>
+                            </td>
+                        </tr>
+                    )}
+                />
             </div>
 
             {modal === 'create' && (

@@ -1,9 +1,11 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { Plus, Pencil, Trash2, X, Calendar, ShieldCheck, AlertCircle, Download, FileText } from 'lucide-react'
+import { Plus, Pencil, Trash2, X, Calendar, ShieldCheck, AlertCircle, Download, FileText, RotateCcw, Clock, Search } from 'lucide-react'
 import api from '../../lib/api'
 import toast from 'react-hot-toast'
 import { useAuth } from '../../context/AuthContext'
+import DataTable from '../../components/common/DataTable'
+import QAFeedbackTrail from '../../components/common/QAFeedbackTrail'
 
 const PRIORITY_BADGE = { low: 'badge-blue', medium: 'badge-yellow', high: 'badge-red' }
 const STATUS_BADGE = { pending: 'badge-gray', in_progress: 'badge-yellow', done: 'badge-green', verified: 'badge-purple', failed: 'badge-red' }
@@ -149,15 +151,29 @@ export default function TasksPage() {
         // Prevent overwriting qa_notes with empty string if not explicitly intended
         if (!payload.qa_notes) delete payload.qa_notes
 
-        // If it was failed and dev replied, mark as done for re-test
-        if (selected?.status === 'failed' && form.developer_reply?.trim()) {
+        const isResubmitting = selected?.status === 'failed' && form.developer_reply?.trim();
+        if (isResubmitting) {
             payload.status = 'done'
         }
         if (!payload.estimated_hours) delete payload.estimated_hours
         if (!payload.actual_hours) delete payload.actual_hours
         if (!payload.assigned_to) delete payload.assigned_to
         if (!payload.end_time) delete payload.end_time
-        try { await api.patch(`/tasks/${selected.id}`, payload); toast.success('Task updated'); load(); closeModal() }
+        try {
+            await api.patch(`/tasks/${selected.id}`, payload);
+
+            // If resubmitting, add the reply to feedback trail
+            if (isResubmitting) {
+                await api.post(`/tasks/${selected.id}/feedback`, {
+                    content: form.developer_reply,
+                    new_status: 'done'
+                });
+            }
+
+            toast.success('Task updated');
+            load();
+            closeModal();
+        }
         catch (err) { toast.error(err.message) }
         finally { setSaving(false) }
     }
@@ -186,113 +202,127 @@ export default function TasksPage() {
     const f = (k) => (e) => setForm(p => ({ ...p, [k]: e.target.value }))
     const ff = (k) => (e) => setFilters(p => ({ ...p, [k]: e.target.value }))
 
-    const handleExportCSV = () => {
-        if (!tasks.length) return
-        const headers = ['Title', 'Project', 'Assignee', 'Status', 'Priority', 'Due Date', 'Est. Hours']
-        const rows = tasks.map(t => [
-            `"${t.title || ''}"`,
-            `"${t.project?.name || ''}"`,
-            `"${t.assignee?.full_name || ''}"`,
-            t.status || '',
-            t.priority || '',
-            t.end_time ? new Date(t.end_time).toLocaleDateString() : '',
-            t.estimated_hours || ''
-        ])
-        const csv = [headers, ...rows].map(r => r.join(',')).join('\n')
-        const link = document.createElement('a')
-        link.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }))
-        link.download = `tasks_${new Date().toISOString().split('T')[0]}.csv`
-        link.click()
+
+
+    const formBody = () => {
+        const isLocked = !isManager && ['done', 'ready_for_qa', 'verified', 'failed'].includes(selected?.status);
+        const isFailed = selected?.status === 'failed';
+        const isEditable = !isLocked;
+
+        return (
+            <div className="split-body" style={{ display: 'grid', gridTemplateColumns: 'minmax(300px, 1.2fr) 1fr', minHeight: '500px' }}>
+                {/* Left Side: History */}
+                <div className="history-pane" style={{ padding: '24px', background: 'rgba(0,0,0,0.1)', borderRight: '1px solid var(--border)', overflowY: 'auto' }}>
+                    <h4 style={{ fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', color: 'var(--accent)', marginBottom: '16px', letterSpacing: '0.05em' }}>
+                        Communication Logs
+                    </h4>
+                    {selected ? (
+                        <QAFeedbackTrail type="task" itemId={selected.id} />
+                    ) : (
+                        <div style={{ textAlign: 'center', color: 'var(--text-dim)', padding: '40px 0' }}>
+                            History will appear after task creation.
+                        </div>
+                    )}
+                </div>
+
+                {/* Right Side: Form */}
+                <div className="form-pane" style={{ padding: '24px', overflowY: 'auto' }}>
+                    <h4 style={{ fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', color: 'var(--accent)', marginBottom: '16px', letterSpacing: '0.05em' }}>
+                        Task Information
+                    </h4>
+
+                    <div className="form-group">
+                        <label className="form-label">Project</label>
+                        <select className="form-select" value={form.project_id} onChange={f('project_id')} required disabled={isLocked}>
+                            <option value="">Select project…</option>
+                            {(projects || []).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                        </select>
+                    </div>
+                    <div className="form-group">
+                        <label className="form-label">Task Title</label>
+                        <input className="form-input" value={form.title} onChange={f('title')} required disabled={isLocked} />
+                    </div>
+                    <div className="form-group">
+                        <label className="form-label">Description</label>
+                        <textarea className="form-textarea" rows={6} value={form.description} onChange={f('description')} style={{ resize: 'vertical' }} disabled={isLocked} />
+                    </div>
+                    <div className="form-row">
+                        <div className="form-group">
+                            <label className="form-label">Assigned To</label>
+                            <select className="form-select" value={form.assigned_to} onChange={f('assigned_to')} disabled={!isManager || isLocked}>
+                                {isManager ? (
+                                    <>
+                                        <option value="">Unassigned</option>
+                                        {(users || []).map(u => <option key={u.id} value={u.id}>{u.full_name}</option>)}
+                                    </>
+                                ) : (
+                                    <option value={user?.id}>{user?.full_name}</option>
+                                )}
+                            </select>
+                        </div>
+                        <div className="form-group">
+                            <label className="form-label">Estimated Hours</label>
+                            <input type="number" step="0.5" min="0" className="form-input" value={form.estimated_hours} onChange={f('estimated_hours')} placeholder="0.0" disabled={isLocked} />
+                        </div>
+                    </div>
+                    <div className="form-row">
+                        <div className="form-group">
+                            <label className="form-label">Status</label>
+                            <select
+                                className="form-select"
+                                value={form.status}
+                                onChange={f('status')}
+                                disabled={isLocked && !isFailed}
+                            >
+                                <option value="pending" disabled={isLocked}>Pending</option>
+                                <option value="in_progress" disabled={isLocked}>In Progress</option>
+                                <option value="done">Done (Submit for QA)</option>
+                                {isManager && (
+                                    <>
+                                        <option value="verified">Verified</option>
+                                        <option value="failed">Failed</option>
+                                    </>
+                                )}
+                            </select>
+                        </div>
+                        <div className="form-group">
+                            <label className="form-label">Priority</label>
+                            <select className="form-select" value={form.priority} onChange={f('priority')} disabled={isLocked}>
+                                <option value="low">Low</option>
+                                <option value="medium">Medium</option>
+                                <option value="high">High</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    {isFailed && (
+                        <div className="form-group" style={{ background: 'rgba(59, 130, 246, 0.05)', padding: 16, borderRadius: 12, marginTop: 20, border: '1px solid rgba(59, 130, 246, 0.2)' }}>
+                            <label className="form-label" style={{ color: 'var(--accent)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <RotateCcw size={14} /> Resubmit Notes
+                            </label>
+                            <textarea
+                                className="form-textarea"
+                                rows={4}
+                                value={form.developer_reply}
+                                onChange={f('developer_reply')}
+                                placeholder="Explain the fix..."
+                                style={{ marginTop: 8 }}
+                            />
+                            <p style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 8 }}>
+                                Mark status as <strong>Done</strong> to resubmit for testing.
+                            </p>
+                        </div>
+                    )}
+
+                    {isLocked && !isFailed && (
+                        <div style={{ marginTop: 12, padding: 12, background: 'rgba(16, 185, 129, 0.05)', borderRadius: 8, border: '1px solid rgba(16, 185, 129, 0.2)', color: '#34d399', fontSize: 12, textAlign: 'center' }}>
+                            Submitted for QA. Details are locked.
+                        </div>
+                    )}
+                </div>
+            </div>
+        )
     }
-
-    const handleExportPDF = () => window.print()
-
-    const formBody = () => (
-        <>
-            <div className="form-group">
-                <label className="form-label">Project</label>
-                <select className="form-select" value={form.project_id} onChange={f('project_id')} required>
-                    <option value="">Select project…</option>
-                    {(projects || []).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                </select>
-            </div>
-            <div className="form-group">
-                <label className="form-label">Task Title</label>
-                <input className="form-input" value={form.title} onChange={f('title')} required />
-            </div>
-            <div className="form-group">
-                <label className="form-label">Description</label>
-                <textarea className="form-textarea" rows={15} value={form.description} onChange={f('description')} style={{ resize: 'vertical' }} />
-            </div>
-            <div className="form-row">
-                <div className="form-group">
-                    <label className="form-label">Assigned To</label>
-                    <select className="form-select" value={form.assigned_to} onChange={f('assigned_to')} disabled={!isManager}>
-                        {isManager ? (
-                            <>
-                                <option value="">Unassigned</option>
-                                {(users || []).map(u => <option key={u.id} value={u.id}>{u.full_name}</option>)}
-                            </>
-                        ) : (
-                            <option value={user?.id}>{user?.full_name}</option>
-                        )}
-                    </select>
-                </div>
-                <div className="form-group">
-                    <label className="form-label">Estimated Hours</label>
-                    <input type="number" step="0.5" min="0" className="form-input" value={form.estimated_hours} onChange={f('estimated_hours')} placeholder="0.0" />
-                </div>
-            </div>
-            <div className="form-row">
-                <div className="form-group">
-                    <label className="form-label">Status</label>
-                    <select className="form-select" value={form.status} onChange={f('status')}>
-                        <option value="pending">Pending</option>
-                        <option value="in_progress">In Progress</option>
-                        <option value="done">Done</option>
-                        <option value="verified">Verified</option>
-                        <option value="failed">Failed</option>
-                    </select>
-                </div>
-                <div className="form-group">
-                    <label className="form-label">Priority</label>
-                    <select className="form-select" value={form.priority} onChange={f('priority')}>
-                        <option value="low">Low</option>
-                        <option value="medium">Medium</option>
-                        <option value="high">High</option>
-                    </select>
-                </div>
-            </div>
-            <div className="form-group">
-                <label className="form-label">Actual Hours (manual)</label>
-                <input type="number" step="0.5" min="0" className="form-input" value={form.actual_hours} onChange={f('actual_hours')} placeholder="0.0" />
-            </div>
-            <div className="form-group">
-                <input type="date" className="form-input" value={form.end_time ? form.end_time.slice(0, 10) : ''} onChange={f('end_time')} />
-            </div>
-            {form.qa_notes && (
-                <div className="form-group" style={{ background: 'rgba(239, 68, 68, 0.05)', padding: 12, borderRadius: 8, marginTop: 12 }}>
-                    <label className="form-label" style={{ color: '#ef4444' }}><AlertCircle size={14} style={{ marginRight: 6 }} />QA Notes</label>
-                    <p style={{ fontSize: 13, marginBottom: 12 }}>{form.qa_notes}</p>
-
-                    <label className="form-label">Developer's Reply</label>
-                    <textarea
-                        className="form-textarea"
-                        rows={3}
-                        value={form.developer_reply}
-                        onChange={f('developer_reply')}
-                        placeholder="Explain fix or reply to QA..."
-                    />
-                </div>
-            )}
-            {selected?.developer_reply && !form.qa_notes && (
-                <div className="form-group" style={{ background: 'rgba(59, 130, 246, 0.05)', padding: 12, borderRadius: 8, marginTop: 12 }}>
-                    <label className="form-label" style={{ color: 'var(--accent)' }}>Developer's Reply</label>
-                    <p style={{ fontSize: 13, margin: 0 }}>{selected.developer_reply}</p>
-                </div>
-            )}
-        </>
-    )
 
     return (
         <div>
@@ -304,8 +334,6 @@ export default function TasksPage() {
                         endDate={filters.endDate}
                         onRangeChange={(range) => setFilters(prev => ({ ...prev, ...range }))}
                     />
-                    <button className="btn btn-outline btn-sm" onClick={handleExportCSV} style={{ display: 'flex', alignItems: 'center', gap: 4, height: '42px' }}><Download size={14} /> CSV</button>
-                    <button className="btn btn-outline btn-sm" onClick={handleExportPDF} style={{ display: 'flex', alignItems: 'center', gap: 4, height: '42px' }}><FileText size={14} /> PDF</button>
                     {canCreate && <button className="btn btn-primary" onClick={openCreate} style={{ height: '42px' }}><Plus size={16} />New Task</button>}
                 </div>
             </div>
@@ -343,69 +371,97 @@ export default function TasksPage() {
                     </div>
                 </div>
 
-                {loading ? <div className="page-loader"><div className="spinner" /></div> : (
-                    <table>
-                        <thead><tr>
-                            <th>Date</th><th>Due Date</th><th>QA Feedback</th><th>Project</th><th>Title</th><th>Assignee</th><th>Status</th><th>Priority</th><th>Actions</th>
-                        </tr></thead>
-                        <tbody>
-                            {tasks.length === 0 && <tr><td colSpan={9}><div className="empty-state"><p>No tasks found</p></div></td></tr>}
-                            {(tasks || []).map(t => (
-                                <tr key={t.id}>
-                                    <td style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600 }}>
-                                        {t.created_at ? new Date(t.created_at).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—'}
-                                    </td>
-                                    <td>
-                                        {t.end_time ? (() => {
-                                            const due = new Date(t.end_time)
-                                            const isOverdue = due < new Date() && t.status !== 'done'
-                                            return (
-                                                <span style={{
-                                                    fontSize: 11, fontWeight: 600,
-                                                    color: isOverdue ? 'var(--danger)' : 'var(--text-muted)',
-                                                    display: 'flex', alignItems: 'center', gap: 4
-                                                }}>
-                                                    {isOverdue && <span title="Overdue">🔴</span>}
-                                                    {due.toLocaleString('en-IN', { day: 'numeric', month: 'short', year: '2-digit', hour: '2-digit', minute: '2-digit' })}
-                                                </span>
-                                            )
-                                        })() : <span style={{ color: 'var(--text-dim)', fontSize: 12 }}>—</span>}
-                                    </td>
-                                    <td>
-                                        {t.qa_notes ? (
-                                            <div style={{
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: 6,
-                                                fontSize: 11,
-                                                color: t.status === 'failed' ? '#ef4444' : 'var(--text-muted)',
-                                                background: t.status === 'failed' ? 'rgba(239, 68, 68, 0.08)' : 'rgba(255, 255, 255, 0.03)',
-                                                padding: '3px 8px',
-                                                borderRadius: 4,
-                                                width: 'fit-content',
-                                                maxWidth: '200px'
-                                            }}>
-                                                <AlertCircle size={12} fill="currentColor" />
-                                                <span style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={t.qa_notes}>{t.qa_notes}</span>
-                                            </div>
-                                        ) : <span style={{ color: 'var(--text-dim)', fontSize: 11 }}>—</span>}
-                                    </td>
-                                    <td style={{ fontSize: 12, color: 'var(--text-muted)' }}>{t.project?.name || '—'}</td>
-                                    <td><strong style={{ fontSize: 13 }}>{t.title}</strong></td>
-                                    <td style={{ fontSize: 12 }}>{t.assignee?.full_name || '—'}</td>
-                                    <td><span className={`badge ${STATUS_BADGE[t.status] || 'badge-gray'}`}>{t.status?.replace('_', ' ')}</span></td>
-                                    <td><span className={`badge ${PRIORITY_BADGE[t.priority] || 'badge-gray'}`}>{t.priority}</span></td>
-                                    <td>
-                                        <div className="actions-cell">
-                                            {canUpdate && <button className="btn btn-ghost" onClick={() => openEdit(t)}>Edit</button>}
-                                            {canDelete && <button className="btn btn-danger btn-sm btn-icon" onClick={() => openDelete(t)}><Trash2 size={14} /></button>}
-                                        </div>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                )}
+                <DataTable
+                    data={tasks}
+                    loading={loading}
+                    fileName="tasks"
+                    columns={[
+                        {
+                            label: 'Date',
+                            key: 'created_at',
+                            render: (val) => (
+                                <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600 }}>
+                                    {val ? new Date(val).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—'}
+                                </span>
+                            )
+                        },
+                        {
+                            label: 'Due Date',
+                            key: 'end_time',
+                            render: (val, t) => {
+                                if (!val) return <span style={{ color: 'var(--text-dim)', fontSize: 12 }}>—</span>;
+                                const due = new Date(val);
+                                const isOverdue = due < new Date() && t.status !== 'done' && t.status !== 'verified';
+                                return (
+                                    <span style={{
+                                        fontSize: 11, fontWeight: 600,
+                                        color: isOverdue ? 'var(--danger)' : 'var(--text-muted)',
+                                        display: 'flex', alignItems: 'center', gap: 4
+                                    }}>
+                                        {isOverdue && <span title="Overdue">🔴</span>}
+                                        {due.toLocaleString('en-IN', { day: 'numeric', month: 'short', year: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                                    </span>
+                                );
+                            }
+                        },
+                        {
+                            label: 'QA Feedback',
+                            key: 'qa_notes',
+                            render: (val, t) => val ? (
+                                <div style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 6,
+                                    fontSize: 11,
+                                    color: t.status === 'failed' ? '#ef4444' : 'var(--text-muted)',
+                                    background: t.status === 'failed' ? 'rgba(239, 68, 68, 0.08)' : 'rgba(255, 255, 255, 0.03)',
+                                    padding: '3px 8px',
+                                    borderRadius: 4,
+                                    width: 'fit-content',
+                                    maxWidth: '200px'
+                                }}>
+                                    <AlertCircle size={12} fill="currentColor" />
+                                    <span style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={val}>{val}</span>
+                                </div>
+                            ) : <span style={{ color: 'var(--text-dim)', fontSize: 11 }}>—</span>
+                        },
+                        {
+                            label: 'Project',
+                            key: 'project.name',
+                            render: (val) => <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{val || '—'}</span>
+                        },
+                        {
+                            label: 'Title',
+                            key: 'title',
+                            render: (val) => <strong style={{ fontSize: 13 }}>{val}</strong>
+                        },
+                        {
+                            label: 'Assignee',
+                            key: 'assignee.full_name',
+                            render: (val) => <span style={{ fontSize: 12 }}>{val || '—'}</span>
+                        },
+                        {
+                            label: 'Status',
+                            key: 'status',
+                            render: (val) => <span className={`badge ${STATUS_BADGE[val] || 'badge-gray'}`}>{val?.replace('_', ' ')}</span>
+                        },
+                        {
+                            label: 'Priority',
+                            key: 'priority',
+                            render: (val) => <span className={`badge ${PRIORITY_BADGE[val] || 'badge-gray'}`}>{val}</span>
+                        },
+                        {
+                            label: 'Actions',
+                            key: 'id',
+                            render: (_, t) => (
+                                <div className="actions-cell">
+                                    {canUpdate && <button className="btn btn-ghost btn-sm" onClick={() => openEdit(t)}>Edit</button>}
+                                    {canDelete && <button className="btn btn-danger btn-sm btn-icon" onClick={() => openDelete(t)}><Trash2 size={14} /></button>}
+                                </div>
+                            )
+                        }
+                    ]}
+                />
             </div>
 
             {modal === 'create' && (

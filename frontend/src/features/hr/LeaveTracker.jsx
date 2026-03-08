@@ -5,6 +5,7 @@ import { HRService } from './HRService';
 import DateRangePicker from '../../components/DateRangePicker';
 import { getISTMonthStartString, getISTTodayString, getISTMonthEndString } from '../../lib/dateUtils';
 import { Search, Calendar, FileSpreadsheet, Clock, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
+import DataTable from '../../components/common/DataTable';
 import toast from 'react-hot-toast';
 
 export default function LeaveTracker() {
@@ -101,9 +102,6 @@ export default function LeaveTracker() {
                         endDate={filters.endDate}
                         onRangeChange={(range) => setFilters(prev => ({ ...prev, ...range }))}
                     />
-                    <button className="btn btn-outline" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <FileSpreadsheet size={18} /> Export
-                    </button>
                 </div>
             </div>
 
@@ -191,66 +189,58 @@ export default function LeaveTracker() {
                 </div>
             </div>
 
-            <div className="card polished-card" style={{ padding: 0, overflow: 'hidden' }}>
-                <div className="table-container">
-                    <table className="table">
-                        <thead>
-                            <tr>
-                                <th>S.No</th>
-                                <th>From Date</th>
-                                <th>To Date</th>
-                                <th>Days</th>
-                                {isAdminOrHR && <th>Employee</th>}
-                                <th>Type</th>
-                                <th>Reason</th>
-                                <th>Status</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {loading ? (
-                                <tr>
-                                    <td colSpan={isAdminOrHR ? 6 : 5} style={{ textAlign: 'center', padding: 40 }}>
-                                        <div className="spinner" style={{ margin: '0 auto' }} />
-                                    </td>
-                                </tr>
-                            ) : records.length === 0 ? (
-                                <tr>
-                                    <td colSpan={isAdminOrHR ? 6 : 5} style={{ textAlign: 'center', padding: 40, color: 'var(--text-dim)' }}>
-                                        No leave records found for this period.
-                                    </td>
-                                </tr>
-                            ) : (
-                                records.map((record, index) => {
-                                    const days = Math.ceil(Math.abs(new Date(record.end_date) - new Date(record.start_date)) / (1000 * 60 * 60 * 24)) + 1;
-                                    return (
-                                        <tr key={record.id}>
-                                            <td>{index + 1}</td>
-                                            <td style={{ fontWeight: 500 }}>{new Date(record.start_date).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}</td>
-                                            <td style={{ fontWeight: 500 }}>{new Date(record.end_date).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}</td>
-                                            <td style={{ fontWeight: 600 }}>{days}</td>
-                                            {isAdminOrHR && (
-                                                <td>
-                                                    <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                                        <span style={{ fontWeight: 600 }}>{record.user?.full_name || 'Unknown'}</span>
-                                                        <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>{record.user?.email}</span>
-                                                    </div>
-                                                </td>
-                                            )}
-                                            <td>
-                                                <span className="badge badge-purple">{record.type}</span>
-                                            </td>
-                                            <td style={{ fontSize: 13, color: 'var(--text-dim)', maxWidth: 200, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={record.reason}>
-                                                {record.reason}
-                                            </td>
-                                            <td>{statusBadge(record.status)}</td>
-                                        </tr>
-                                    );
-                                })
-                            )}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+            <DataTable
+                data={records}
+                loading={loading}
+                fileName="leave_records"
+                columns={[
+                    {
+                        label: 'From Date',
+                        key: 'start_date',
+                        render: (val) => new Date(val).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })
+                    },
+                    {
+                        label: 'To Date',
+                        key: 'end_date',
+                        render: (val) => new Date(val).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })
+                    },
+                    {
+                        label: 'Days',
+                        key: 'id',
+                        render: (_, record) => Math.ceil(Math.abs(new Date(record.end_date) - new Date(record.start_date)) / (1000 * 60 * 60 * 24)) + 1
+                    },
+                    ...(isAdminOrHR ? [{
+                        label: 'Employee',
+                        key: 'user.full_name',
+                        sortKey: 'user.full_name',
+                        render: (_, record) => (
+                            <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                <span style={{ fontWeight: 600 }}>{record.user?.full_name || 'Unknown'}</span>
+                                <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>{record.user?.email}</span>
+                            </div>
+                        )
+                    }] : []),
+                    {
+                        label: 'Type',
+                        key: 'type',
+                        render: (val) => <span className="badge badge-purple">{val}</span>
+                    },
+                    {
+                        label: 'Reason',
+                        key: 'reason',
+                        render: (val) => (
+                            <div style={{ fontSize: 13, color: 'var(--text-dim)', maxWidth: 200, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={val}>
+                                {val}
+                            </div>
+                        )
+                    },
+                    {
+                        label: 'Status',
+                        key: 'status',
+                        render: (val) => statusBadge(val)
+                    }
+                ]}
+            />
         </div>
     );
 }

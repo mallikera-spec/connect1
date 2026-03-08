@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Calendar, Filter, IndianRupee, Clock, Users, Briefcase, FileText } from 'lucide-react'
 import api from '../../lib/api'
+import DataTable from '../../components/common/DataTable'
 import toast from 'react-hot-toast'
 
 import DateRangePicker from '../../components/DateRangePicker'
@@ -103,66 +104,60 @@ export default function DeveloperCalendar() {
             </div>
 
             {/* Main Table */}
-            <div className="table-wrapper shadow-sm">
-                {loading ? <div className="page-loader"><div className="spinner" /></div> : (
-                    <table className="modern-table">
-                        <thead>
-                            <tr>
-                                <th>Developer</th>
-                                <th>Project</th>
-                                <th style={{ width: 120 }}>Duration</th>
-                                <th style={{ width: 150 }}>Man-Days <span style={{ fontSize: 10, textTransform: 'lowercase', opacity: 0.7 }}>(8h)</span></th>
-                                <th style={{ width: 180 }}>Est. Cost</th>
-                                <th style={{ textAlign: 'right' }}>Avg Rate/Day</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {data.length === 0 ? (
-                                <tr><td colSpan={6}><div className="empty-state">No duration data found for this period</div></td></tr>
-                            ) : data.map((item, idx) => (
-                                <tr key={idx}>
-                                    <td>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                                            <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--surface-v2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600, color: 'var(--accent)', fontSize: 12 }}>
-                                                {item.userName[0]}
-                                            </div>
-                                            <div>
-                                                <div style={{ fontWeight: 600 }}>{item.userName}</div>
-                                                <div style={{ fontSize: 11, color: 'var(--text-dim)' }}>{item.userEmail}</div>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                            <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--accent)' }} />
-                                            <strong>{item.projectName}</strong>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-muted)' }}>
-                                            <Clock size={14} />
-                                            {Math.floor(item.totalHours)}h {Math.round((item.totalHours % 1) * 60)}m
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <div className="badge badge-purple" style={{ fontSize: 13, padding: '4px 12px' }}>
-                                            {item.manDays.toFixed(2)} Days
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <div style={{ fontWeight: 700, color: 'var(--text-bold)', fontSize: 15 }}>
-                                            {formatCurrency(item.estimatedCost)}
-                                        </div>
-                                    </td>
-                                    <td style={{ textAlign: 'right', fontSize: 12, color: 'var(--text-dim)' }}>
-                                        {formatCurrency(item.userCTC / 22)}
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
+            <DataTable
+                data={data}
+                loading={loading}
+                fileName="developer_calendar"
+                columns={[
+                    { label: 'Developer', key: 'userName' },
+                    { label: 'Project', key: 'projectName' },
+                    { label: 'Duration', key: 'totalHours' },
+                    { label: 'Man-Days', key: 'manDays' },
+                    { label: 'Est. Cost', key: 'estimatedCost' },
+                    { label: 'Avg Rate/Day', key: 'avg_rate', sortKey: 'userCTC' }
+                ]}
+                renderRow={(item, idx) => (
+                    <tr key={idx}>
+                        <td style={{ padding: '12px 16px', color: 'var(--text-dim)', fontSize: 12 }}>{idx + 1}</td>
+                        <td style={{ padding: '12px 16px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--surface-v2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600, color: 'var(--accent)', fontSize: 12 }}>
+                                    {item.userName[0]}
+                                </div>
+                                <div>
+                                    <div style={{ fontWeight: 600 }}>{item.userName}</div>
+                                    <div style={{ fontSize: 11, color: 'var(--text-dim)' }}>{item.userEmail}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td style={{ padding: '12px 16px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--accent)' }} />
+                                <strong>{item.projectName}</strong>
+                            </div>
+                        </td>
+                        <td style={{ padding: '12px 16px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-muted)' }}>
+                                <Clock size={14} />
+                                {Math.floor(item.totalHours)}h {Math.round((item.totalHours % 1) * 60)}m
+                            </div>
+                        </td>
+                        <td style={{ padding: '12px 16px' }}>
+                            <div className="badge badge-purple" style={{ fontSize: 13, padding: '4px 12px' }}>
+                                {item.manDays.toFixed(2)} Days
+                            </div>
+                        </td>
+                        <td style={{ padding: '12px 16px' }}>
+                            <div style={{ fontWeight: 700, color: 'var(--text-bold)', fontSize: 15 }}>
+                                {formatCurrency(item.estimatedCost)}
+                            </div>
+                        </td>
+                        <td style={{ padding: '12px 16px', textAlign: 'right', fontSize: 12, color: 'var(--text-dim)' }}>
+                            {formatCurrency(item.userCTC / 22)}
+                        </td>
+                    </tr>
                 )}
-            </div>
+            />
 
             <style>{`
                 .modern-table { width: 100%; border-collapse: separate; border-spacing: 0; }

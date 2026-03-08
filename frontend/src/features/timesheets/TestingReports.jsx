@@ -4,6 +4,7 @@ import api from '../../lib/api'
 import toast from 'react-hot-toast'
 import { useAuth } from '../../context/AuthContext'
 import DateRangePicker from '../../components/DateRangePicker'
+import DataTable from '../../components/common/DataTable'
 
 const STATUS_BADGE = {
     verified: 'badge-green',
@@ -90,25 +91,6 @@ export default function TestingReports() {
         return { total, passed, failed, passRate }
     }, [filtered])
 
-    const handleExportCSV = () => {
-        if (!filtered.length) return
-        const headers = ['Date', 'Developer', 'Project', 'Title', 'Hours', 'Result', 'QA Notes']
-        const rows = filtered.map(e => [
-            e.date ? new Date(e.date).toLocaleDateString() : '',
-            `"${e.userName || ''}"`,
-            `"${e.project?.name || 'In-House'}"`,
-            `"${e.title || ''}"`,
-            e.hours_spent || '',
-            e.status === 'verified' ? 'PASSED' : 'FAILED',
-            `"${(e.qa_notes || '').replace(/"/g, '""')}"`
-        ])
-        const csv = [headers, ...rows].map(r => r.join(',')).join('\n')
-        const link = document.createElement('a')
-        link.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }))
-        link.download = `testing_reports_${new Date().toISOString().split('T')[0]}.csv`
-        link.click()
-    }
-
     const handleExportPDF = () => window.print()
 
     return (
@@ -127,8 +109,14 @@ export default function TestingReports() {
                             setEndDate(range.endDate);
                         }}
                     />
-                    <button className="btn btn-outline btn-sm" onClick={handleExportCSV} style={{ display: 'flex', alignItems: 'center', gap: 4 }}><Download size={14} /> CSV</button>
-                    <button className="btn btn-outline btn-sm" onClick={handleExportPDF} style={{ display: 'flex', alignItems: 'center', gap: 4 }}><FileText size={14} /> PDF</button>
+                    <DateRangePicker
+                        startDate={startDate}
+                        endDate={endDate}
+                        onRangeChange={(range) => {
+                            setStartDate(range.startDate);
+                            setEndDate(range.endDate);
+                        }}
+                    />
                 </div>
             </div>
 
@@ -197,55 +185,21 @@ export default function TestingReports() {
             </div>
 
             {/* Table View */}
-            <div className="table-wrapper shadow-sm">
-                {loading ? (
-                    <div className="page-loader" style={{ height: 200 }}><div className="spinner" /></div>
-                ) : filtered.length === 0 ? (
-                    <div style={{ padding: 60, textAlign: 'center', opacity: 0.5 }}>
-                        <FileBarChart size={48} style={{ marginBottom: 16 }} />
-                        <h3>No report data found</h3>
-                        <p>Adjust your filters or date range.</p>
-                    </div>
-                ) : (
-                    <table className="compact-table">
-                        <thead>
-                            <tr>
-                                <th style={{ width: 100 }}>Date</th>
-                                <th style={{ width: 130 }}>Developer</th>
-                                <th style={{ width: 120 }}>Project</th>
-                                <th>Todo Details</th>
-                                <th style={{ width: 60 }}>Hrs</th>
-                                <th style={{ width: 100 }}>Result</th>
-                                <th style={{ width: 200 }}>QA Notes</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {filtered.map(entry => (
-                                <tr key={entry.id}>
-                                    <td style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-dim)' }}>{fmt(entry.date)}</td>
-                                    <td style={{ fontSize: 13, fontWeight: 600 }}>{entry.userName}</td>
-                                    <td>
-                                        <span className="badge-pill badge-purple" style={{ fontSize: 9 }}>
-                                            {(entry.project?.name || 'In-House').toUpperCase()}
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <div style={{ fontWeight: 600 }}>{entry.title}</div>
-                                    </td>
-                                    <td style={{ fontWeight: 800 }}>{entry.hours_spent}</td>
-                                    <td>
-                                        <span className={`badge-pill ${STATUS_BADGE[entry.status]}`} style={{ fontSize: 9 }}>
-                                            {entry.status === 'verified' ? 'PASSED' : 'FAILED'}
-                                        </span>
-                                    </td>
-                                    <td style={{ fontSize: 11, fontWeight: 600, color: entry.status === 'verified' ? 'var(--text-muted)' : '#ef4444' }}>
-                                        {entry.qa_notes || <span style={{ opacity: 0.3 }}>—</span>}
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                )}
+            <div style={{ marginBottom: 40 }}>
+                <DataTable
+                    loading={loading}
+                    data={filtered}
+                    fileName={`testing_reports_${new Date().toISOString().split('T')[0]}`}
+                    columns={[
+                        { label: 'Date', key: 'date', render: (val) => <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-dim)' }}>{fmt(val)}</span>, exportValue: (val) => val },
+                        { label: 'Developer', key: 'userName', render: (val) => <span style={{ fontSize: 13, fontWeight: 600 }}>{val}</span> },
+                        { label: 'Project', key: 'project.name', render: (val) => <span className="badge-pill badge-purple" style={{ fontSize: 9 }}>{(val || 'In-House').toUpperCase()}</span> },
+                        { label: 'Todo Details', key: 'title', render: (val) => <div style={{ fontWeight: 600 }}>{val}</div> },
+                        { label: 'Hrs', key: 'hours_spent', render: (val) => <span style={{ fontWeight: 800 }}>{val}</span> },
+                        { label: 'Result', key: 'status', render: (val) => <span className={`badge-pill ${STATUS_BADGE[val]}`} style={{ fontSize: 9 }}>{val === 'verified' ? 'PASSED' : 'FAILED'}</span> },
+                        { label: 'QA Notes', key: 'qa_notes', render: (val, entry) => <span style={{ fontSize: 11, fontWeight: 600, color: entry.status === 'verified' ? 'var(--text-muted)' : '#ef4444' }}>{val || <span style={{ opacity: 0.3 }}>—</span>}</span> }
+                    ]}
+                />
             </div>
 
             <style>{`
