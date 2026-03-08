@@ -223,15 +223,18 @@ export default function ProjectsPage() {
                     fileName="projects"
                     loading={loading}
                     columns={[
-                        { label: 'Acquisition Date', key: 'acquisition_date', render: (val) => <div style={{ fontSize: 13, fontWeight: 700 }}>{formatDate(val)}</div> },
-                        { label: 'Name', key: 'name', render: (val) => <strong>{val}</strong> },
-                        { label: 'Sub-type', key: 'sub_types', render: (val) => <span style={{ fontSize: 13 }}>{val?.join(', ') || '—'}</span> },
-                        { label: 'Description', key: 'description', render: (val) => <span style={{ color: 'var(--text-muted)', fontSize: 13, maxWidth: 200, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{val || '—'}</span> },
-                        { label: 'Client Name', key: 'client_name', render: (val) => <span style={{ fontSize: 13 }}>{val || '—'}</span> },
-                        { label: 'Client Phone', key: 'client_phone', render: (val) => <span style={{ fontSize: 13 }}>{val || '—'}</span> },
+                        { label: 'Acquisition Date', key: 'acquisition_date', width: '100px', render: (val) => <div style={{ fontSize: 13, fontWeight: 700 }}>{formatDate(val)}</div> },
+                        { label: 'Name', key: 'name', width: '200px', wrap: true, render: (val) => <strong style={{ whiteSpace: 'normal', lineHeight: 1.4, display: 'block' }}>{val}</strong> },
+                        { label: 'Sub-type', key: 'sub_types', width: '120px', render: (val) => <span style={{ fontSize: 13, background: 'var(--bg-header)', padding: '2px 8px', borderRadius: 12, border: '1px solid var(--border)', display: 'inline-block' }}>{val?.join(', ') || '—'}</span> },
+                        { label: 'Description', key: 'description', wrap: true, render: (val) => <span style={{ color: 'var(--text-muted)', fontSize: 13, display: 'block', whiteSpace: 'normal', lineHeight: 1.4 }}>{val || '—'}</span> },
+                        ...(canManage ? [
+                            { label: 'Client Name', key: 'client_name', width: '120px', render: (val) => <span style={{ fontSize: 13, fontWeight: 600 }}>{val || '—'}</span> },
+                            { label: 'Client Phone', key: 'client_phone', width: '100px', render: (val) => <span style={{ fontSize: 12, fontFamily: 'monospace' }}>{val || '—'}</span> }
+                        ] : []),
                         {
                             label: 'Status',
                             key: 'status',
+                            width: '90px',
                             render: (val) => {
                                 const s = PROJECT_STATUS[val] || PROJECT_STATUS.active
                                 return (
@@ -244,6 +247,7 @@ export default function ProjectsPage() {
                         {
                             label: 'Due Date',
                             key: 'due_date',
+                            width: '100px',
                             render: (val) => {
                                 if (!val) return '—';
                                 const today = new Date();
@@ -261,7 +265,7 @@ export default function ProjectsPage() {
                                 return (
                                     <div style={{ color, fontWeight, fontSize: 13 }}>
                                         {formatDate(val)}
-                                        {diff < 0 && <span style={{ fontSize: 10, marginLeft: 4 }}>(Overdue)</span>}
+                                        {diff < 0 && <span style={{ fontSize: 10, marginLeft: 4, display: 'block', color: 'var(--text-dim)' }}>(Overdue)</span>}
                                     </div>
                                 )
                             }
@@ -269,6 +273,7 @@ export default function ProjectsPage() {
                         {
                             label: 'Actions',
                             key: 'id',
+                            width: '100px',
                             render: (_, p) => (
                                 <div className="actions-cell">
                                     <button className="btn btn-ghost btn-sm btn-icon" onClick={() => openDetails(p)} title="View Details, Files & Notes"><Info size={14} /></button>

@@ -236,20 +236,20 @@ export function EmployeeCard({ employee, isAdminView, currentRange }) {
                                     <div style={{ fontSize: '10px', fontWeight: 800, color: 'var(--text-dim)', textTransform: 'uppercase', minWidth: '40px' }}>Perf.</div>
                                     <div className="stats-grid" style={{ flex: 1, gridTemplateColumns: 'repeat(3, 1fr)', gap: '4px', marginBottom: 0 }}>
                                         <div className="metric-box" style={{ cursor: 'default' }} onClick={(e) => e.stopPropagation()}>
-                                            <div className="metric-val" style={{ color: employee.metrics.qa_pass_rate >= 90 ? 'var(--success)' : (employee.metrics.qa_pass_rate >= 70 ? 'var(--warning)' : '#ef4444') }}>
-                                                {employee.metrics.qa_pass_rate.toFixed(0)}%
+                                            <div className="metric-val" style={{ color: (employee.metrics.qa_pass_rate || 0) >= 90 ? 'var(--success)' : ((employee.metrics.qa_pass_rate || 0) >= 70 ? 'var(--warning)' : '#ef4444') }}>
+                                                {(employee.metrics.qa_pass_rate || 0).toFixed(0)}%
                                             </div>
                                             <div className="metric-lbl">QA Pass</div>
                                         </div>
                                         <div className="metric-box" style={{ cursor: 'default' }} onClick={(e) => e.stopPropagation()}>
-                                            <div className="metric-val" style={{ color: employee.metrics.estimation_accuracy > 0 && employee.metrics.estimation_accuracy <= 110 ? 'var(--success)' : 'var(--warning)' }}>
-                                                {employee.metrics.estimation_accuracy > 0 ? employee.metrics.estimation_accuracy.toFixed(0) + '%' : '—'}
+                                            <div className="metric-val" style={{ color: (employee.metrics.estimation_accuracy || 0) > 0 && (employee.metrics.estimation_accuracy || 0) <= 110 ? 'var(--success)' : 'var(--warning)' }}>
+                                                {(employee.metrics.estimation_accuracy || 0) > 0 ? (employee.metrics.estimation_accuracy || 0).toFixed(0) + '%' : '—'}
                                             </div>
                                             <div className="metric-lbl">Est. Acc.</div>
                                         </div>
                                         <div className="metric-box" style={{ cursor: 'default' }} onClick={(e) => e.stopPropagation()}>
-                                            <div className="metric-val" style={{ color: employee.metrics.blocker_frequency > 15 ? '#ef4444' : 'var(--text)' }}>
-                                                {employee.metrics.blocker_frequency.toFixed(0)}%
+                                            <div className="metric-val" style={{ color: (employee.metrics.blocker_frequency || 0) > 15 ? '#ef4444' : 'var(--text)' }}>
+                                                {(employee.metrics.blocker_frequency || 0).toFixed(0)}%
                                             </div>
                                             <div className="metric-lbl">Blocked</div>
                                         </div>

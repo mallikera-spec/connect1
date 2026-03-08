@@ -93,35 +93,33 @@ export default function MyProjectsPage() {
                     loading={loading}
                     fileName="my_projects"
                     columns={[
-                        { label: 'Project Name', key: 'name' },
-                        { label: 'Sub-type', key: 'sub_types' },
-                        { label: 'Description', key: 'description' },
-                        { label: 'Status', key: 'status' },
-                        { label: 'Actions', key: 'actions' }
-                    ]}
-                    renderRow={(p, idx) => (
-                        <tr key={p.id}>
-                            <td style={{ padding: '12px 16px', color: 'var(--text-dim)', fontSize: 12 }}>{idx + 1}</td>
-                            <td style={{ padding: '12px 16px' }}><strong>{p.name}</strong></td>
-                            <td style={{ padding: '12px 16px', fontSize: 13 }}>{p.sub_types?.join(', ') || '—'}</td>
-                            <td style={{ padding: '12px 16px', color: 'var(--text-muted)', fontSize: 13, maxWidth: 300 }}>{p.description || '—'}</td>
-                            <td style={{ padding: '12px 16px' }}>
-                                {(() => {
-                                    const s = PROJECT_STATUS[p.status] || PROJECT_STATUS.active
-                                    return (
-                                        <span style={{ background: s.color + '22', color: s.color, fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 99, whiteSpace: 'nowrap' }}>
-                                            {s.label}
-                                        </span>
-                                    )
-                                })()}
-                            </td>
-                            <td style={{ padding: '12px 16px' }}>
+                        { label: 'Project Name', key: 'name', width: '200px', wrap: true, render: (val) => <strong style={{ whiteSpace: 'normal', lineHeight: 1.4, display: 'block' }}>{val}</strong> },
+                        { label: 'Sub-type', key: 'sub_types', width: '120px', render: (val) => <span style={{ fontSize: 13, background: 'var(--bg-header)', padding: '2px 8px', borderRadius: 12, border: '1px solid var(--border)', display: 'inline-block' }}>{val?.join(', ') || '—'}</span> },
+                        { label: 'Description', key: 'description', wrap: true, render: (val) => <span style={{ color: 'var(--text-muted)', fontSize: 13, display: 'block', whiteSpace: 'normal', lineHeight: 1.4 }}>{val || '—'}</span> },
+                        {
+                            label: 'Status',
+                            key: 'status',
+                            width: '100px',
+                            render: (val) => {
+                                const s = PROJECT_STATUS[val] || PROJECT_STATUS.active
+                                return (
+                                    <span style={{ background: s.color + '22', color: s.color, fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 99, whiteSpace: 'nowrap' }}>
+                                        {s.label}
+                                    </span>
+                                )
+                            }
+                        },
+                        {
+                            label: 'Actions',
+                            key: 'id',
+                            width: '80px',
+                            render: (_, p) => (
                                 <div className="actions-cell">
                                     <button className="btn btn-ghost btn-sm btn-icon" onClick={() => openDetails(p)} title="View Details, Files & Notes"><Info size={14} /></button>
                                 </div>
-                            </td>
-                        </tr>
-                    )}
+                            )
+                        }
+                    ]}
                 />
             </div>
 

@@ -167,14 +167,6 @@ export default function TestingQueue() {
                             setEndDate(range.endDate);
                         }}
                     />
-                    <DateRangePicker
-                        startDate={startDate}
-                        endDate={endDate}
-                        onRangeChange={(range) => {
-                            setStartDate(range.startDate);
-                            setEndDate(range.endDate);
-                        }}
-                    />
                 </div>
             </div>
 

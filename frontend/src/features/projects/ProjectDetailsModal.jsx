@@ -6,7 +6,7 @@ import { useAuth } from '../../context/AuthContext'
 import DataTable from '../../components/common/DataTable'
 
 export default function ProjectDetailsModal({ project, allUsers, onClose, onSaved }) {
-    const { user: currentUser, hasPermission } = useAuth()
+    const { user: currentUser, hasPermission, hasRole } = useAuth()
     const [activeTab, setActiveTab] = useState('team')
 
     // Team State
@@ -168,21 +168,30 @@ export default function ProjectDetailsModal({ project, allUsers, onClose, onSave
                     {/* --- PROJECT INFO --- */}
                     {(project.client_name || project.sub_types?.length > 0) && (
                         <div style={{ display: 'flex', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
-                            {project.client_name && (
-                                <div style={{ flex: 1, minWidth: 200, padding: 12, background: 'var(--surface-light)', borderRadius: 8, border: '1px solid var(--border)' }}>
-                                    <div style={{ fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600, marginBottom: 4 }}>Client</div>
-                                    <div style={{ fontSize: 13, fontWeight: 700 }}>{project.client_name}</div>
-                                    <div style={{ fontSize: 11, color: 'var(--text-dim)' }}>
-                                        {project.client_email} {project.client_phone ? `• ${project.client_phone}` : ''} {project.client_alt_phone ? `• ${project.client_alt_phone}` : ''}
+                            {project.client_name && (() => {
+                                const canSeeClient = hasPermission('manage_projects') || hasRole('super_admin') || hasRole('director') || hasRole('Director') || hasRole('hr') || hasRole('project_manager');
+                                return (
+                                    <div style={{ flex: 1, minWidth: 200, padding: 12, background: 'var(--surface-light)', borderRadius: 8, border: '1px solid var(--border)' }}>
+                                        <div style={{ fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600, marginBottom: 4 }}>Client</div>
+                                        <div style={{ fontSize: 13, fontWeight: 700 }}>{project.client_name}</div>
+                                        {canSeeClient ? (
+                                            <>
+                                                <div style={{ fontSize: 11, color: 'var(--text-dim)' }}>
+                                                    {project.client_email} {project.client_phone ? `• ${project.client_phone}` : ''} {project.client_alt_phone ? `• ${project.client_alt_phone}` : ''}
+                                                </div>
+                                                {project.acquisition_date && (
+                                                    <div style={{ fontSize: 11, color: 'var(--accent)', marginTop: 4, fontWeight: 600 }}>Acquired: {project.acquisition_date}</div>
+                                                )}
+                                                <div style={{ fontSize: 13, color: 'var(--success)', marginTop: 8, fontWeight: 800 }}>
+                                                    Deal Value: ₹{(project.deal_value || 0).toLocaleString()}
+                                                </div>
+                                            </>
+                                        ) : (
+                                            <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 2, fontStyle: 'italic' }}>Contact details restricted</div>
+                                        )}
                                     </div>
-                                    {project.acquisition_date && (
-                                        <div style={{ fontSize: 11, color: 'var(--accent)', marginTop: 4, fontWeight: 600 }}>Acquired: {project.acquisition_date}</div>
-                                    )}
-                                    <div style={{ fontSize: 13, color: 'var(--success)', marginTop: 8, fontWeight: 800 }}>
-                                        Deal Value: ₹{(project.deal_value || 0).toLocaleString()}
-                                    </div>
-                                </div>
-                            )}
+                                );
+                            })()}
                             {project.sub_types?.length > 0 && (
                                 <div style={{ flex: 1, minWidth: 200, padding: 12, background: 'var(--surface-light)', borderRadius: 8, border: '1px solid var(--border)' }}>
                                     <div style={{ fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600, marginBottom: 6 }}>Categories</div>

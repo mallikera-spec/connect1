@@ -294,6 +294,12 @@ export default function TasksPage() {
                             </select>
                         </div>
                     </div>
+                    <div className="form-row" style={{ marginTop: '14px' }}>
+                        <div className="form-group">
+                            <label className="form-label">Due Date</label>
+                            <input type="date" className="form-input" value={form.end_time} onChange={f('end_time')} disabled={isLocked} />
+                        </div>
+                    </div>
 
                     {isFailed && (
                         <div className="form-group" style={{ background: 'rgba(59, 130, 246, 0.05)', padding: 16, borderRadius: 12, marginTop: 20, border: '1px solid rgba(59, 130, 246, 0.2)' }}>

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link2, Clock, Calendar, Users, Filter, ShieldCheck, AlertCircle, X, Trash2 } from 'lucide-react'
+import { Link2, Clock, Calendar, Users, Filter, ShieldCheck, AlertCircle, X, Trash2, RotateCcw } from 'lucide-react'
 import { useLocation } from 'react-router-dom'
 import api from '../../lib/api'
 import toast from 'react-hot-toast'
@@ -8,7 +8,7 @@ import QAFeedbackTrail from '../../components/common/QAFeedbackTrail'
 import DataTable from '../../components/common/DataTable'
 
 const STATUS_BADGE = {
-    todo: 'badge-gray',
+    todo: 'badge-blue',
     in_progress: 'badge-yellow',
     done: 'badge-green',
     blocked: 'badge-red',
@@ -189,29 +189,30 @@ export default function AdminTimesheet() {
             </div>
 
             {/* Filters Section */}
-            <div className="card shadow-sm glass-card" style={{ marginBottom: 24, padding: 20 }}>
-                <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap', alignItems: 'flex-end' }}>
-                    <div className="form-group" style={{ flex: 2, minWidth: 300, marginBottom: 0 }}>
-                        <label className="form-label">
-                            <Users size={14} style={{ marginRight: 6 }} />
-                            <strong>SELECT EMPLOYEES ({viewUserIds.length})</strong>
+            <div className="card polished-card shadow-lg" style={{ marginBottom: 32, padding: '24px' }}>
+                <div className="filters-grid" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', gap: '24px', alignItems: 'flex-start' }}>
+                    <div className="filter-group">
+                        <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--accent)', marginBottom: 12 }}>
+                            <Users size={14} /> EMPLOYEE SELECTION ({viewUserIds.length || 'ALL'})
                         </label>
-                        <div className="custom-multi-select">
+                        <div className="employee-chips-container">
                             {allUsers.map(u => (
-                                <label key={u.id} className={`chip ${viewUserIds.includes(u.id) ? 'active' : ''}`}>
-                                    <input type="checkbox" checked={viewUserIds.includes(u.id)} onChange={() => toggleUser(u.id)} hidden />
+                                <button
+                                    key={u.id}
+                                    className={`employee-chip ${viewUserIds.includes(u.id) ? 'active' : ''}`}
+                                    onClick={() => toggleUser(u.id)}
+                                >
                                     {u.full_name}
-                                </label>
+                                </button>
                             ))}
                         </div>
                     </div>
 
-                    <div className="form-group" style={{ flex: 1, minWidth: 200, marginBottom: 0 }}>
-                        <label className="form-label">
-                            <Filter size={14} style={{ marginRight: 6 }} />
-                            <strong>FILTER BY PROJECT</strong>
+                    <div className="filter-group">
+                        <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--accent)', marginBottom: 12 }}>
+                            <Filter size={14} /> Project
                         </label>
-                        <select className="form-select" value={selectedProjectId} onChange={e => setSelectedProjectId(e.target.value)}>
+                        <select className="form-select premium-select" value={selectedProjectId} onChange={e => setSelectedProjectId(e.target.value)}>
                             <option value="">All Projects</option>
                             {allProjects.map(p => (
                                 <option key={p.id} value={p.id}>{p.name}</option>
@@ -219,35 +220,33 @@ export default function AdminTimesheet() {
                         </select>
                     </div>
 
-                    <div className="form-group" style={{ flex: 1, minWidth: 150, marginBottom: 0 }}>
-                        <label className="form-label">
-                            <Clock size={14} style={{ marginRight: 6 }} />
-                            <strong>FILTER BY STATUS</strong>
+                    <div className="filter-group">
+                        <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--accent)', marginBottom: 12 }}>
+                            <Clock size={14} /> Status
                         </label>
-                        <select className="form-select" value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
+                        <select className="form-select premium-select" value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
                             <option value="">All Statuses</option>
                             {['todo', 'in_progress', 'done', 'blocked', 'verified', 'failed'].map(s => (
                                 <option key={s} value={s}>{s.toUpperCase().replace('_', ' ')}</option>
                             ))}
+                            <option disabled>──────</option>
+                            <option value="completed">COMPLETED (All QA)</option>
+                            <option value="audited">AUDITED (Pass/Fail)</option>
+                            <option value="pending_qa">PENDING QA</option>
                         </select>
                     </div>
 
-                    <div className="form-group" style={{ flex: 1, minWidth: 150, marginBottom: 0 }}>
-                        <label className="form-label">
-                            <ShieldCheck size={14} style={{ marginRight: 6 }} />
-                            <strong>QA RESULT</strong>
+                    <div className="filter-group">
+                        <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--accent)', marginBottom: 12 }}>
+                            <ShieldCheck size={14} /> QA Filter
                         </label>
-                        <select className="form-select" value={qaFilter} onChange={e => setQaFilter(e.target.value)}>
+                        <select className="form-select premium-select" value={qaFilter} onChange={e => setQaFilter(e.target.value)}>
                             <option value="">All QA Results</option>
-                            <option value="passed">PASSED</option>
-                            <option value="failed">FAILED</option>
-                            <option value="pending">PENDING</option>
+                            <option value="passed">✅ PASSED</option>
+                            <option value="failed">❌ FAILED</option>
+                            <option value="pending">⏳ PENDING</option>
                         </select>
                     </div>
-                </div>
-
-                <div className="export-btns" style={{ display: 'none' }}>
-                    {/* DataTable already provides these */}
                 </div>
             </div>
 
@@ -261,7 +260,15 @@ export default function AdminTimesheet() {
                         );
                     }
                     if (statusFilter) {
-                        filtered = filtered.filter(e => e.status === statusFilter);
+                        if (statusFilter === 'completed') {
+                            filtered = filtered.filter(e => ['done', 'verified', 'failed'].includes(e.status));
+                        } else if (statusFilter === 'audited') {
+                            filtered = filtered.filter(e => ['verified', 'failed'].includes(e.status));
+                        } else if (statusFilter === 'pending_qa') {
+                            filtered = filtered.filter(e => e.status === 'done');
+                        } else {
+                            filtered = filtered.filter(e => e.status === statusFilter);
+                        }
                     }
                     if (qaFilter) {
                         if (qaFilter === 'passed') {
@@ -282,10 +289,11 @@ export default function AdminTimesheet() {
                                 {
                                     label: 'Date',
                                     key: 'date',
+                                    width: '70px',
                                     render: (val) => (
-                                        <div>
-                                            <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)' }}>{new Date(val).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</div>
-                                            <div style={{ fontSize: 10, color: 'var(--text-dim)' }}>{new Date(val).toLocaleDateString('en-IN', { weekday: 'short' })}</div>
+                                        <div style={{ minWidth: 50 }}>
+                                            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{new Date(val).getDate()}</div>
+                                            <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-dim)', textTransform: 'uppercase' }}>{new Date(val).toLocaleDateString('en-IN', { month: 'short' })}</div>
                                         </div>
                                     ),
                                     exportValue: (val) => val
@@ -293,73 +301,99 @@ export default function AdminTimesheet() {
                                 {
                                     label: 'Hrs',
                                     key: 'hours_spent',
+                                    width: '60px',
                                     render: (val) => (
-                                        <span>
-                                            <span style={{ fontWeight: 800, color: 'var(--accent)', fontSize: 15 }}>{val}</span>
-                                            <span style={{ fontSize: 9, color: 'var(--text-dim)', marginLeft: 2 }}>h</span>
-                                        </span>
+                                        <div style={{ background: 'var(--accent-transparent)', padding: '4px 8px', borderRadius: 6, display: 'inline-block' }}>
+                                            <span style={{ fontWeight: 800, color: 'var(--accent-light)', fontSize: 13 }}>{val}</span>
+                                            <span style={{ fontSize: 9, color: 'var(--accent-light)', opacity: 0.7, marginLeft: 1 }}>h</span>
+                                        </div>
                                     )
                                 },
-                                { label: 'Employee', key: 'userName', render: (val) => <span style={{ fontSize: 12, fontWeight: 600 }}>{val}</span> },
-                                { label: 'Project', key: 'project.name', render: (val) => <span className="badge-pill badge-purple" style={{ fontSize: 9, padding: '2px 7px', fontWeight: 700 }}>{(val || 'In-House').toUpperCase()}</span> },
                                 {
-                                    label: 'Task / Notes',
+                                    label: 'Employee',
+                                    key: 'userName',
+                                    width: '120px',
+                                    render: (val) => <span style={{ fontSize: 12, fontWeight: 600 }}>{val}</span>
+                                },
+                                {
+                                    label: 'Project',
+                                    key: 'project.name',
+                                    width: '100px',
+                                    render: (val) => <span style={{ fontSize: 9, padding: '3px 8px', fontWeight: 800, background: 'var(--bg-header)', color: 'var(--accent-light)', borderRadius: 20, border: '1px solid var(--accent-transparent)' }}>{(val || 'In-House').toUpperCase()}</span>
+                                },
+                                {
+                                    label: 'Task Details',
                                     key: 'title',
+                                    wrap: true,
                                     render: (val, e) => (
-                                        <div style={{ maxWidth: 360 }}>
-                                            <div style={{ fontWeight: 600, fontSize: 13 }}>{val}</div>
-                                            {e.notes && <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.notes}</div>}
-                                            {e.developer_reply && <div style={{ fontSize: 10, color: '#34d399', marginTop: 2, fontWeight: 600 }}>↩ {e.developer_reply}</div>}
+                                        <div style={{ minWidth: 250, whiteSpace: 'normal' }}>
+                                            <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--text)', lineHeight: 1.4 }}>{val}</div>
+                                            {e.notes && <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 4, fontStyle: 'italic' }}>{e.notes}</div>}
+                                            {e.developer_reply && <div style={{ fontSize: 10, color: '#10b981', marginTop: 6, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}><RotateCcw size={10} /> {e.developer_reply}</div>}
                                         </div>
                                     )
                                 },
                                 {
                                     label: 'Submitted',
                                     key: 'created_at',
-                                    render: (val) => <span style={{ fontSize: 11, color: val ? 'var(--success)' : 'var(--text-dim)', fontWeight: 600 }}>{val ? new Date(val).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : '—'}</span>,
-                                    exportValue: (val) => val ? new Date(val).toLocaleTimeString('en-IN') : 'N/A'
+                                    width: '80px',
+                                    render: (val) => <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 600, textAlign: 'center' }}>{val ? new Date(val).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'}</div>
                                 },
-                                { label: 'Status', key: 'status', render: (val) => <span className={`badge-pill ${STATUS_BADGE[val]}`} style={{ fontSize: 10, padding: '3px 9px', fontWeight: 700 }}>{val?.replace('_', ' ').toUpperCase()}</span> },
                                 {
-                                    label: 'QA Result',
+                                    label: 'Status',
                                     key: 'status',
-                                    render: (val) => {
-                                        if (val === 'verified') return <span className="badge-pill badge-green" style={{ fontSize: '9px' }}>PASSED</span>;
-                                        if (val === 'failed') return <span className="badge-pill badge-red" style={{ fontSize: '9px' }}>FAILED</span>;
-                                        return <span style={{ opacity: 0.3 }}>—</span>;
-                                    },
-                                    exportValue: (val) => val === 'verified' ? 'PASSED' : val === 'failed' ? 'FAILED' : 'PENDING'
+                                    width: '90px',
+                                    render: (val) => <span className={`badge-pill ${STATUS_BADGE[val]}`} style={{ fontSize: 10, padding: '3px 10px', fontWeight: 800, borderRadius: 6 }}>{val?.toUpperCase()}</span>
                                 },
-                                { label: 'QA Notes', key: 'qa_notes', render: (val, e) => <span style={{ fontSize: 10, color: e.status === 'verified' ? 'var(--text-muted)' : '#fb7185', fontWeight: 600 }}>{val ? `🚩 ${val}` : <span style={{ opacity: 0.3 }}>—</span>}</span> },
                                 {
-                                    label: 'Admin Feedback',
-                                    key: 'admin_feedback',
+                                    label: 'Verdict',
+                                    key: 'status',
+                                    width: '80px',
+                                    render: (val) => {
+                                        if (val === 'verified') return <div style={{ color: '#10b981', fontWeight: 900, fontSize: 10, textAlign: 'center' }}>✅ PASSED</div>;
+                                        if (val === 'failed') return <div style={{ color: '#ef4444', fontWeight: 900, fontSize: 10, textAlign: 'center' }}>❌ FAILED</div>;
+                                        return <div style={{ color: 'var(--text-dim)', fontSize: 10, textAlign: 'center' }}>—</div>;
+                                    }
+                                },
+                                {
+                                    label: 'QA Notes',
+                                    key: 'qa_notes',
+                                    width: '100px',
+                                    wrap: true,
                                     render: (val, e) => (
-                                        <div style={{ position: 'relative' }}>
-                                            <input
-                                                className="feedback-input"
-                                                placeholder={val ? '' : 'Add feedback…'}
-                                                defaultValue={val || ''}
-                                                onBlur={ev => handleUpdate(e.id, { admin_feedback: ev.target.value })}
-                                                title={val || 'Add admin feedback'}
-                                            />
-                                            {savingId === e.id && modal !== 'qa_report' && <div className="spinner-sm" style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)' }} />}
+                                        <div style={{ fontSize: 10, color: e.status === 'verified' ? 'var(--text-muted)' : '#f87171', fontWeight: 600, background: 'rgba(0,0,0,0.1)', padding: '3px 6px', borderRadius: 4 }}>
+                                            {val || <span style={{ opacity: 0.3 }}>—</span>}
                                         </div>
+                                    )
+                                },
+                                {
+                                    label: 'Feedback',
+                                    key: 'admin_feedback',
+                                    width: '130px',
+                                    render: (val, e) => (
+                                        <input
+                                            className="premium-input-sm"
+                                            placeholder="Feedback…"
+                                            defaultValue={val || ''}
+                                            onBlur={ev => handleUpdate(e.id, { admin_feedback: ev.target.value })}
+                                            style={{ height: '28px' }}
+                                        />
                                     )
                                 },
                                 {
                                     label: 'Actions',
                                     key: 'id',
+                                    width: '80px',
                                     render: (_, e) => (
-                                        <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
+                                        <div style={{ display: 'flex', gap: 4, justifyContent: 'center' }}>
                                             {(hasRole('Tester') || hasRole('super_admin') || hasRole('director') || hasRole('Director')) && (e.status === 'done' || e.status === 'verified' || e.status === 'failed') && (
                                                 <>
-                                                    <button className={`btn-icon-ts ${e.status === 'verified' ? 'active-pass' : ''}`} onClick={() => openQaModal(e, 'verified')} title="Pass / Verify"><ShieldCheck size={16} /></button>
-                                                    <button className={`btn-icon-ts ${e.status === 'failed' ? 'active-fail' : ''}`} onClick={() => openQaModal(e, 'failed')} title="Fail / Rejected"><AlertCircle size={16} /></button>
+                                                    <button className={`btn-action pass ${e.status === 'verified' ? 'active' : ''}`} style={{ padding: 6 }} onClick={() => openQaModal(e, 'verified')}><ShieldCheck size={14} /></button>
+                                                    <button className={`btn-action fail ${e.status === 'failed' ? 'active' : ''}`} style={{ padding: 6 }} onClick={() => openQaModal(e, 'failed')}><AlertCircle size={14} /></button>
                                                 </>
                                             )}
                                             {(hasRole('super_admin') || hasRole('director') || hasRole('Director')) && (
-                                                <button className="btn-icon-ts danger-hover" onClick={() => handleDeleteEntry(e.id)} title="Delete Entry" style={{ color: 'var(--text-dim)' }}><Trash2 size={16} /></button>
+                                                <button className="btn-action fail" style={{ padding: 6 }} onClick={() => handleDeleteEntry(e.id)} title="Delete Entry"><Trash2 size={14} /></button>
                                             )}
                                         </div>
                                     )
@@ -454,84 +488,91 @@ export default function AdminTimesheet() {
             )}
 
             <style>{`
-                .custom-multi-select {
+                .employee-chips-container {
                     display: flex;
                     flex-wrap: wrap;
-                    gap: 8px;
-                    background: rgba(255, 255, 255, 0.02);
-                    padding: 12px;
-                    border-radius: 12px;
-                    border: 1px solid var(--border);
-                    max-height: 120px;
+                    gap: 10px;
+                    max-height: 150px;
                     overflow-y: auto;
+                    padding: 4px;
                 }
-                .chip {
-                    font-size: 11px;
-                    padding: 4px 12px;
-                    border-radius: 100px;
+                .employee-chip {
                     background: var(--bg-card);
                     border: 1px solid var(--border);
+                    color: var(--text-muted);
+                    padding: 6px 16px;
+                    border-radius: 12px;
+                    font-size: 11px;
+                    font-weight: 700;
                     cursor: pointer;
                     transition: all 0.2s ease;
-                    color: var(--text-muted);
-                    font-weight: 500;
-                }
-                .chip:hover { border-color: var(--accent-light); color: var(--text); }
-                .chip.active {
-                    background: rgba(124, 58, 237, 0.15);
-                    border-color: var(--accent);
-                    color: var(--accent-light);
-                    font-weight: 600;
-                }
-                .compact-ts-table { width: 100%; border-collapse: collapse; }
-                .compact-ts-table th {
-                    background: rgba(255,255,255,0.02);
-                    padding: 9px 12px;
-                    text-align: left;
-                    font-size: 10px;
-                    text-transform: uppercase;
-                    color: var(--text-dim);
-                    letter-spacing: 0.05em;
-                    font-weight: 700;
-                    border-bottom: 2px solid var(--border);
                     white-space: nowrap;
+                    text-transform: uppercase;
+                    letter-spacing: 0.05em;
                 }
-                .compact-ts-table td {
+                .employee-chip:hover {
+                    border-color: var(--accent);
+                    background: var(--accent-transparent);
+                    color: var(--text);
+                }
+                .employee-chip.active {
+                    background: var(--accent);
+                    border-color: var(--accent);
+                    color: white;
+                    box-shadow: 0 4px 12px var(--accent-transparent);
+                }
+
+                .premium-select {
+                    background: var(--bg-input);
+                    border: 1px solid var(--border);
+                    border-radius: 10px;
                     padding: 8px 12px;
-                    border-bottom: 1px solid var(--border);
-                    vertical-align: middle;
+                    font-weight: 600;
+                    color: var(--text);
+                    transition: all 0.2s;
+                    cursor: pointer;
                 }
-                .compact-ts-table tr:hover td { background: var(--bg-card-hover, rgba(255,255,255,0.02)); }
-                .feedback-input {
+                .premium-select:hover { border-color: var(--accent); }
+
+                .premium-input-sm {
                     width: 100%;
-                    font-size: 11px;
-                    padding: 5px 8px;
-                    background: rgba(124,58,237,0.04);
+                    background: rgba(255,255,255,0.03);
                     border: 1px solid var(--border);
                     border-radius: 6px;
+                    padding: 6px 10px;
+                    font-size: 11px;
                     color: var(--text);
                     outline: none;
-                    transition: border-color 0.2s;
+                    transition: all 0.2s;
                 }
-                .feedback-input:focus { border-color: var(--accent); background: rgba(124,58,237,0.08); }
-                .spinner-sm { width: 12px; height: 12px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; }
-                @keyframes spin { to { transform: rotate(360deg); } }
+                .premium-input-sm:focus { border-color: var(--accent); background: rgba(255,255,255,0.05); }
 
-                .btn-icon-ts {
-                    background: rgba(255, 255, 255, 0.03);
+                .btn-action {
+                    background: rgba(255,255,255,0.03);
                     border: 1px solid var(--border);
                     color: var(--text-dim);
-                    padding: 5px;
-                    border-radius: 6px;
+                    padding: 8px;
+                    border-radius: 8px;
                     cursor: pointer;
                     display: flex;
                     align-items: center;
                     justify-content: center;
                     transition: all 0.2s;
                 }
-                .btn-icon-ts:hover { background: rgba(255, 255, 255, 0.08); color: var(--text); border-color: var(--accent-light); }
-                .btn-icon-ts.active-pass { background: rgba(16, 185, 129, 0.2); color: #10b981; border-color: #10b981; }
-                .btn-icon-ts.active-fail { background: rgba(239, 68, 68, 0.2); color: #ef4444; border-color: #ef4444; }
+                .btn-action:hover { background: rgba(255, 255, 255, 0.08); color: var(--text); }
+                .btn-action.pass.active { background: #10b98120; color: #10b981; border-color: #10b981; }
+                .btn-action.fail.active { background: #ef444420; color: #ef4444; border-color: #ef4444; }
+
+                .badge-pill {
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    white-space: nowrap;
+                    border-radius: 100px;
+                }
+
+                .spinner-sm { width: 12px; height: 12px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; }
+                @keyframes spin { to { transform: rotate(360deg); } }
 
                 .modal-overlay {
                     position: fixed;

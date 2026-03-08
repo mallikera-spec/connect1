@@ -25,6 +25,7 @@ const DataTable = ({
     onPageChange,
     onLimitChange,
     onSortChange,
+    onRowClick,
     sortConfig: externalSortConfig
 }) => {
     const [internalSortConfig, setInternalSortConfig] = useState({ key: null, direction: 'asc' });
@@ -139,14 +140,16 @@ const DataTable = ({
                 <table className="standard-data-table" style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'auto' }}>
                     <thead>
                         <tr>
-                            <th style={{ width: '60px', textAlign: 'left', padding: '12px 16px' }}>S.No</th>
+                            <th style={{ width: '40px', textAlign: 'left', padding: '10px 12px', fontSize: '12px' }}>S.No</th>
                             {columns.map((col, idx) => (
                                 <th
                                     key={idx}
                                     style={{
                                         textAlign: 'left',
-                                        padding: '12px 16px',
-                                        whiteSpace: 'nowrap',
+                                        padding: '10px 12px',
+                                        fontSize: '12px',
+                                        width: col.width || 'auto',
+                                        whiteSpace: col.wrap ? 'normal' : 'nowrap',
                                         cursor: (col.sortable || col.key) ? 'pointer' : 'default',
                                         userSelect: 'none'
                                     }}
@@ -170,13 +173,25 @@ const DataTable = ({
                             paginatedData.map((item, index) => {
                                 const realIndex = (currentPage - 1) * itemsPerPage + index;
                                 return renderRow ? renderRow(item, realIndex) : (
-                                    <tr key={realIndex}>
-                                        <td style={{ padding: '12px 16px', fontSize: '12px', color: 'var(--text-dim)', width: '50px' }}>{realIndex + 1}</td>
+                                    <tr
+                                        key={realIndex}
+                                        onClick={() => onRowClick && onRowClick(item, realIndex)}
+                                        style={{ cursor: onRowClick ? 'pointer' : 'default' }}
+                                    >
+                                        <td style={{ padding: '10px 12px', fontSize: '12px', color: 'var(--text-dim)', width: '40px' }}>{realIndex + 1}</td>
                                         {columns.map((col, idx) => {
                                             const getVal = (obj, path) => path ? path.split('.').reduce((o, i) => (o ? o[i] : ''), obj) : '';
                                             const val = getVal(item, col.key);
                                             return (
-                                                <td key={idx} style={{ padding: '12px 16px', whiteSpace: 'nowrap', fontSize: '13px' }}>
+                                                <td
+                                                    key={idx}
+                                                    style={{
+                                                        padding: '10px 12px',
+                                                        whiteSpace: col.wrap ? 'normal' : 'nowrap',
+                                                        fontSize: '12px',
+                                                        width: col.width || 'auto'
+                                                    }}
+                                                >
                                                     {col.render ? col.render(val, item, realIndex) : (val || '--')}
                                                 </td>
                                             );

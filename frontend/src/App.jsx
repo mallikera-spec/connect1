@@ -28,17 +28,25 @@ import Leads from './features/sales/Leads'
 import FollowUps from './features/sales/FollowUps'
 import SalesDashboard from './features/sales/SalesDashboard'
 import BDMPerformance from './features/reports/BDMPerformance'
+import DeveloperPerformance from './features/reports/DeveloperPerformance'
+import DeveloperLeaderboard from './features/reports/DeveloperLeaderboard'
 import InteractionHistory from './features/sales/InteractionHistory'
 import HRDashboard from './features/hr/HRDashboard'
 import HRAdminPanel from './features/hr/HRAdminPanel'
 import PollsPage from './features/polls/PollsPage'
 import AttendanceReport from './features/reports/AttendanceReport'
+import DeveloperScoringCriteria from './features/reports/DeveloperScoringCriteria'
 import TesterPage from './features/dashboard/TesterPage'
 import TestingReports from './features/timesheets/TestingReports'
 import PoliciesPage from './features/hr/PoliciesPage'
 import LeaveTracker from './features/hr/LeaveTracker'
+import SalarySlips from './features/hr/SalarySlips'
+import HRAdminPayroll from './features/hr/HRAdminPayroll'
 import OurProjects from './features/marketing/OurProjects'
 import DeviceGuard from './components/DeviceGuard'
+
+import SettingsPage from './features/settings/SettingsPage'
+import FinanceOverview from './features/finance/FinanceOverview'
 
 function AdminLayout({ children }) {
   return (
@@ -61,8 +69,14 @@ export default function App() {
 
       {/* Always accessible to any logged-in user */}
       <Route path="/dashboard" element={<AdminLayout><DashboardPage /></AdminLayout>} />
+      <Route path="/settings" element={<AdminLayout><SettingsPage /></AdminLayout>} />
+
+      {/* Finance route */}
+      <Route path="/finance/overview" element={<AdminLayout><FinanceOverview /></AdminLayout>} />
+
       <Route path="/profile/:userId?" element={<AdminLayout><ProfilePage /></AdminLayout>} />
       <Route path="/polls" element={<AdminLayout><PollsPage /></AdminLayout>} />
+      <Route path="/developer-scoring-criteria" element={<AdminLayout><DeveloperScoringCriteria /></AdminLayout>} />
       <Route path="/attendance-report" element={<AdminLayout><AttendanceReport /></AdminLayout>} />
       <Route path="/tester-dashboard" element={<AdminLayout><PermissionGate perm="view_tasks" allowedRoles={['Tester', 'super_admin']}><TesterPage /></PermissionGate></AdminLayout>} />
       <Route path="/testing-todos" element={<AdminLayout><PermissionGate perm="view_timesheet" allowedRoles={['Tester', 'super_admin']}><TestingQueue /></PermissionGate></AdminLayout>} />
@@ -75,7 +89,7 @@ export default function App() {
         <AdminLayout><MyProjectsPage /></AdminLayout>
       } />
       <Route path="/projects" element={
-        <AdminLayout><PermissionGate perm="view_projects" allowedRoles={['Tester']}><ProjectsPage /></PermissionGate></AdminLayout>
+        <AdminLayout><PermissionGate perm="view_projects"><ProjectsPage /></PermissionGate></AdminLayout>
       } />
       <Route path="/projects/:id" element={
         <AdminLayout><PermissionGate perm="view_projects"><ProjectDetailPage /></PermissionGate></AdminLayout>
@@ -118,6 +132,12 @@ export default function App() {
       <Route path="/leave-tracker" element={
         <AdminLayout><LeaveTracker /></AdminLayout>
       } />
+      <Route path="/salary-slips" element={
+        <AdminLayout><SalarySlips /></AdminLayout>
+      } />
+      <Route path="/hr-payroll" element={
+        <AdminLayout><PermissionGate perm="manage_roles" excludeRoles={[]}><HRAdminPayroll /></PermissionGate></AdminLayout>
+      } />
 
       {/* Access Control */}
       <Route path="/roles" element={
@@ -142,6 +162,12 @@ export default function App() {
       } />
       <Route path="/bdm-performance" element={
         <AdminLayout><PermissionGate perm="view_leads" excludeRoles={['HR Manager']}><BDMPerformance /></PermissionGate></AdminLayout>
+      } />
+      <Route path="/developer-performance" element={
+        <AdminLayout><DeveloperPerformance /></AdminLayout>
+      } />
+      <Route path="/leaderboard" element={
+        <AdminLayout><DeveloperLeaderboard /></AdminLayout>
       } />
       <Route path="/interaction-history" element={
         <AdminLayout><PermissionGate perm="view_leads" excludeRoles={['HR Manager']}><InteractionHistory /></PermissionGate></AdminLayout>

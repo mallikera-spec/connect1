@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     Calendar, Search, Filter, Phone, Mail, Users, FileText,
     ChevronLeft, ChevronRight, Download, Clock, CheckCircle, Target, LayoutGrid, Eye
@@ -583,29 +583,29 @@ export default function InteractionHistory() {
                                 {isExpanded && group.items.map((it, itIdx) => (
                                     <tr key={it.id} style={{ background: 'rgba(255,255,255,0.01)' }}>
                                         <td style={{ textAlign: 'right', paddingRight: '12px', padding: '12px 16px' }}>
-                                            <span style={{ fontSize: '10px', opacity: 0.4, fontWeight: 800 }}>{index + 1}.{itIdx + 1}</span>
+                                            <span style={{ fontSize: '10px', color: 'var(--text-dim)', fontWeight: 800 }}>{index + 1}.{itIdx + 1}</span>
                                         </td>
                                         <td style={{ padding: '12px 16px' }}>
-                                            <div style={{ fontSize: '12px', opacity: 0.9 }}>
+                                            <div style={{ fontSize: '12px' }}>
                                                 {new Date(it.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                                <div style={{ fontSize: '10px', opacity: 0.5 }}>
+                                                <div style={{ fontSize: '10px', color: 'var(--text-dim)', marginTop: '2px' }}>
                                                     {new Date(it.created_at).toLocaleDateString([], { month: 'short', day: 'numeric' })}
                                                 </div>
                                             </div>
                                         </td>
                                         <td style={{ borderLeft: '2px solid var(--accent)', paddingLeft: '16px', padding: '12px 16px' }}>
-                                            <div style={{ fontSize: '11px', fontWeight: 800, color: 'var(--text-dim)', textTransform: 'uppercase', opacity: 0.6 }}>
+                                            <div style={{ fontSize: '11px', fontWeight: 800, color: 'var(--accent)', textTransform: 'uppercase' }}>
                                                 Log #{group.items.length - itIdx}
                                             </div>
                                         </td>
                                         <td style={{ padding: '12px 16px' }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', opacity: 0.9 }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                                 {getIcon(it.type)}
                                                 <span style={{ fontSize: '12px', fontWeight: 600 }}>{it.type}</span>
                                             </div>
                                         </td>
                                         <td style={{ padding: '12px 16px' }}>
-                                            <div style={{ maxWidth: '350px', fontSize: '12px', color: 'var(--text-muted)', lineHeight: '1.4', whiteSpace: 'pre-wrap' }}>
+                                            <div style={{ maxWidth: '350px', fontSize: '12px', color: 'var(--text)', lineHeight: '1.4', whiteSpace: 'pre-wrap' }}>
                                                 <ExpandableNote text={it.notes} />
                                             </div>
                                         </td>
@@ -624,11 +624,11 @@ export default function InteractionHistory() {
                                         </td>
                                         {isAdmin && (
                                             <td style={{ padding: '12px 16px' }}>
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', opacity: 0.8 }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                                                     <div className="avatar-xs-circle" style={{ width: '20px', height: '20px', fontSize: '9px' }}>
                                                         {it.agent?.full_name?.charAt(0)}
                                                     </div>
-                                                    <span style={{ fontSize: '12px' }}>{it.agent?.full_name}</span>
+                                                    <span style={{ fontSize: '12px', fontWeight: 600 }}>{it.agent?.full_name}</span>
                                                 </div>
                                             </td>
                                         )}

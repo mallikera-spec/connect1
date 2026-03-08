@@ -177,7 +177,12 @@ export default function EmployeeTimesheet() {
     const filteredEntries = useMemo(() => {
         return allEntries.filter(e => {
             if (filterProjectId && e.project_id !== filterProjectId) return false
-            if (statusFilter && e.status !== statusFilter) return false
+            if (statusFilter) {
+                if (statusFilter === 'completed' && !['done', 'verified', 'failed'].includes(e.status)) return false;
+                if (statusFilter === 'audited' && !['verified', 'failed'].includes(e.status)) return false;
+                if (statusFilter === 'pending_qa' && e.status !== 'done') return false;
+                if (!['completed', 'audited', 'pending_qa'].includes(statusFilter) && e.status !== statusFilter) return false;
+            }
             return true
         })
     }, [allEntries, filterProjectId, statusFilter])
@@ -304,6 +309,10 @@ export default function EmployeeTimesheet() {
                                     {['todo', 'in_progress', 'done', 'blocked', 'verified', 'failed'].map(s => (
                                         <option key={s} value={s}>{s.toUpperCase()}</option>
                                     ))}
+                                    <option disabled>──────</option>
+                                    <option value="completed">COMPLETED (All QA)</option>
+                                    <option value="audited">AUDITED (Pass/Fail)</option>
+                                    <option value="pending_qa">PENDING QA</option>
                                 </select>
                                 <div className="btn-group" style={{ display: 'none' }}>
                                     {/* DataTable already provides these */}

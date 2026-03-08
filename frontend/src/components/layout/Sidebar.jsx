@@ -4,12 +4,11 @@ import { useAuth } from '../../context/AuthContext'
 import {
     LayoutDashboard,
     Users, ShieldCheck, Key, Building2, Briefcase,
-    FolderKanban, ListTodo, BarChart3,
-    ChevronLeft, ChevronRight, LogOut,
-    UserCircle, Clock, Calendar, FileText, Sparkles, TrendingUp, Vote, Shield, Star
+    FolderKanban, ListTodo, BarChart3, LogOut,
+    UserCircle, Clock, Calendar, FileText, Sparkles, TrendingUp, Vote, Shield, Star, Award,
+    PieChart, CircleDollarSign, CreditCard, ChevronRight, ChevronLeft
 } from 'lucide-react'
 import toast from 'react-hot-toast'
-
 const NAV = [
     {
         section: 'Overview',
@@ -18,6 +17,7 @@ const NAV = [
             { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
             { to: '/polls', label: 'Polls', icon: Vote },
             { to: '/policies', label: 'ArgosMob Policies', icon: Shield },
+            { to: '/developer-scoring-criteria', label: 'Developer Scoring Criteria', icon: Star },
             { to: '/profile', label: 'My Profile', icon: UserCircle },
         ]
     },
@@ -26,11 +26,12 @@ const NAV = [
         icon: FolderKanban,
         sectionHideIfRole: ['BDM', 'bdm'],
         items: [
-            { to: '/projects', label: 'All Projects', perm: 'manage_projects', roles: ['Tester'], icon: FolderKanban },
+            { to: '/projects', label: 'All Projects', perm: 'manage_projects', icon: FolderKanban },
             { to: '/my-projects', label: 'My Projects', icon: FolderKanban },
             { to: '/tasks', label: 'Tasks by PM', perm: 'view_tasks', roles: ['Tester'], icon: ListTodo },
             { to: '/timesheet', label: 'Timesheet', perm: 'view_timesheet', icon: Clock },
-            { to: '/reports', label: 'Reports', perm: 'view_overall_report', icon: BarChart3 },
+            { to: '/developer-performance', label: 'Dev Performance', icon: TrendingUp },
+            { to: '/leaderboard', label: 'Leaderboard', icon: Award },
             { to: '/admin-dev-calendar', label: 'Developer Calendar', perm: 'view_employees', icon: Calendar },
         ]
     },
@@ -55,6 +56,8 @@ const NAV = [
             { to: '/departments', icon: Building2, label: 'Departments', perm: 'view_departments' },
             { to: '/designations', icon: Briefcase, label: 'Designations', perm: 'manage_designations' },
             { to: '/users', icon: Users, label: 'Employees', perm: 'view_employees' },
+            { to: '/hr-payroll', icon: CreditCard, label: 'Manage Payroll', perm: 'view_employees', roles: ['super_admin', 'director', 'Admin', 'HR Manager'] },
+            { to: '/salary-slips', icon: FileText, label: 'Salary Slips' },
         ]
     },
     {
@@ -73,6 +76,20 @@ const NAV = [
         ]
     },
     {
+        section: 'Reports',
+        icon: PieChart,
+        items: [
+            { to: '/reports', label: 'Reports', roles: ['admin', 'super_admin', 'director', 'investor'], icon: BarChart3 }
+        ]
+    },
+    {
+        section: 'Finance',
+        icon: CircleDollarSign,
+        items: [
+            { to: '/finance/overview', label: 'Overview', roles: ['admin', 'super_admin', 'director', 'investor'], icon: LayoutDashboard },
+        ]
+    },
+    {
         section: 'Access Control',
         icon: ShieldCheck,
         items: [
@@ -80,13 +97,21 @@ const NAV = [
             { to: '/permissions', icon: Key, label: 'Permissions', perm: 'manage_permissions' },
         ]
     },
+    {
+        section: 'Settings',
+        icon: Sparkles,
+        items: [
+            { to: '/settings', label: 'Themes', icon: Sparkles },
+            { action: 'logout', label: 'Sign out', icon: LogOut }
+        ]
+    }
 ]
 
 import { X } from 'lucide-react'
 
 export default function Sidebar({ mobileOpen, setMobileOpen }) {
     const [collapsed, setCollapsed] = useState(false)
-    const [expandedGroups, setExpandedGroups] = useState(['Overview', 'Project Management', 'Testing Module'])
+    const [expandedGroups, setExpandedGroups] = useState(['Overview'])
     const { logout, hasPermission, hasRole } = useAuth()
     const navigate = useNavigate()
     const isActuallyCollapsed = collapsed && !mobileOpen;
@@ -140,9 +165,9 @@ export default function Sidebar({ mobileOpen, setMobileOpen }) {
     return (
         <aside className={`sidebar${isActuallyCollapsed ? ' collapsed' : ''}${mobileOpen ? ' mobile-open' : ''}`}>
             <div className="sidebar-brand">
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
-                    <div className="brand-logo">R</div>
-                    <span className="brand-name">ArgosMob - Connect</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1, minWidth: 0 }}>
+                    <img src="/Argosmob logo-2.jpeg" alt="ArgosMob" style={{ width: 28, height: 28, borderRadius: 8, objectFit: 'cover', flexShrink: 0 }} />
+                    <span className="brand-name" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>ArgosMob - Connect</span>
                 </div>
 
                 {mobileOpen && (
@@ -178,8 +203,25 @@ export default function Sidebar({ mobileOpen, setMobileOpen }) {
 
                             {isExpanded && (
                                 <div className="sidebar-sub-menu">
-                                    {group.items.map(({ to, icon: Icon, label }) => {
-                                        const displayLabel = (label === 'BDM Performance' && hasRole('bdm')) ? 'My Performance' : label;
+                                    {group.items.map(({ to, icon: Icon, label, action }) => {
+                                        let displayLabel = label;
+                                        if (label === 'BDM Performance' && hasRole('bdm')) displayLabel = 'My Performance';
+                                        if (label === 'Dev Performance' && !hasPermission('view_reports')) displayLabel = 'My Performance';
+
+                                        if (action === 'logout') {
+                                            return (
+                                                <button
+                                                    key={`${group.section}-${label}`}
+                                                    className="nav-item sub-item"
+                                                    onClick={handleLogout}
+                                                    style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left', cursor: 'pointer' }}
+                                                >
+                                                    {Icon && <Icon size={16} />}
+                                                    <span>{displayLabel}</span>
+                                                </button>
+                                            );
+                                        }
+
                                         return (
                                             <NavLink
                                                 key={`${group.section}-${label}`}
@@ -199,10 +241,6 @@ export default function Sidebar({ mobileOpen, setMobileOpen }) {
             </nav>
 
             <div className="sidebar-footer">
-                <button className="nav-item" onClick={handleLogout} title="Sign out">
-                    <LogOut size={18} />
-                    <span>Sign out</span>
-                </button>
                 <button className="nav-item" onClick={() => setCollapsed(c => !c)} style={{ marginTop: 4 }}>
                     {isActuallyCollapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
                     <span>Collapse</span>
