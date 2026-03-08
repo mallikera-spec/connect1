@@ -288,9 +288,9 @@ export default function TestingTasks() {
                                             <span><strong>Dev:</strong> {selectedTask.assignee?.full_name}</span>
                                             <span><strong>Project:</strong> {selectedTask.project?.name}</span>
                                         </div>
-                                        {selectedTask.notes && (
+                                        {selectedTask.description && (
                                             <div style={{ fontSize: '12px', color: 'var(--text-muted)', background: 'rgba(255,255,255,0.02)', padding: '12px', borderRadius: '8px', border: '1px solid var(--border)', fontStyle: 'italic' }}>
-                                                {selectedTask.notes}
+                                                {selectedTask.description}
                                             </div>
                                         )}
                                     </div>

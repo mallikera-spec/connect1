@@ -316,18 +316,21 @@ export default function TestingQueue() {
                                             <span><strong>Project:</strong> {selectedEntry.project?.name || 'In-House'}</span>
                                         </div>
                                         {selectedEntry.notes && (
-                                            <div style={{ fontSize: '12px', color: 'var(--text-dim)', background: 'rgba(255,255,255,0.02)', padding: '12px', borderRadius: '8px', border: '1px solid var(--border)', fontStyle: 'italic', marginBottom: 8 }}>
-                                                <strong>Note:</strong> {selectedEntry.notes}
+                                            <div style={{ fontSize: '13px', color: 'var(--text-muted)', background: 'rgba(255,255,255,0.03)', padding: '16px', borderRadius: '8px', border: '1px solid var(--border)', fontStyle: 'italic', marginBottom: 12, lineHeight: '1.5' }}>
+                                                <strong style={{ display: 'block', fontSize: '10px', textTransform: 'uppercase', color: 'var(--accent)', marginBottom: 4, fontStyle: 'normal' }}>Developer Note:</strong>
+                                                {selectedEntry.notes}
                                             </div>
                                         )}
                                         {selectedEntry.developer_reply && (
-                                            <div style={{ fontSize: '12px', color: 'var(--accent-light)', background: 'rgba(59, 130, 246, 0.05)', padding: '12px', borderRadius: '8px', border: '1px solid rgba(59, 130, 246, 0.2)', marginBottom: 8 }}>
-                                                <strong>Reply:</strong> {selectedEntry.developer_reply}
+                                            <div style={{ fontSize: '13px', color: 'var(--accent-light)', background: 'rgba(59, 130, 246, 0.05)', padding: '16px', borderRadius: '8px', border: '1px solid rgba(59, 130, 246, 0.2)', marginBottom: 12, lineHeight: '1.5' }}>
+                                                <strong style={{ display: 'block', fontSize: '10px', textTransform: 'uppercase', color: 'var(--accent)', marginBottom: 4, fontStyle: 'normal' }}>Resubmit Reply:</strong>
+                                                {selectedEntry.developer_reply}
                                             </div>
                                         )}
                                         {selectedEntry.admin_feedback && (
-                                            <div style={{ fontSize: '12px', color: 'var(--warning)', background: 'rgba(245, 158, 11, 0.05)', padding: '12px', borderRadius: '8px', border: '1px solid rgba(245, 158, 11, 0.2)' }}>
-                                                <strong>Admin:</strong> {selectedEntry.admin_feedback}
+                                            <div style={{ fontSize: '13px', color: 'var(--warning)', background: 'rgba(245, 158, 11, 0.05)', padding: '16px', borderRadius: '8px', border: '1px solid rgba(245, 158, 11, 0.2)', lineHeight: '1.5' }}>
+                                                <strong style={{ display: 'block', fontSize: '10px', textTransform: 'uppercase', color: 'var(--warning)', marginBottom: 4, fontStyle: 'normal' }}>Admin Feedback:</strong>
+                                                {selectedEntry.admin_feedback}
                                             </div>
                                         )}
                                     </div>

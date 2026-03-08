@@ -647,7 +647,7 @@ export const getSalesMetrics = async (filters = {}) => {
         .select(`
             id, type, notes, completed_at, 
             lead:leads(id, name, company),
-            agent:users(id, full_name)
+            agent:profiles(id, full_name)
         `)
         .eq('status', 'Completed')
         .order('completed_at', { ascending: false })

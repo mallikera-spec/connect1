@@ -518,6 +518,11 @@ export default function TasksPage() {
                                 <p style={{ fontSize: 13, marginBottom: 12, color: 'var(--text-muted)' }}>
                                     Task: <strong>{selected.title}</strong>
                                 </p>
+                                {selected.description && (
+                                    <div style={{ fontSize: 12, color: 'var(--text-dim)', background: 'rgba(255,255,255,0.02)', padding: 12, borderRadius: 8, border: '1px solid var(--border)', marginBottom: 16, fontStyle: 'italic' }}>
+                                        {selected.description}
+                                    </div>
+                                )}
                                 <div className="form-group">
                                     <label className="form-label">QA Notes / Reason</label>
                                     <textarea
