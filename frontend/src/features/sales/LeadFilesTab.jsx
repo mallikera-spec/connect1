@@ -92,44 +92,46 @@ export default function LeadFilesTab({ leadId }) {
 
     const handleDownload = async (fileUrl, filename, fileId, fileType) => {
         try {
-            console.log(`[LeadFiles] Starting download for ${filename} (Type: ${fileType})`);
+            console.log(`[LeadFiles] Download Triggered for: ${filename}`);
             setFiles(prev => prev.map(f => f.id === fileId ? { ...f, downloading: true } : f));
 
-            let downloadUrl = fileUrl;
+            // 1. Sanitize the URL to remove any double slashes (except in http://)
+            let cleanUrl = fileUrl.replace(/([^:]\/)\/+/g, "$1");
 
-            // Cloudinary fl_attachment ONLY works for 'image' and 'video' resource types.
-            // If the URL contains /image/upload/ or /video/upload/, we can force download.
-            // PDFs are often treated as 'image' in Cloudinary.
+            // 2. Determine if we should force attachment (only for Images/PDFs)
+            let downloadUrl = cleanUrl;
+            const isCloudinary = cleanUrl.includes('cloudinary.com');
+            const canTransform = cleanUrl.includes('/image/upload/') || cleanUrl.includes('/video/upload/') || cleanUrl.includes('/upload/');
 
-            const isCloudinary = fileUrl.includes('cloudinary.com');
-            const isTransformable = fileUrl.includes('/image/upload/') || fileUrl.includes('/video/upload/');
-
-            if (isCloudinary && isTransformable) {
-                downloadUrl = fileUrl.replace('/upload/', '/upload/fl_attachment/');
-                console.log(`[LeadFiles] Applied Cloudinary download flag: ${downloadUrl}`);
-            } else {
-                console.log(`[LeadFiles] Using direct download link: ${downloadUrl}`);
+            if (isCloudinary && canTransform) {
+                // Construct the download URL by adding fl_attachment
+                // We do a very specific replacement to avoid breaking the URL
+                if (cleanUrl.includes('/upload/')) {
+                    downloadUrl = cleanUrl.replace('/upload/', '/upload/fl_attachment/');
+                }
             }
 
-            // Create a hidden temporary link
+            console.log(`[LeadFiles] Final Sanitized URL: ${downloadUrl}`);
+
+            // 3. Trigger the Browser download using a hidden link
+            // target="_blank" handles cross-origin better when fl_attachment is present
             const link = document.createElement('a');
             link.href = downloadUrl;
             link.setAttribute('download', filename);
             link.setAttribute('target', '_blank');
-            link.setAttribute('rel', 'noopener noreferrer'); // Security best practice
+            link.setAttribute('rel', 'noopener noreferrer');
             link.style.display = 'none';
             document.body.appendChild(link);
             link.click();
 
-            // Cleanup with a slight delay to ensure browser handles the click
             setTimeout(() => {
-                document.body.removeChild(link);
-            }, 100);
+                if (document.body.contains(link)) document.body.removeChild(link);
+            }, 1000);
 
-            toast.success('Download initiated');
+            toast.success('Download starting...');
         } catch (err) {
-            console.error('[LeadFiles] Download process failed:', err);
-            toast.error('Failed to trigger download');
+            console.error('[LeadFiles] Download Error:', err);
+            toast.error('Download failed');
         } finally {
             setTimeout(() => {
                 setFiles(prev => prev.map(f => f.id === fileId ? { ...f, downloading: false } : f));

@@ -36,29 +36,10 @@ export const uploadFile = async (req, res) => {
         // 2. Upload to Cloudinary using buffer
         const uploadFromBuffer = (fileBuffer) => {
             return new Promise((resolve, reject) => {
-                const originalName = file.originalname;
-                const extension = originalName.includes('.') ? originalName.split('.').pop().toLowerCase() : '';
-
-                // Determine resource_type for Cloudinary
-                // const isImage = ['jpg', 'jpeg', 'png', 'svg', 'webp', 'gif'].includes(extension);
-                // const isPdf = extension === 'pdf';
-                // const resourceType = isImage || isPdf ? 'image' : 'raw';
-
-                // Generate public_id
-                const baseName = (customFilename || originalName).split('.').slice(0, -1).join('.') || (customFilename || originalName);
-                const sanitizedBase = baseName.replace(/[^a-zA-Z0-9]/g, '_');
-
-                // For maximum reliability, we'll ALWAYS include the extension in the public_id
-                // Cloudinary 'auto' will determine the resource_type
-                const publicId = `${sanitizedBase}_${Date.now()}${extension ? '.' + extension : ''}`;
-
-                console.log(`[LeadFiles] Uploading: ${originalName} with public_id: ${publicId}`);
-
                 const uploadStream = cloudinary.uploader.upload_stream(
                     {
                         folder: `connect/leads/${leadId}`,
                         resource_type: 'auto',
-                        public_id: publicId,
                         use_filename: true,
                         unique_filename: true,
                     },
@@ -75,10 +56,14 @@ export const uploadFile = async (req, res) => {
         };
 
         const cloudinaryResult = await uploadFromBuffer(file.buffer);
-        console.log(`[LeadFiles] Cloudinary response:`, {
-            public_id: cloudinaryResult.public_id,
-            resource_type: cloudinaryResult.resource_type,
-            secure_url: cloudinaryResult.secure_url
+
+        // Sanitize URL to remove potential double slashes from Cloudinary response
+        const sanitizedUrl = cloudinaryResult.secure_url.replace(/([^:]\/)\/+/g, "$1");
+
+        console.log(`[LeadFiles] Cloudinary Success:`, {
+            url: sanitizedUrl,
+            res_type: cloudinaryResult.resource_type,
+            format: cloudinaryResult.format
         });
         console.log(`[LeadFiles] Successfully uploaded to Cloudinary: ${cloudinaryResult.secure_url}`);
 
