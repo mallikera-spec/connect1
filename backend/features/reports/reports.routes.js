@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getProjectReport, getProjectsReport, getUserReport, getOverallReport, getMyReport, getDeveloperCalendar, getEmployeeOverview, getHROverview } from './reports.controller.js';
+import { getProjectReport, getProjectsReport, getUserReport, getOverallReport, getMyReport, getDeveloperCalendar, getEmployeeOverview, getHROverview, askAIQuery } from './reports.controller.js';
 import { authMiddleware } from '../../middleware/auth.middleware.js';
 import { requirePermission } from '../../middleware/permission.middleware.js';
 
@@ -17,5 +17,7 @@ router.get('/overall', requirePermission('view_overall_report'), getOverallRepor
 router.get('/employee-overview', getEmployeeOverview);
 router.get('/hr-overview', requirePermission('view_employees'), getHROverview);
 router.get('/calendar', requirePermission('view_reports'), getDeveloperCalendar);
+
+router.post('/ai-query', requirePermission('view_reports'), askAIQuery);
 
 export default router;

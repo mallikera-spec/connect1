@@ -12,6 +12,7 @@ import DataTable from '../../components/common/DataTable'
 import DeveloperPerformance from './DeveloperPerformance'
 import BDMPerformance from './BDMPerformance'
 import DeveloperLeaderboard from './DeveloperLeaderboard'
+import ExecutiveBI from './ExecutiveBI'
 
 export default function ReportsPage() {
     const { hasPermission } = useAuth()
@@ -164,6 +165,11 @@ export default function ReportsPage() {
                     {users_allowed && (
                         <button className={`tab-btn${tab === 'leaderboard' ? ' active' : ''}`} onClick={() => setTab('leaderboard')}>
                             Leaderboard
+                        </button>
+                    )}
+                    {overall_allowed && (
+                        <button className={`tab-btn${tab === 'exec_bi' ? ' active' : ''}`} onClick={() => setTab('exec_bi')} style={{ color: 'var(--accent-light)', borderColor: 'var(--accent-light)' }}>
+                            ✨ Executive AI
                         </button>
                     )}
                 </div>
@@ -481,6 +487,13 @@ export default function ReportsPage() {
             {tab === 'leaderboard' && (
                 <div style={{ marginTop: '-16px' }}>
                     <DeveloperLeaderboard />
+                </div>
+            )}
+
+            {/* ── Executive AI ── */}
+            {tab === 'exec_bi' && (
+                <div style={{ marginTop: '-16px' }}>
+                    <ExecutiveBI />
                 </div>
             )}
         </div>

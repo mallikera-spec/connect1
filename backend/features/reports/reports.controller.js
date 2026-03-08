@@ -53,3 +53,20 @@ export const getHROverview = async (req, res) => {
     const data = await reportsService.getHROverview({ startDate, endDate });
     successResponse(res, data, 'HR overview generated');
 };
+
+import { executeAIQuery } from './reports.ai.service.js';
+
+export const askAIQuery = async (req, res) => {
+    try {
+        const { question } = req.body;
+        if (!question) {
+            return res.status(400).json({ success: false, message: 'Question is required' });
+        }
+
+        const data = await executeAIQuery(question);
+        successResponse(res, data, 'AI Query Executed Successfully');
+    } catch (error) {
+        console.error('askAIQuery Controller Error:', error);
+        res.status(500).json({ success: false, message: error.message || 'Failed to process AI query' });
+    }
+};
