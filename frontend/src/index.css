@@ -307,14 +307,14 @@ body {
 }
 
 .user-avatar {
-  width: 26px;
-  height: 26px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   background: var(--accent-gradient);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 700;
   color: #fff;
 }
@@ -430,19 +430,49 @@ body {
 table {
   width: 100%;
   border-collapse: collapse;
-  min-width: 800px;
-  /* Force minimum width to trigger scroll on small screens */
+  table-layout: auto;
+}
+
+.users-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  table-layout: auto;
+}
+
+.users-table th,
+.users-table td {
+  padding: 12px 16px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+
+.users-table td:first-child,
+.users-table td:nth-child(3),
+.users-table td:has(.status-badge) {
+  white-space: nowrap;
+  width: 1%;
+}
+
+.users-table th {
+  background: rgba(255, 255, 255, 0.02);
+  font-size: 11px;
+  text-transform: uppercase;
+  font-weight: 800;
+  color: var(--text-dim);
+  letter-spacing: 1px;
+  white-space: nowrap;
 }
 
 @media (max-width: 1024px) {
   table {
-    min-width: 700px;
+    min-width: 600px;
   }
 }
 
 @media (max-width: 768px) {
   table {
-    min-width: 600px;
+    min-width: 480px;
   }
 }
 
@@ -521,6 +551,18 @@ tbody td {
 .btn-ghost:hover {
   background: var(--bg-card);
   color: var(--text);
+}
+
+.btn-outline {
+  background: transparent;
+  color: var(--accent-light);
+  border-color: rgba(124, 58, 237, 0.4);
+}
+
+.btn-outline:hover {
+  background: rgba(124, 58, 237, 0.1);
+  border-color: var(--accent);
+  color: var(--accent-light);
 }
 
 .btn-danger {
@@ -645,42 +687,55 @@ tbody td {
   width: 220px;
 }
 
-/* ── Modal ── */
+/* ── Modal (Bottom-Sheet Style) ── */
 .modal-overlay {
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.7);
   backdrop-filter: blur(6px);
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: center;
   z-index: 1000;
-  padding: 20px;
-  animation: fadeIn 0.15s ease;
+  padding: 0;
+  animation: fadeIn 0.2s ease;
 }
 
 .modal {
   background: #12102a;
   border: 1px solid var(--border);
-  border-radius: 16px;
-  width: 100%;
-  max-width: 520px;
-  max-height: 90vh;
+  border-radius: 20px 20px 0 0;
+  width: 75%;
+  max-width: 75%;
+  height: 80vh;
   display: flex;
   flex-direction: column;
-  box-shadow: var(--shadow);
-  animation: slideUp 0.1s ease;
+  box-shadow: 0 -8px 40px rgba(0, 0, 0, 0.5);
+  animation: slideUpSheet 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   position: relative;
+  overflow: hidden;
+}
+
+@keyframes slideUpSheet {
+  from {
+    transform: translateY(100%);
+    opacity: 0.7;
+  }
+
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
 }
 
 @media (max-width: 768px) {
   .modal-overlay {
-    padding: 10px;
+    padding: 0;
   }
 
   .modal {
-    max-height: 95vh;
-    border-radius: 12px;
+    height: 85vh;
+    border-radius: 16px 16px 0 0;
   }
 
   .modal-header {
@@ -697,8 +752,13 @@ tbody td {
   }
 }
 
-.modal-lg {
-  max-width: 680px;
+/* When a form is a direct child of .modal, make it flex-fill so modal-body scrolls */
+.modal>form {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
+  min-height: 0;
 }
 
 .modal-header {
@@ -718,9 +778,31 @@ tbody td {
 .modal-body {
   padding: 24px;
   overflow-y: auto;
+  overflow-x: hidden;
   display: flex;
   flex-direction: column;
   gap: 16px;
+  flex: 1;
+  /* Custom scrollbar */
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+.modal-body::-webkit-scrollbar {
+  width: 6px;
+}
+
+.modal-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.modal-body::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
+
+.modal-body::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-light);
 }
 
 .modal-footer {
@@ -730,6 +812,7 @@ tbody td {
   padding: 16px 24px;
   border-top: 1px solid var(--border);
   flex-shrink: 0;
+  background: var(--bg-card);
 }
 
 /* ── Badges ── */
@@ -2132,7 +2215,7 @@ tbody td {
 
 .global-notification-modal .modal {
   max-width: 480px;
-  max-height: 600px;
+  height: 60vh;
 }
 
 .global-notification-modal .notifications-list {
@@ -2271,8 +2354,9 @@ tbody td {
   }
 
   .modal {
-    width: 95%;
-    max-height: 95vh;
+    max-width: 100%;
+    height: 90vh;
+    border-radius: 14px 14px 0 0;
   }
 }
 

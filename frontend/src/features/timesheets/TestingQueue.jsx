@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { ShieldCheck, AlertCircle, Clock, Search, Filter, CheckCircle2, X, Users, Briefcase } from 'lucide-react'
+import { ShieldCheck, AlertCircle, Clock, Search, Filter, CheckCircle2, X, Users, Briefcase, Download, FileText } from 'lucide-react'
 import api from '../../lib/api'
 import toast from 'react-hot-toast'
 import { useAuth } from '../../context/AuthContext'
@@ -14,7 +14,13 @@ const STATUS_BADGE = {
     failed: 'badge-red'
 }
 
-const fmt = (d) => d ? new Date(d).toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''
+const fmt = (d) => {
+    if (!d) return ''
+    // If it's a plain date (YYYY-MM-DD), parse as local time to avoid UTC midnight shift
+    const date = d.length === 10 ? new Date(d + 'T00:00:00') : new Date(d)
+    return date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+}
+
 
 export default function TestingQueue() {
     const { hasRole } = useAuth()
@@ -141,6 +147,26 @@ export default function TestingQueue() {
         }
     }
 
+    const handleExportCSV = () => {
+        if (!filtered.length) return
+        const headers = ['Date', 'Developer', 'Project', 'Title', 'Hours', 'Status']
+        const rows = filtered.map(e => [
+            e.date ? new Date(e.date + 'T00:00:00').toLocaleDateString() : '',
+            `"${e.userName || ''}"`,
+            `"${e.project?.name || 'In-House'}"`,
+            `"${e.title || ''}"`,
+            e.hours_spent || '',
+            e.status || ''
+        ])
+        const csv = [headers, ...rows].map(r => r.join(',')).join('\n')
+        const link = document.createElement('a')
+        link.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }))
+        link.download = `testing_queue_${new Date().toISOString().split('T')[0]}.csv`
+        link.click()
+    }
+
+    const handleExportPDF = () => window.print()
+
     return (
         <div className="page-content">
             <div className="page-header">
@@ -157,6 +183,8 @@ export default function TestingQueue() {
                             setEndDate(range.endDate);
                         }}
                     />
+                    <button className="btn btn-outline btn-sm" onClick={handleExportCSV} style={{ display: 'flex', alignItems: 'center', gap: 4 }}><Download size={14} /> CSV</button>
+                    <button className="btn btn-outline btn-sm" onClick={handleExportPDF} style={{ display: 'flex', alignItems: 'center', gap: 4 }}><FileText size={14} /> PDF</button>
                 </div>
             </div>
 

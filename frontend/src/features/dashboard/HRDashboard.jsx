@@ -60,7 +60,7 @@ export default function HRDashboard({ dateRange }) {
                             {stats.recent_hires.map(emp => (
                                 <div key={emp.id} style={{ display: 'flex', alignItems: 'center', gap: '12px', background: 'var(--bg-app)', padding: '16px', borderRadius: '8px', border: '1px solid var(--border)' }}>
                                     {emp.avatar_url ? (
-                                        <img src={emp.avatar_url} alt={emp.full_name} style={{ width: 40, height: 40, borderRadius: '50%', objectFit: 'cover' }} />
+                                        <img src={emp.avatar_url} alt={emp.full_name} style={{ width: 48, height: 48, borderRadius: '50%', objectFit: 'cover' }} />
                                     ) : (
                                         <div className="user-avatar" style={{ margin: 0, width: 40, height: 40 }}>{emp.full_name?.slice(0, 2).toUpperCase()}</div>
                                     )}

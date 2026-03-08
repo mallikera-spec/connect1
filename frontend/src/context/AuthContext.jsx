@@ -39,8 +39,9 @@ export function AuthProvider({ children }) {
     // Helper: check if the logged-in user has a specific permission
     const hasPermission = (perm) => {
         if (!user) return false
-        // Super admin always has access (role name check)
-        if (user.roles?.includes('super_admin')) return true
+        // Super admin & Directors always have full access
+        const superRoles = ['super_admin', 'super admin', 'director']
+        if (user.roles?.some(r => superRoles.includes((typeof r === 'string' ? r : r.name || '').toLowerCase()))) return true
         return user.permissions?.includes(perm) ?? false
     }
 

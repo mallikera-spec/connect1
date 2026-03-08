@@ -142,7 +142,7 @@ export default function LogFollowUpModal({ isOpen, onClose, leadId, onSuccess })
                             <label className="form-label">Notes & Outcome</label>
                             <textarea
                                 className="form-control"
-                                rows={4}
+                                rows={20}
                                 style={{ resize: 'none' }}
                                 placeholder="What was discussed? Next steps?"
                                 value={formData.notes}
@@ -152,7 +152,7 @@ export default function LogFollowUpModal({ isOpen, onClose, leadId, onSuccess })
                         </div>
                     </div>
 
-                    <div className="modal-footer" style={{ background: 'var(--bg-card)' }}>
+                    <div className="modal-footer">
                         <button type="button" className="btn btn-ghost" onClick={onClose} disabled={loading}>
                             Cancel
                         </button>

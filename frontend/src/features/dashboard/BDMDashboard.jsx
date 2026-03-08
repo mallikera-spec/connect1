@@ -4,11 +4,12 @@ import {
     TrendingUp, Users,
     ArrowUpRight, Target, ChevronRight,
     CalendarClock, PhoneCall, Mail, Presentation, FileText,
-    IndianRupee
+    IndianRupee, AlertCircle, Clock
 } from 'lucide-react';
 import { SalesService } from '../sales/SalesService';
 import { useAuth } from '../../context/AuthContext';
 import { EmployeeCard, AttendanceWidget } from './DashboardComponents';
+import LeadDetailsModal from '../sales/LeadDetailsModal';
 
 /**
  * BDMDashboard — Specialized view for Business Development Managers.
@@ -18,6 +19,7 @@ export default function BDMDashboard({ dateRange }) {
     const { user: currentUser } = useAuth();
     const [metrics, setMetrics] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [selectedLeadId, setSelectedLeadId] = useState(null);
 
     useEffect(() => {
         if (currentUser?.id) {
@@ -62,7 +64,7 @@ export default function BDMDashboard({ dateRange }) {
             <div className="stats-grid" style={{ marginBottom: '40px' }}>
                 <AttendanceWidget />
 
-                <div className="card polished-card stat-card-dashboard" onClick={() => handleStatClick('status', 'Proposal')}>
+                <div className="card polished-card stat-card-dashboard" onClick={() => handleStatClick('Proposal')}>
                     <div className="stat-icon-box" style={{ background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6' }}>
                         <Target size={24} />
                     </div>
@@ -75,7 +77,7 @@ export default function BDMDashboard({ dateRange }) {
                     </div>
                 </div>
 
-                <div className="card polished-card stat-card-dashboard" onClick={() => handleStatClick('status', 'Won')}>
+                <div className="card polished-card stat-card-dashboard" onClick={() => handleStatClick('Won')}>
                     <div className="stat-icon-box" style={{ background: 'rgba(34, 197, 94, 0.1)', color: '#22c55e' }}>
                         <IndianRupee size={24} />
                     </div>
@@ -88,7 +90,7 @@ export default function BDMDashboard({ dateRange }) {
                     </div>
                 </div>
 
-                <div className="card polished-card stat-card-dashboard">
+                <div className="card polished-card stat-card-dashboard" onClick={() => handleStatClick('Won')}>
                     <div className="stat-icon-box" style={{ background: 'rgba(124, 58, 237, 0.1)', color: '#7c3aed' }}>
                         <TrendingUp size={24} />
                     </div>
@@ -101,33 +103,48 @@ export default function BDMDashboard({ dateRange }) {
                     </div>
                 </div>
 
-                <div className="card polished-card stat-card-dashboard">
-                    <div className="stat-icon-box" style={{ background: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b' }}>
+                {/* Target vs Achievement Progress Card */}
+                <div className="card polished-card stat-card-dashboard" onClick={() => handleStatClick('Won')}>
+                    <div className="stat-icon-box" style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444' }}>
                         <Target size={24} />
                     </div>
-                    <div className="stat-content">
-                        <label>Monthly Target</label>
-                        <h3>Rs {(metrics?.monthlyTarget || 0).toLocaleString()}</h3>
-                        <div className="stat-footer">
-                            <span style={{ color: 'var(--text-dim)' }}>15x base salary</span>
+                    <div className="stat-content" style={{ flex: 1 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', width: '100%', marginBottom: 8 }}>
+                            <div>
+                                <label style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-dim)', display: 'block', marginBottom: 2 }}>Revenue vs Target</label>
+                                <h3 style={{ margin: 0, display: 'flex', alignItems: 'baseline', gap: 6 }}>
+                                    <span style={{ fontSize: 22, fontWeight: 800 }}>₹{(metrics?.wonValue || 0).toLocaleString()}</span>
+                                    <span style={{ fontSize: 13, color: 'var(--text-muted)', fontWeight: 600 }}>/ ₹{(metrics?.monthlyTarget || 0).toLocaleString()}</span>
+                                </h3>
+                            </div>
+                            <div style={{
+                                background: (metrics?.variance || 0) >= 0 ? 'rgba(34, 197, 94, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                                color: (metrics?.variance || 0) >= 0 ? '#22c55e' : '#ef4444',
+                                padding: '4px 8px', borderRadius: 6, fontSize: 12, fontWeight: 700, display: 'inline-block'
+                            }}>
+                                {(metrics?.variance || 0) >= 0 ? '+' : '-'} ₹{Math.abs(metrics?.variance || 0).toLocaleString()}
+                            </div>
                         </div>
-                    </div>
-                </div>
 
-                <div className="card polished-card stat-card-dashboard">
-                    <div className="stat-icon-box" style={{
-                        background: (metrics?.variance || 0) >= 0 ? 'rgba(34, 197, 94, 0.1)' : 'rgba(239, 68, 68, 0.1)',
-                        color: (metrics?.variance || 0) >= 0 ? '#22c55e' : '#ef4444'
-                    }}>
-                        <TrendingUp size={24} />
-                    </div>
-                    <div className="stat-content">
-                        <label>Variance</label>
-                        <h3 style={{ color: (metrics?.variance || 0) >= 0 ? 'var(--success)' : '#ef4444' }}>
-                            {(metrics?.variance || 0) >= 0 ? '+' : ''} Rs {(metrics?.variance || 0).toLocaleString()}
-                        </h3>
-                        <div className="stat-footer">
-                            <span style={{ color: 'var(--text-dim)' }}>vs Target</span>
+                        {/* Progress Bar Container */}
+                        <div style={{ width: '100%', height: 6, background: 'rgba(0,0,0,0.06)', borderRadius: 3, overflow: 'hidden', position: 'relative' }}>
+                            {(() => {
+                                const target = metrics?.monthlyTarget || 1;
+                                const achieved = metrics?.wonValue || 0;
+                                let percentage = (achieved / target) * 100;
+                                if (percentage > 100) percentage = 100;
+                                const color = (metrics?.variance || 0) >= 0 ? '#22c55e' : '#f59e0b';
+                                return (
+                                    <div style={{
+                                        position: 'absolute', left: 0, top: 0, height: '100%',
+                                        width: `${percentage}%`, background: color,
+                                        borderRadius: 3, transition: 'width 1s ease-in-out'
+                                    }} />
+                                );
+                            })()}
+                        </div>
+                        <div style={{ fontSize: 11, color: 'var(--text-dim)', textAlign: 'center', fontWeight: 600, marginTop: 6 }}>
+                            {metrics?.monthlyTarget ? Math.round(((metrics?.wonValue || 0) / metrics.monthlyTarget) * 100) : 0}% Achieved
                         </div>
                     </div>
                 </div>
@@ -160,32 +177,59 @@ export default function BDMDashboard({ dateRange }) {
                                     return (
                                         <div
                                             key={fu.id}
-                                            className="followup-item clickable-row"
-                                            onClick={() => navigate('/leads', { state: { leadId: fu.lead?.id } })}
-                                            style={{ display: 'flex', alignItems: 'flex-start', gap: '16px', padding: '16px 20px', borderBottom: '1px solid var(--border)' }}
+                                            className="followup-item"
+                                            onClick={() => setSelectedLeadId(fu.lead?.id)}
+                                            style={{
+                                                display: 'flex', alignItems: 'flex-start', gap: '14px',
+                                                padding: '14px 20px', borderBottom: '1px solid var(--border)',
+                                                cursor: 'pointer', transition: 'background 0.15s'
+                                            }}
+                                            onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-app)'}
+                                            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                                         >
+                                            {/* Icon Badge */}
                                             <div style={{
-                                                width: 40, height: 40, borderRadius: '10px',
-                                                background: isOverdue ? 'rgba(239,68,68,0.1)' : 'rgba(124,58,237,0.1)',
+                                                width: 38, height: 38, borderRadius: '10px', flexShrink: 0,
+                                                background: isOverdue ? 'rgba(239,68,68,0.12)' : 'rgba(124,58,237,0.12)',
                                                 color: isOverdue ? 'var(--danger)' : 'var(--accent-light)',
-                                                display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center'
                                             }}>
-                                                <Icon size={18} />
+                                                <Icon size={17} />
                                             </div>
-                                            <div style={{ flex: 1 }}>
-                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '4px' }}>
-                                                    <div style={{ fontWeight: 600, fontSize: '14px' }}>{fu.lead?.name}</div>
+
+                                            {/* Content */}
+                                            <div style={{ flex: 1, minWidth: 0 }}>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginBottom: 3 }}>
+                                                    <div style={{ fontWeight: 700, fontSize: '14px', color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                        {fu.lead?.name}
+                                                    </div>
+                                                    {fu.lead?.phone && (
+                                                        <div style={{ fontSize: '12px', color: 'var(--accent-light)', fontWeight: 600 }}>
+                                                            {fu.lead.phone}
+                                                        </div>
+                                                    )}
                                                     <div style={{
-                                                        fontSize: '11px', fontWeight: 600,
+                                                        fontSize: '11px', fontWeight: 600, whiteSpace: 'nowrap',
                                                         color: isOverdue ? 'var(--danger)' : 'var(--text-muted)',
                                                         background: isOverdue ? 'rgba(239,68,68,0.1)' : 'var(--bg-app)',
-                                                        padding: '4px 8px', borderRadius: '4px'
+                                                        padding: '3px 8px', borderRadius: 6,
+                                                        display: 'flex', alignItems: 'center', gap: 4
                                                     }}>
-                                                        {new Date(fu.scheduled_at).toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                                        {isOverdue && <AlertCircle size={10} />}
+                                                        <Clock size={10} />
+                                                        {new Date(fu.scheduled_at).toLocaleDateString([], { month: 'short', day: 'numeric' })}
+                                                        {' '}{new Date(fu.scheduled_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                                     </div>
                                                 </div>
-                                                <div style={{ fontSize: '12px', color: 'var(--text-dim)', opacity: 0.8 }}>
-                                                    {fu.notes || `Scheduled ${fu.type.toLowerCase()}`}
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                                    <span style={{
+                                                        fontSize: '10px', fontWeight: 700, textTransform: 'uppercase',
+                                                        background: 'rgba(124,58,237,0.1)', color: 'var(--accent-light)',
+                                                        padding: '2px 7px', borderRadius: 4, letterSpacing: '0.04em'
+                                                    }}>{fu.type}</span>
+                                                    <span style={{ fontSize: '12px', color: 'var(--text-dim)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                        {fu.notes || fu.lead?.company || '—'}
+                                                    </span>
                                                 </div>
                                             </div>
                                         </div>
@@ -225,6 +269,15 @@ export default function BDMDashboard({ dateRange }) {
                     />
                 </div>
             </div>
+
+            {/* Lead details — inline modal, no navigation */}
+            {selectedLeadId && (
+                <LeadDetailsModal
+                    leadId={selectedLeadId}
+                    onClose={() => setSelectedLeadId(null)}
+                    onSaved={fetchData}
+                />
+            )}
 
             <style>{`
                 .stats-grid {

@@ -376,7 +376,7 @@ export default function AdminTimesheet() {
                                         <td style={{ textAlign: 'right' }}>
                                             <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
                                                 {/* Tester Actions */}
-                                                {(hasRole('Tester') || hasRole('super_admin')) && (e.status === 'done' || e.status === 'verified' || e.status === 'failed') && (
+                                                {(hasRole('Tester') || hasRole('super_admin') || hasRole('director') || hasRole('Director')) && (e.status === 'done' || e.status === 'verified' || e.status === 'failed') && (
                                                     <>
                                                         <button
                                                             className={`btn-icon-ts ${e.status === 'verified' ? 'active-pass' : ''}`}
@@ -394,7 +394,7 @@ export default function AdminTimesheet() {
                                                         </button>
                                                     </>
                                                 )}
-                                                {hasRole('super_admin') && (
+                                                {(hasRole('super_admin') || hasRole('director') || hasRole('Director')) && (
                                                     <button
                                                         className="btn-icon-ts danger-hover"
                                                         onClick={() => handleDeleteEntry(e.id)}

@@ -24,7 +24,7 @@ export const uploadFile = async (req, res) => {
         return res.status(StatusCodes.NOT_FOUND).json({ success: false, message: 'Project not found' });
     }
 
-    const isSuperAdmin = req.user.roles?.includes('super_admin');
+    const isSuperAdmin = req.user.roles?.some(r => ['super_admin', 'director'].includes(r.toLowerCase()));
     const isProjectMember = project.project_members.some(m => m.user.id === req.user.id);
 
     if (!isSuperAdmin && !isProjectMember) {

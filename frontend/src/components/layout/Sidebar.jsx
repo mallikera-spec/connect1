@@ -24,10 +24,11 @@ const NAV = [
     {
         section: 'Project Management',
         icon: FolderKanban,
+        sectionHideIfRole: ['BDM', 'bdm'],
         items: [
             { to: '/projects', label: 'All Projects', perm: 'manage_projects', roles: ['Tester'], icon: FolderKanban },
             { to: '/my-projects', label: 'My Projects', icon: FolderKanban },
-            { to: '/tasks', label: 'Tasks', perm: 'view_tasks', roles: ['Tester'], icon: ListTodo },
+            { to: '/tasks', label: 'Tasks by PM', perm: 'view_tasks', roles: ['Tester'], icon: ListTodo },
             { to: '/timesheet', label: 'Timesheet', perm: 'view_timesheet', icon: Clock },
             { to: '/reports', label: 'Reports', perm: 'view_overall_report', icon: BarChart3 },
             { to: '/admin-dev-calendar', label: 'Developer Calendar', perm: 'view_employees', icon: Calendar },
@@ -37,17 +38,17 @@ const NAV = [
         section: 'Testing Module',
         icon: ShieldCheck,
         items: [
-            { to: '/tester-dashboard', label: 'Tester Dashboard', roles: ['Tester', 'super_admin'], icon: LayoutDashboard },
-            { to: '/testing-reports', label: 'Testing Reports', roles: ['Tester', 'super_admin'], icon: BarChart3 },
-            { to: '/testing-todos', label: 'Testing Todos', roles: ['Tester', 'super_admin'], icon: ShieldCheck },
-            { to: '/testing-tasks', label: 'Testing Tasks', roles: ['Tester', 'super_admin'], icon: ListTodo },
+            { to: '/tester-dashboard', label: 'Tester Dashboard', roles: ['Tester', 'super_admin', 'director'], icon: LayoutDashboard },
+            { to: '/testing-reports', label: 'Testing Reports', roles: ['Tester', 'super_admin', 'director'], icon: BarChart3 },
+            { to: '/testing-todos', label: 'Testing Todos', roles: ['Tester', 'super_admin', 'director'], icon: ShieldCheck },
+            { to: '/testing-tasks', label: 'Testing Tasks', roles: ['Tester', 'super_admin', 'director'], icon: ListTodo },
         ]
     },
     {
         section: 'HR & Operations',
         icon: Users,
         items: [
-            { to: '/hr-dashboard', icon: Clock, label: 'My HR', hideIfRole: ['super_admin'] },
+            { to: '/hr-dashboard', icon: Clock, label: 'My HR', hideIfRole: ['super_admin', 'director', 'Director'] },
             { to: '/hr-admin', icon: Briefcase, label: 'HR Admin', perm: 'view_employees' },
             { to: '/leave-tracker', icon: Calendar, label: 'Leave Tracker' },
             { to: '/attendance-report', icon: FileText, label: 'Attendance Report' },
@@ -105,6 +106,11 @@ export default function Sidebar({ mobileOpen, setMobileOpen }) {
 
     // Filter groups: keep only items the user can access, drop empty groups
     const visibleNav = NAV
+        .filter(group => {
+            // Hide entire section if user has a restricted role
+            if (group.sectionHideIfRole && group.sectionHideIfRole.some(r => hasRole(r))) return false;
+            return true;
+        })
         .map(group => ({
             ...group,
             items: group.items.filter(item => {

@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getProjectReport, getUserReport, getOverallReport, getMyReport, getDeveloperCalendar, getEmployeeOverview, getHROverview } from './reports.controller.js';
+import { getProjectReport, getProjectsReport, getUserReport, getOverallReport, getMyReport, getDeveloperCalendar, getEmployeeOverview, getHROverview } from './reports.controller.js';
 import { authMiddleware } from '../../middleware/auth.middleware.js';
 import { requirePermission } from '../../middleware/permission.middleware.js';
 
@@ -11,6 +11,7 @@ router.get('/me', getMyReport);
 
 // Granular permissions
 router.get('/project/:id', requirePermission('view_project_report'), getProjectReport);
+router.get('/projects', requirePermission('view_project_report'), getProjectsReport);
 router.get('/user/:id', requirePermission('view_user_report'), getUserReport);
 router.get('/overall', requirePermission('view_overall_report'), getOverallReport);
 router.get('/employee-overview', requirePermission('view_overall_report'), getEmployeeOverview);

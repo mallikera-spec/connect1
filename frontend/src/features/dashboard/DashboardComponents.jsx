@@ -149,22 +149,37 @@ export function EmployeeCard({ employee, isAdminView, currentRange }) {
                         <div className="metric-lbl">Quotations (Req)</div>
                     </div>
 
-                    <div className="metric-box">
-                        <div className="metric-val" style={{ fontSize: '12px' }}>
-                            ₹{Math.round((employee.sales_stats.monthly_target || 0) / 1000)}k
+                    <div
+                        style={{ gridColumn: 'span 3', padding: '8px 12px', background: 'var(--bg-app)', borderRadius: 8, marginTop: 8, cursor: 'pointer' }}
+                        onClick={(e) => { e.stopPropagation(); navigate('/leads', { state: { agent: employee.id, status: 'Won', startDate: currentRange?.startDate, endDate: currentRange?.endDate } }); }}
+                    >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                            <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase' }}>Target Achievement</div>
+                            <div style={{ fontSize: 11, fontWeight: 600, color: (employee.sales_stats.variance || 0) >= 0 ? 'var(--success)' : '#ef4444' }}>
+                                {(employee.sales_stats.variance || 0) >= 0 ? '+' : '-'}
+                                ₹{Math.round(Math.abs(employee.sales_stats.variance || 0) / 1000)}k variance
+                            </div>
                         </div>
-                        <div className="metric-lbl">Monthly Target</div>
-                    </div>
-
-                    <div className="metric-box">
-                        <div className="metric-val" style={{
-                            fontSize: '12px',
-                            color: (employee.sales_stats.variance || 0) >= 0 ? 'var(--success)' : '#ef4444'
-                        }}>
-                            {(employee.sales_stats.variance || 0) >= 0 ? '+' : ''}
-                            ₹{Math.round((employee.sales_stats.variance || 0) / 1000)}k
+                        <div style={{ width: '100%', height: 6, background: 'rgba(0,0,0,0.05)', borderRadius: 3, overflow: 'hidden', position: 'relative' }}>
+                            {(() => {
+                                const target = employee.sales_stats.monthly_target || 1;
+                                const achieved = employee.sales_stats.won_value || 0;
+                                let percentage = (achieved / target) * 100;
+                                if (percentage > 100) percentage = 100;
+                                const color = (employee.sales_stats.variance || 0) >= 0 ? '#22c55e' : '#f59e0b';
+                                return (
+                                    <div style={{
+                                        position: 'absolute', left: 0, top: 0, height: '100%',
+                                        width: `${percentage}%`, background: color,
+                                        borderRadius: 3
+                                    }} />
+                                );
+                            })()}
                         </div>
-                        <div className="metric-lbl">Variance</div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4 }}>
+                            <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>₹{Math.round((employee.sales_stats.won_value || 0) / 1000)}k</span>
+                            <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>₹{Math.round((employee.sales_stats.monthly_target || 0) / 1000)}k (Target)</span>
+                        </div>
                     </div>
                 </div>
             )}
@@ -244,7 +259,8 @@ export function EmployeeCard({ employee, isAdminView, currentRange }) {
                         )
                     }
                 </div>
-            )}
+            )
+            }
 
             <div style={{ marginTop: '12px', flex: 1, display: 'flex', flexDirection: 'column' }}>
                 <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-dim)', textTransform: 'uppercase', marginBottom: '8px', letterSpacing: '0.5px' }}>
@@ -287,7 +303,7 @@ export function EmployeeCard({ employee, isAdminView, currentRange }) {
                     </div>
                 )}
             </div>
-        </div>
+        </div >
     );
 }
 
@@ -381,7 +397,7 @@ export function AttendanceWidget() {
     const [currentTime, setCurrentTime] = useState(new Date());
     const [loading, setLoading] = useState(true);
 
-    const isSuperAdmin = hasRole('super_admin') || hasRole('Super Admin');
+    const isSuperAdmin = hasRole('super_admin') || hasRole('Super Admin') || hasRole('director') || hasRole('Director');
 
     useEffect(() => {
         if (isSuperAdmin) {

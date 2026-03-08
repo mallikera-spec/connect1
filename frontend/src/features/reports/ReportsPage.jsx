@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { Calendar } from 'lucide-react'
 import api from '../../lib/api'
@@ -9,11 +10,12 @@ import { getISTMonthStartString, getISTTodayString } from '../../lib/dateUtils'
 
 export default function ReportsPage() {
     const { hasPermission } = useAuth()
+    const navigate = useNavigate()
     const [tab, setTab] = useState('')
     const [overall, setOverall] = useState(null)
 
     const [projects, setProjects] = useState([])
-    const [selectedProject, setSelectedProject] = useState('')
+    const [selectedProjectIds, setSelectedProjectIds] = useState([])
     const [projectReport, setProjectReport] = useState(null)
 
     const [users, setUsers] = useState([])
@@ -27,6 +29,9 @@ export default function ReportsPage() {
     const projects_allowed = hasPermission('view_project_report')
     const users_allowed = hasPermission('view_user_report')
     const overall_allowed = hasPermission('view_overall_report')
+    const bdm_allowed = hasPermission('view_leads')
+
+    const [employeeOverview, setEmployeeOverview] = useState(null)
 
     const [dateRange, setDateRange] = useState({
         startDate: getISTMonthStartString(),
@@ -43,6 +48,7 @@ export default function ReportsPage() {
     useEffect(() => {
         // Default tab selection
         if (overall_allowed) setTab('overall')
+        else if (bdm_allowed) setTab('bdm')
         else if (projects_allowed) setTab('project')
         else if (users_allowed) setTab('user')
 
@@ -52,15 +58,27 @@ export default function ReportsPage() {
 
     useEffect(() => {
         loadOverall()
-        if (selectedProject) loadProjectReport()
+        if (bdm_allowed) loadEmployeeOverview()
+        if (selectedProjectIds.length > 0) loadProjectReport()
         if (selectedUser) loadUserReport()
-    }, [dateRange, loadOverall])
+    }, [dateRange, loadOverall, bdm_allowed])
+
+    const loadEmployeeOverview = () => {
+        api.get('/reports/employee-overview', { params: dateRange })
+            .then(res => setEmployeeOverview(res.data.data))
+            .catch(() => { })
+    }
 
     const loadProjectReport = async () => {
-        if (!selectedProject) return
+        if (selectedProjectIds.length === 0) return
         setLoading(true)
         try {
-            const r = await api.get(`/reports/project/${selectedProject}`, { params: dateRange });
+            const r = await api.get('/reports/projects', {
+                params: {
+                    ...dateRange,
+                    ids: selectedProjectIds.join(',')
+                }
+            });
             setProjectReport(r.data.data)
         }
         catch (err) { toast.error(err.message) }
@@ -88,12 +106,20 @@ export default function ReportsPage() {
 
     return (
         <div>
-            <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px', marginBottom: '24px' }}>
-                <div>
-                    <h1>Reports</h1>
-                    <p>Hours logged, task completion, and team performance</p>
+            <div className="page-header" style={{ marginBottom: '24px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px' }}>
+                    <div>
+                        <h1>Reports</h1>
+                        <p>Aggregated metrics and performance insights</p>
+                    </div>
                 </div>
+            </div>
 
+            <div className="card" style={{ marginBottom: 24, padding: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-surface)', border: '1px solid var(--accent-light)', opacity: 0.9 }}>
+                <div>
+                    <h4 style={{ margin: 0, fontSize: '14px', fontWeight: 700, color: 'var(--accent-light)' }}>DATE RANGE FILTER</h4>
+                    <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-dim)' }}>Select period for all report tabs</p>
+                </div>
                 <DateRangePicker
                     startDate={dateRange.startDate}
                     endDate={dateRange.endDate}
@@ -110,12 +136,17 @@ export default function ReportsPage() {
                     )}
                     {projects_allowed && (
                         <button className={`tab-btn${tab === 'project' ? ' active' : ''}`} onClick={() => setTab('project')}>
-                            Project
+                            Projects
                         </button>
                     )}
                     {users_allowed && (
                         <button className={`tab-btn${tab === 'user' ? ' active' : ''}`} onClick={() => setTab('user')}>
                             User
+                        </button>
+                    )}
+                    {bdm_allowed && (
+                        <button className={`tab-btn${tab === 'bdm' ? ' active' : ''}`} onClick={() => setTab('bdm')}>
+                            BDM Performance
                         </button>
                     )}
                 </div>
@@ -157,17 +188,67 @@ export default function ReportsPage() {
             {/* ── Project Report ── */}
             {tab === 'project' && (
                 <div>
-                    <div className="card" style={{ display: 'flex', gap: 12, alignItems: 'flex-end', marginBottom: 20 }}>
-                        <div className="form-group" style={{ flex: 1 }}>
-                            <label className="form-label">Select Project</label>
-                            <select className="form-select" value={selectedProject} onChange={e => setSelectedProject(e.target.value)}>
-                                <option value="">Choose…</option>
-                                {(projects || []).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                            </select>
+                    <div className="card" style={{ marginBottom: 20 }}>
+                        <div className="form-group">
+                            <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                <span>SELECT PROJECTS</span>
+                                <button
+                                    className="btn-text"
+                                    onClick={() => {
+                                        if (selectedProjectIds.length === projects.length) setSelectedProjectIds([])
+                                        else setSelectedProjectIds(projects.map(p => p.id))
+                                    }}
+                                    style={{ fontSize: 11, cursor: 'pointer' }}
+                                >
+                                    {selectedProjectIds.length === projects.length ? 'Deselect All' : 'Select All'}
+                                </button>
+                            </label>
+
+                            <div style={{
+                                display: 'grid',
+                                gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+                                gap: '10px',
+                                maxHeight: '350px',
+                                overflowY: 'auto',
+                                padding: '16px',
+                                background: 'var(--bg-app)',
+                                borderRadius: '12px',
+                                border: '2px solid var(--border)',
+                                boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.05)'
+                            }}>
+                                {(projects || []).map(p => (
+                                    <label key={p.id} style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '12px',
+                                        fontSize: '14px',
+                                        cursor: 'pointer',
+                                        padding: '10px 12px',
+                                        borderRadius: '8px',
+                                        transition: 'all 0.2s',
+                                        background: selectedProjectIds.includes(p.id) ? 'rgba(var(--accent-rgb), 0.1)' : 'transparent',
+                                        border: `1px solid ${selectedProjectIds.includes(p.id) ? 'var(--accent-light)' : 'transparent'}`
+                                    }}>
+                                        <input
+                                            type="checkbox"
+                                            style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                                            checked={selectedProjectIds.includes(p.id)}
+                                            onChange={e => {
+                                                if (e.target.checked) setSelectedProjectIds(prev => [...prev, p.id])
+                                                else setSelectedProjectIds(prev => prev.filter(id => id !== p.id))
+                                            }}
+                                        />
+                                        <span className="text-truncate" style={{ fontWeight: selectedProjectIds.includes(p.id) ? 600 : 400 }}>{p.name}</span>
+                                    </label>
+                                ))}
+                            </div>
                         </div>
-                        <button className="btn btn-primary" onClick={loadProjectReport} disabled={!selectedProject || loading}>
-                            {loading ? <span className="spinner" style={{ width: 16, height: 16 }} /> : 'Generate'}
-                        </button>
+
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 12 }}>
+                            <button className="btn btn-primary" onClick={loadProjectReport} disabled={selectedProjectIds.length === 0 || loading}>
+                                {loading ? <span className="spinner" style={{ width: 16, height: 16 }} /> : 'Generate Aggregated Report'}
+                            </button>
+                        </div>
                     </div>
 
                     {projectReport && (
@@ -194,7 +275,7 @@ export default function ReportsPage() {
                                             <thead style={{ background: 'rgba(var(--accent-rgb), 0.05)' }}>
                                                 <tr>
                                                     <th>Developer</th>
-                                                    <th className="text-right">Hours</th>
+                                                    <th className="text-right">Man-Hours</th>
                                                     <th className="text-right">Rate (₹/h)</th>
                                                     <th className="text-right">Cost</th>
                                                 </tr>
@@ -239,6 +320,7 @@ export default function ReportsPage() {
                                     <thead style={{ background: 'rgba(var(--accent-rgb), 0.05)' }}>
                                         <tr>
                                             <th>Task</th>
+                                            {selectedProjectIds.length > 1 && <th>Project</th>}
                                             <th>Assignee</th>
                                             <th>Status</th>
                                             <th className="text-right">Est (h)</th>
@@ -257,6 +339,9 @@ export default function ReportsPage() {
                                                     className="hover-row"
                                                 >
                                                     <td style={{ fontSize: 13, fontWeight: 500 }}>{t.title}</td>
+                                                    {selectedProjectIds.length > 1 && (
+                                                        <td style={{ fontSize: 12, color: 'var(--text-muted)' }}>{t.project?.name || '—'}</td>
+                                                    )}
                                                     <td style={{ fontSize: 12, color: 'var(--text-muted)' }}>{t.assignee?.full_name || '—'}</td>
                                                     <td><span className={`badge ${STATUS_BADGE[t.status] || 'badge-gray'}`}>{t.status?.replace('_', ' ')}</span></td>
                                                     <td className="text-right" style={{ fontSize: 12 }}>{t.estimated_hours || '—'}</td>
@@ -383,6 +468,69 @@ export default function ReportsPage() {
                                 </table>
                             </div>
                         </>
+                    )}
+                </div>
+            )}
+
+            {/* ── BDM Performance Report ── */}
+            {tab === 'bdm' && (
+                <div>
+                    {!employeeOverview ? (
+                        <div className="page-loader"><div className="spinner" /></div>
+                    ) : (
+                        <div className="table-wrapper">
+                            <table>
+                                <thead style={{ background: 'rgba(var(--accent-rgb), 0.05)' }}>
+                                    <tr>
+                                        <th>BDM Name</th>
+                                        <th className="text-right">Period Target</th>
+                                        <th className="text-right">Revenue Achieved</th>
+                                        <th className="text-right">Variance</th>
+                                        <th className="text-center">Conv. %</th>
+                                        <th className="text-center">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {Object.values(employeeOverview)
+                                        .flat()
+                                        .filter(u => u.sales_stats)
+                                        .map(u => (
+                                            <tr key={u.id} className="hover-row">
+                                                <td>
+                                                    <div style={{ fontWeight: 600 }}>{u.full_name}</div>
+                                                    <div style={{ fontSize: 11, color: 'var(--text-dim)' }}>{u.designation}</div>
+                                                </td>
+                                                <td className="text-right" style={{ fontWeight: 600, cursor: 'pointer', color: 'var(--accent)' }} onClick={() => navigate(`/leads?agent=${u.id}&startDate=${dateRange.startDate}&endDate=${dateRange.endDate}`)}>
+                                                    ₹{u.sales_stats.monthly_target?.toLocaleString()}
+                                                </td>
+                                                <td className="text-right" style={{ color: 'var(--success)', fontWeight: 700, cursor: 'pointer' }} onClick={() => navigate(`/leads?agent=${u.id}&status=Won&startDate=${dateRange.startDate}&endDate=${dateRange.endDate}`)}>
+                                                    ₹{u.sales_stats.won_value?.toLocaleString()}
+                                                </td>
+                                                <td className="text-right" style={{
+                                                    color: u.sales_stats.variance >= 0 ? 'var(--success)' : 'var(--danger)',
+                                                    fontWeight: 600,
+                                                    cursor: 'pointer'
+                                                }} onClick={() => navigate(`/leads?agent=${u.id}&status=Won&startDate=${dateRange.startDate}&endDate=${dateRange.endDate}`)}>
+                                                    {u.sales_stats.variance >= 0 ? '+' : '-'}₹{Math.abs(u.sales_stats.variance).toLocaleString()}
+                                                </td>
+                                                <td className="text-center">
+                                                    <div className={`badge ${u.sales_stats.conversion_rate > 15 ? 'badge-green' : 'badge-yellow'}`} style={{ fontSize: 12 }}>
+                                                        {u.sales_stats.conversion_rate?.toFixed(1)}%
+                                                    </div>
+                                                </td>
+                                                <td className="text-center">
+                                                    <button
+                                                        className="btn btn-primary btn-sm"
+                                                        onClick={() => toast.success(`Performance appraisal context ready for ${u.full_name}`)}
+                                                    >
+                                                        Appraisal
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                </tbody>
+                            </table>
+                        </div>
                     )}
                 </div>
             )}

@@ -3,11 +3,17 @@ import { X, Save } from 'lucide-react';
 import { SalesService } from './SalesService';
 import api from '../../lib/api';
 import toast from 'react-hot-toast';
+import { useAuth } from '../../context/AuthContext';
 
 /**
  * EditLeadModal — Form for modifying existing lead details.
  */
 export default function EditLeadModal({ leadId, onClose, onSaved }) {
+    const { user: currentUser } = useAuth();
+    const userRoles = currentUser?.roles?.map(r => typeof r === 'string' ? r.toLowerCase() : r.name?.toLowerCase()).filter(Boolean) || [];
+    const isAdmin = userRoles.some(r => r && (r.includes('admin') || r.includes('manager') || r.includes('lead')));
+    const isBDM = !isAdmin;
+
     const [formData, setFormData] = useState(null);
     const [agents, setAgents] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -130,6 +136,25 @@ export default function EditLeadModal({ leadId, onClose, onSaved }) {
                                     onChange={e => setFormData(p => ({ ...p, phone: e.target.value }))}
                                 />
                             </div>
+
+                            <div className="form-group">
+                                <label className="form-label">Alt Phone Number</label>
+                                <input
+                                    className="form-control"
+                                    placeholder="+1 (555) 000-0001"
+                                    value={formData.alt_phone || ''}
+                                    onChange={e => setFormData(p => ({ ...p, alt_phone: e.target.value }))}
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label">Client Location</label>
+                                <input
+                                    className="form-control"
+                                    placeholder="e.g. Mumbai, Delhi, Bangalore"
+                                    value={formData.location || ''}
+                                    onChange={e => setFormData(p => ({ ...p, location: e.target.value }))}
+                                />
+                            </div>
                         </div>
 
                         <div className="form-row">
@@ -186,22 +211,24 @@ export default function EditLeadModal({ leadId, onClose, onSaved }) {
                             </div>
                         </div>
 
-                        <div className="form-group">
-                            <label className="form-label">Assign Agent</label>
-                            <select
-                                className="form-control"
-                                value={formData.assigned_agent_id || ''}
-                                onChange={e => setFormData(p => ({ ...p, assigned_agent_id: e.target.value }))}
-                            >
-                                <option value="">Unassigned</option>
-                                {agents.map(agent => (
-                                    <option key={agent.id} value={agent.id}>{agent.full_name}</option>
-                                ))}
-                            </select>
-                        </div>
+                        {!isBDM && (
+                            <div className="form-group">
+                                <label className="form-label">Assign Agent</label>
+                                <select
+                                    className="form-control"
+                                    value={formData.assigned_agent_id || ''}
+                                    onChange={e => setFormData(p => ({ ...p, assigned_agent_id: e.target.value }))}
+                                >
+                                    <option value="">Unassigned</option>
+                                    {agents.map(agent => (
+                                        <option key={agent.id} value={agent.id}>{agent.full_name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        )}
                     </div>
 
-                    <div className="modal-footer" style={{ background: 'var(--bg-card)' }}>
+                    <div className="modal-footer">
                         <button type="button" className="btn btn-ghost" onClick={onClose} disabled={isSaving}>Cancel</button>
                         <button type="submit" className="btn btn-primary" disabled={isSaving}>
                             {isSaving ? 'Saving...' : <><Save size={16} /> Update Lead</>}

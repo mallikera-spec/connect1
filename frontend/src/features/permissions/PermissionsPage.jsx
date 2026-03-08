@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Plus, Trash2, X } from 'lucide-react'
+import { Plus, Trash2, X, Download, FileText } from 'lucide-react'
 import api from '../../lib/api'
 import toast from 'react-hot-toast'
 
@@ -39,11 +39,28 @@ export default function PermissionsPage() {
         finally { setSaving(false) }
     }
 
+    const handleExportCSV = () => {
+        if (!permissions.length) return
+        const headers = ['Name', 'Description']
+        const rows = permissions.map(p => [`"${p.name}"`, `"${p.description || ''}"`])
+        const csv = [headers, ...rows].map(r => r.join(',')).join('\n')
+        const link = document.createElement('a')
+        link.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }))
+        link.download = `permissions_${new Date().toISOString().split('T')[0]}.csv`
+        link.click()
+    }
+
+    const handleExportPDF = () => window.print()
+
     return (
         <div>
             <div className="page-header">
                 <div><h1>Permissions</h1><p>Define granular permission slugs for your RBAC system</p></div>
-                <button className="btn btn-primary" onClick={openCreate}><Plus size={16} />New Permission</button>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <button className="btn btn-outline btn-sm" onClick={handleExportCSV} style={{ display: 'flex', alignItems: 'center', gap: 4 }}><Download size={14} /> CSV</button>
+                    <button className="btn btn-outline btn-sm" onClick={handleExportPDF} style={{ display: 'flex', alignItems: 'center', gap: 4 }}><FileText size={14} /> PDF</button>
+                    <button className="btn btn-primary" onClick={openCreate}><Plus size={16} />New Permission</button>
+                </div>
             </div>
 
             <div className="table-wrapper">

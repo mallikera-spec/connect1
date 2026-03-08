@@ -5,7 +5,7 @@ import { successResponse } from '../../utils/apiResponse.js';
 import { StatusCodes } from 'http-status-codes';
 
 export const createTask = async (req, res) => {
-    const isAdmin = req.user.roles?.some(r => ['super_admin', 'project_manager', 'hr', 'tester'].includes(r.toLowerCase()));
+    const isAdmin = req.user.roles?.some(r => ['super_admin', 'director', 'project_manager', 'hr', 'tester'].includes(r.toLowerCase()));
 
     const body = createTaskSchema.parse(req.body);
 
@@ -20,7 +20,7 @@ export const createTask = async (req, res) => {
 
 export const getAllTasks = async (req, res) => {
     const isAdmin = req.user.roles?.some(r =>
-        ['super_admin', 'super admin', 'project_manager', 'project manager', 'hr', 'hr manager', 'tester'].includes(r.toLowerCase())
+        ['super_admin', 'super admin', 'director', 'project_manager', 'project manager', 'hr', 'hr manager', 'tester'].includes(r.toLowerCase())
     ) || req.user.permissions?.includes('view_overall_report') || req.user.permissions?.includes('manage_projects');
 
     const filters = {

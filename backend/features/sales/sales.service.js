@@ -1,5 +1,6 @@
 import { supabaseAdmin } from '../../config/supabase.js';
-import { createClient } from '../clients/clients.service.js';
+import { createClient, updateClient } from '../clients/clients.service.js';
+import { createProject } from '../projects/projects.service.js';
 
 /**
  * Sanitizes lead data by removing joined objects and internal fields.
@@ -49,10 +50,16 @@ export const getAllLeads = async (filters = {}) => {
             *,
             assigned_agent:profiles!assigned_agent_id(id, full_name, email),
             owner:profiles!owner_id(id, full_name, email),
-            follow_ups(id, type, status, scheduled_at)
+            follow_ups(id, type, status, scheduled_at, notes, created_at)
         `, { count: 'exact' });
 
-    if (filters.status) query = query.eq('status', filters.status);
+    if (filters.status) {
+        if (filters.status.includes(',')) {
+            query = query.in('status', filters.status.split(','));
+        } else {
+            query = query.eq('status', filters.status);
+        }
+    }
     if (filters.assigned_agent_id) query = query.eq('assigned_agent_id', filters.assigned_agent_id);
     if (filters.source) query = query.eq('source', filters.source);
 
@@ -190,7 +197,8 @@ export const updateLead = async (id, updates) => {
                 email: data.email || '',
                 phone: data.phone || '',
                 status: 'Active',
-                lead_id: data.id
+                lead_id: data.id,
+                deal_value: data.deal_value || 0
             }, data.owner_id);
         } catch (clientErr) {
             console.error('Auto-convert to client failed:', clientErr);
@@ -501,6 +509,19 @@ export const updateFollowUp = async (id, updates) => {
 };
 
 /**
+ * Deletes a follow-up by ID.
+ * @param {string} id - Follow-up UUID.
+ */
+export const deleteFollowUp = async (id) => {
+    const { error } = await supabaseAdmin
+        .from('follow_ups')
+        .delete()
+        .eq('id', id);
+    if (error) throw error;
+    return { id };
+};
+
+/**
  * Aggregates lead data for the sales dashboard.
  * @param {Object} filters - Optional filters (e.g., agentId).
  * @returns {Promise<Object>} Lead status metrics.
@@ -508,7 +529,8 @@ export const updateFollowUp = async (id, updates) => {
 export const getSalesMetrics = async (filters = {}) => {
     let query = supabaseAdmin
         .from('leads')
-        .select('status, deal_value, created_at');
+        .select('status, deal_value, created_at')
+        .limit(10000);
 
     if (filters.assigned_agent_id) query = query.eq('assigned_agent_id', filters.assigned_agent_id);
     if (filters.startDate) query = query.gte('created_at', filters.startDate);
@@ -518,7 +540,6 @@ export const getSalesMetrics = async (filters = {}) => {
     }
 
     const { data, error } = await query;
-
     if (error) throw error;
 
     let monthlyTarget = 0;
@@ -532,8 +553,17 @@ export const getSalesMetrics = async (filters = {}) => {
             .single();
 
         if (profile) {
+            // Calculate number of days in range for scaling target
+            let daysInRange = 30.4; // Default to a month
+            if (filters.startDate && filters.endDate) {
+                const s = new Date(filters.startDate);
+                const e = new Date(filters.endDate);
+                daysInRange = Math.max(1, (e - s) / (1000 * 60 * 60 * 24) + 1);
+            }
+
             const monthlySalary = (profile.ctc || 0) / 12;
-            monthlyTarget = Math.round(monthlySalary * 15);
+            const fullMonthlyTarget = monthlySalary * 15;
+            monthlyTarget = Math.round((fullMonthlyTarget / 30.4) * daysInRange);
         }
     }
 
@@ -541,36 +571,52 @@ export const getSalesMetrics = async (filters = {}) => {
         const val = parseFloat(lead.deal_value || 0);
         const status = String(lead.status || '').toLowerCase();
 
-        // Use normalized names for specific counters
+        // 1. Core Counters (Explicitly Tracked)
         if (status === 'won') {
-            acc.wonCount = (acc.wonCount || 0) + 1;
-            acc.wonValue = (acc.wonValue || 0) + val;
-        } else if (status === 'proposal' || status === 'meeting' || status === 'negotiation') {
-            acc.pipelineValue = (acc.pipelineValue || 0) + val;
+            acc.wonValue += val;
+            acc.Won += 1;
+        } else if (['proposal', 'proposal sent', 'meeting', 'meeting scheduled', 'negotiation', 'qualified'].includes(status)) {
+            acc.pipelineValue += val;
+            if (status.includes('proposal')) acc.Proposal += 1;
         }
 
-        // Maintain original status mapping for dynamic frontend list if needed, 
-        // but normalize for consistent access
-        acc[status] = (acc[status] || 0) + 1;
-        // Keep "Won" for backward compatibility if conversionRate logic uses it specifically
-        if (status === 'won') acc.Won = (acc.Won || 0) + 1;
+        if (['proposal', 'proposal sent', 'meeting', 'meeting scheduled', 'negotiation', 'won'].includes(status)) {
+            acc.quotationCount += 1;
+        }
 
-        acc.total = (acc.total || 0) + 1;
-        acc.totalValue = (acc.totalValue || 0) + val;
+        // 2. Status Breakdown (Dynamic Map)
+        const capitalizedStatus = status.split(' ').map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(' ');
+        if (!acc._breakdown) acc._breakdown = {};
+        acc._breakdown[capitalizedStatus] = (acc._breakdown[capitalizedStatus] || 0) + 1;
+
+        acc.total += 1;
+        acc.totalValue += val;
         return acc;
     }, {
         total: 0,
         wonValue: 0,
         pipelineValue: 0,
         totalValue: 0,
-        wonCount: 0,
-        Won: 0
+        quotationCount: 0,
+        Won: 0,
+        Proposal: 0,
+        _breakdown: {}
     });
 
-    // Calculate conversion rate: (Won / Total) * 100
+    // Calculate derived metrics
+    stats.wonCount = stats.Won;
     stats.conversionRate = stats.total > 0 ? ((stats.Won || 0) / stats.total) * 100 : 0;
     stats.monthlyTarget = monthlyTarget;
     stats.variance = stats.wonValue - monthlyTarget;
+
+    // Merge breakdown into stats for frontend charts
+    // We only merge keys that don't overwrite our core counters (to avoid any logic bugs)
+    Object.keys(stats._breakdown).forEach(key => {
+        if (stats[key] === undefined) {
+            stats[key] = stats._breakdown[key];
+        }
+    });
+    delete stats._breakdown;
 
     // Fetch pending follow-ups
     let followUpQuery = supabaseAdmin
@@ -621,4 +667,81 @@ export const getSalesMetrics = async (filters = {}) => {
     }
 
     return stats;
+};
+
+/**
+ * Onboards a lead: Sets status to Won, creates/updates client, and creates a project.
+ * @param {string} id - Lead ID.
+ * @param {Object} data - Onboarding data (deal_value, project_name, sub_types, etc.)
+ * @param {string} userId - ID of the user performing the onboarding.
+ */
+export const onboardLead = async (id, data, userId) => {
+    // 1. Get current lead data
+    const { data: lead, error: fetchError } = await supabaseAdmin
+        .from('leads')
+        .select('*')
+        .eq('id', id)
+        .single();
+    if (fetchError) throw fetchError;
+
+    // 2. Update Lead status and deal_value
+    const { error: leadUpdateError } = await supabaseAdmin
+        .from('leads')
+        .update({
+            status: 'Won',
+            deal_value: data.deal_value || lead.deal_value || 0
+        })
+        .eq('id', id);
+    if (leadUpdateError) throw leadUpdateError;
+
+    // 3. Create or Update Client
+    // Check if client exists for this lead
+    const { data: existingClient } = await supabaseAdmin
+        .from('clients')
+        .select('id')
+        .eq('lead_id', id)
+        .maybeSingle();
+
+    let client;
+    const clientData = {
+        company_name: lead.company || lead.name,
+        contact_name: lead.name,
+        email: lead.email || '',
+        phone: lead.phone || '',
+        alt_phone: lead.alt_phone || '',
+        status: 'Active',
+        lead_id: id,
+        deal_value: data.deal_value || lead.deal_value || 0
+    };
+
+    if (existingClient) {
+        client = await updateClient(existingClient.id, clientData);
+    } else {
+        client = await createClient(clientData, lead.owner_id || userId);
+    }
+
+    // 4. Create Project
+    const projectData = {
+        name: data.project_name || `${lead.company || lead.name} - Project`,
+        description: data.description || '',
+        status: 'active',
+        client_id: client.id,
+        client_name: client.company_name,
+        client_email: client.email,
+        client_phone: client.phone,
+        client_alt_phone: client.alt_phone,
+        sub_types: data.sub_types || [],
+        acquisition_date: data.acquisition_date || new Date().toISOString().split('T')[0],
+        due_date: data.due_date || '',
+        days_committed: data.days_committed || 0,
+        deal_value: data.deal_value || lead.deal_value || 0
+    };
+
+    const project = await createProject(projectData, userId);
+
+    return {
+        lead: { id, status: 'Won' },
+        client,
+        project
+    };
 };

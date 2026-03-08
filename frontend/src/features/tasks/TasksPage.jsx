@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { Plus, Pencil, Trash2, X, Calendar, ShieldCheck, AlertCircle } from 'lucide-react'
+import { Plus, Pencil, Trash2, X, Calendar, ShieldCheck, AlertCircle, Download, FileText } from 'lucide-react'
 import api from '../../lib/api'
 import toast from 'react-hot-toast'
 import { useAuth } from '../../context/AuthContext'
@@ -16,7 +16,7 @@ export default function TasksPage() {
     const { hasPermission, hasRole, user } = useAuth()
     const canCreate = hasPermission('assign_task')
     const canUpdate = hasPermission('update_task')
-    const canDelete = hasRole('super_admin')
+    const canDelete = hasRole('super_admin') || hasRole('director') || hasRole('Director')
     const isManager = hasPermission('manage_projects') || hasPermission('manage_employees')
     const location = useLocation()
     const navigate = useNavigate()
@@ -186,6 +186,27 @@ export default function TasksPage() {
     const f = (k) => (e) => setForm(p => ({ ...p, [k]: e.target.value }))
     const ff = (k) => (e) => setFilters(p => ({ ...p, [k]: e.target.value }))
 
+    const handleExportCSV = () => {
+        if (!tasks.length) return
+        const headers = ['Title', 'Project', 'Assignee', 'Status', 'Priority', 'Due Date', 'Est. Hours']
+        const rows = tasks.map(t => [
+            `"${t.title || ''}"`,
+            `"${t.project?.name || ''}"`,
+            `"${t.assignee?.full_name || ''}"`,
+            t.status || '',
+            t.priority || '',
+            t.end_time ? new Date(t.end_time).toLocaleDateString() : '',
+            t.estimated_hours || ''
+        ])
+        const csv = [headers, ...rows].map(r => r.join(',')).join('\n')
+        const link = document.createElement('a')
+        link.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }))
+        link.download = `tasks_${new Date().toISOString().split('T')[0]}.csv`
+        link.click()
+    }
+
+    const handleExportPDF = () => window.print()
+
     const formBody = () => (
         <>
             <div className="form-group">
@@ -201,7 +222,7 @@ export default function TasksPage() {
             </div>
             <div className="form-group">
                 <label className="form-label">Description</label>
-                <textarea className="form-textarea" rows={2} value={form.description} onChange={f('description')} style={{ resize: 'vertical' }} />
+                <textarea className="form-textarea" rows={15} value={form.description} onChange={f('description')} style={{ resize: 'vertical' }} />
             </div>
             <div className="form-row">
                 <div className="form-group">
@@ -283,6 +304,8 @@ export default function TasksPage() {
                         endDate={filters.endDate}
                         onRangeChange={(range) => setFilters(prev => ({ ...prev, ...range }))}
                     />
+                    <button className="btn btn-outline btn-sm" onClick={handleExportCSV} style={{ display: 'flex', alignItems: 'center', gap: 4, height: '42px' }}><Download size={14} /> CSV</button>
+                    <button className="btn btn-outline btn-sm" onClick={handleExportPDF} style={{ display: 'flex', alignItems: 'center', gap: 4, height: '42px' }}><FileText size={14} /> PDF</button>
                     {canCreate && <button className="btn btn-primary" onClick={openCreate} style={{ height: '42px' }}><Plus size={16} />New Task</button>}
                 </div>
             </div>
@@ -387,9 +410,10 @@ export default function TasksPage() {
 
             {modal === 'create' && (
                 <div className="modal-overlay" onClick={e => e.target === e.currentTarget && closeModal()}>
-                    <div className="modal modal-lg">
+                    <div className="modal modal-lg" style={{ display: 'flex', flexDirection: 'column', maxHeight: '90vh' }}>
                         <div className="modal-header"><h2 className="modal-title">New Task</h2><button className="btn-icon" onClick={closeModal}><X size={18} /></button></div>
-                        <form onSubmit={handleCreate}><div className="modal-body">{formBody()}</div>
+                        <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
+                            <div className="modal-body" style={{ overflowY: 'auto', flex: 1 }}>{formBody()}</div>
                             <div className="modal-footer">
                                 <button type="button" className="btn btn-ghost" onClick={closeModal}>Cancel</button>
                                 <button type="submit" className="btn btn-primary" disabled={saving}>{saving ? <span className="spinner" style={{ width: 16, height: 16 }} /> : 'Create Task'}</button>
@@ -401,9 +425,10 @@ export default function TasksPage() {
 
             {modal === 'edit' && (
                 <div className="modal-overlay" onClick={e => e.target === e.currentTarget && closeModal()}>
-                    <div className="modal modal-lg">
+                    <div className="modal modal-lg" style={{ display: 'flex', flexDirection: 'column', maxHeight: '90vh' }}>
                         <div className="modal-header"><h2 className="modal-title">Edit Task</h2><button className="btn-icon" onClick={closeModal}><X size={18} /></button></div>
-                        <form onSubmit={handleEdit}><div className="modal-body">{formBody()}</div>
+                        <form onSubmit={handleEdit} style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
+                            <div className="modal-body" style={{ overflowY: 'auto', flex: 1 }}>{formBody()}</div>
                             <div className="modal-footer">
                                 <button type="button" className="btn btn-ghost" onClick={closeModal}>Cancel</button>
                                 <button type="submit" className="btn btn-primary" disabled={saving}>{saving ? <span className="spinner" style={{ width: 16, height: 16 }} /> : 'Save'}</button>

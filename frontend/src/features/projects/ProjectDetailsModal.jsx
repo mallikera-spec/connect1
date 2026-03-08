@@ -142,7 +142,7 @@ export default function ProjectDetailsModal({ project, allUsers, onClose, onSave
 
     return (
         <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
-            <div className="modal modal-lg" style={{ height: '85vh' }}>
+            <div className="modal modal-lg">
                 <div className="modal-header">
                     <div>
                         <h2 className="modal-title">{project.name}</h2>
@@ -171,10 +171,15 @@ export default function ProjectDetailsModal({ project, allUsers, onClose, onSave
                                 <div style={{ flex: 1, minWidth: 200, padding: 12, background: 'var(--surface-light)', borderRadius: 8, border: '1px solid var(--border)' }}>
                                     <div style={{ fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600, marginBottom: 4 }}>Client</div>
                                     <div style={{ fontSize: 13, fontWeight: 700 }}>{project.client_name}</div>
-                                    <div style={{ fontSize: 11, color: 'var(--text-dim)' }}>{project.client_email} {project.client_phone ? `• ${project.client_phone}` : ''}</div>
+                                    <div style={{ fontSize: 11, color: 'var(--text-dim)' }}>
+                                        {project.client_email} {project.client_phone ? `• ${project.client_phone}` : ''} {project.client_alt_phone ? `• ${project.client_alt_phone}` : ''}
+                                    </div>
                                     {project.acquisition_date && (
                                         <div style={{ fontSize: 11, color: 'var(--accent)', marginTop: 4, fontWeight: 600 }}>Acquired: {project.acquisition_date}</div>
                                     )}
+                                    <div style={{ fontSize: 13, color: 'var(--success)', marginTop: 8, fontWeight: 800 }}>
+                                        Deal Value: ₹{(project.deal_value || 0).toLocaleString()}
+                                    </div>
                                 </div>
                             )}
                             {project.sub_types?.length > 0 && (

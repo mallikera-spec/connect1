@@ -118,5 +118,41 @@ export const SalesService = {
     getFollowUps: async (params = {}) => {
         const response = await api.get('/sales/follow-ups', { params });
         return response.data;
+    },
+
+    /**
+     * Deletes a follow-up by ID.
+     */
+    deleteFollowUp: async (leadId, followUpId) => {
+        const response = await api.delete(`/sales/leads/${leadId}/follow-ups/${followUpId}`);
+        return response.data;
+    },
+
+    /**
+     * Onboards a lead (Won -> Client -> Project).
+     */
+    onboardLead: async (id, onboardingData) => {
+        const response = await api.post(`/sales/leads/${id}/onboard`, onboardingData);
+        return response.data;
+    },
+
+    /**
+     * Lead File Management
+     */
+    getLeadFiles: async (leadId) => {
+        const response = await api.get(`/lead-files/${leadId}`);
+        return response.data;
+    },
+
+    uploadLeadFile: async (leadId, formData) => {
+        const response = await api.post(`/lead-files/${leadId}/upload`, formData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+        });
+        return response.data;
+    },
+
+    deleteLeadFile: async (fileId) => {
+        const response = await api.delete(`/lead-files/${fileId}`);
+        return response.data;
     }
 };

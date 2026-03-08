@@ -27,6 +27,7 @@ import salesRoutes from './features/sales/sales.routes.js';
 import clientsRoutes from './features/clients/clients.routes.js';
 import milestonesRoutes from './features/milestones/milestones.routes.js';
 import pollsRoutes from './features/polls/polls.routes.js';
+import leadFilesRoutes from './features/lead-files/lead-files.routes.js';
 
 import { errorMiddleware } from './middleware/error.middleware.js';
 
@@ -70,6 +71,7 @@ app.use('/api/v1/sales', salesRoutes);
 app.use('/api/v1/clients', clientsRoutes);
 app.use('/api/v1/milestones', milestonesRoutes);
 app.use('/api/v1/polls', pollsRoutes);
+app.use('/api/v1/lead-files', leadFilesRoutes);
 
 // 404 handler
 app.use((_req, res) => {

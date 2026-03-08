@@ -17,9 +17,10 @@ router.patch('/leads/bulk/assign', salesController.bulkAssignLeads);
 router.patch('/leads/bulk/status', salesController.bulkUpdateStatus);
 router.delete('/leads/bulk/delete', salesController.bulkDeleteLeads);
 
-// Single Record Operations
+// Specific Record Operations
 router.get('/leads/:id', salesController.getLead);
 router.get('/leads/:id/journey', salesController.getLeadJourney);
+router.post('/leads/:id/onboard', salesController.onboardLead);
 router.patch('/leads/:id', salesController.updateLead);
 router.delete('/leads/:id', salesController.deleteLead);
 
@@ -27,6 +28,7 @@ router.delete('/leads/:id', salesController.deleteLead);
 router.get('/follow-ups', salesController.getFollowUps);
 router.post('/leads/:id/follow-ups', salesController.createFollowUp);
 router.patch('/leads/:id/follow-ups/:fid', salesController.updateFollowUp);
+router.delete('/leads/:id/follow-ups/:fid', salesController.deleteFollowUp);
 
 /* ── Dashboard Metrics ── */
 router.get('/metrics', salesController.getMetrics);

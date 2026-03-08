@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { Info, ChevronUp, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Info, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, FileText, Download } from 'lucide-react'
 import api from '../../lib/api'
 import toast from 'react-hot-toast'
 import { useAuth } from '../../context/AuthContext'
@@ -88,11 +88,45 @@ export default function MyProjectsPage() {
             : <ChevronDown size={12} style={{ marginLeft: 4, color: 'var(--accent)' }} />;
     };
 
+    const handleExportCSV = () => {
+        if (!projects || projects.length === 0) {
+            toast.error('No projects to export');
+            return;
+        }
+
+        const headers = ['Project Name', 'Client Name', 'Status', 'Due Date', 'Sub-Types', 'Description'];
+        const csvContent = [
+            headers.join(','),
+            ...projects.map(p => {
+                const s = PROJECT_STATUS[p.status] ? PROJECT_STATUS[p.status].label : p.status;
+                const d = p.due_date ? new Date(p.due_date).toLocaleDateString() : '—';
+                const subs = p.sub_types ? p.sub_types.join('; ') : '';
+                return `"${p.name || ''}","${p.client_name || ''}","${s}","${d}","${subs}","${(p.description || '').replace(/"/g, '""')}"`;
+            })
+        ].join('\n');
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `my_projects_export_${new Date().toISOString().split('T')[0]}.csv`;
+        link.click();
+    };
+
+    const handleExportPDF = () => {
+        window.print();
+    };
+
     return (
         <div>
-            <div className="page-header">
+            <div className="page-header print-hide">
                 <div><h1>My Projects</h1><p>View and manage your assigned projects</p></div>
                 <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                    <button className="btn btn-outline btn-sm" onClick={handleExportCSV} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <Download size={14} /> CSV
+                    </button>
+                    <button className="btn btn-outline btn-sm" onClick={handleExportPDF} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <FileText size={14} /> PDF
+                    </button>
                     <div style={{ minWidth: 150 }}>
                         <select
                             className="form-select"

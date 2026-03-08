@@ -37,6 +37,10 @@ export default function DateRangePicker({ startDate, endDate, onRangeChange }) {
         switch (preset) {
             case 'today':
                 break
+            case 'tomorrow':
+                start.setDate(today.getDate() + 1)
+                end.setDate(today.getDate() + 1)
+                break
             case 'yesterday':
                 start.setDate(today.getDate() - 1)
                 end.setDate(today.getDate() - 1)
@@ -86,6 +90,7 @@ export default function DateRangePicker({ startDate, endDate, onRangeChange }) {
                             >
                                 <option value="custom">Custom Range</option>
                                 <option value="today">Today</option>
+                                <option value="tomorrow">Tomorrow</option>
                                 <option value="yesterday">Yesterday</option>
                                 <option value="this_week">This Week</option>
                                 <option value="last_7_days">Last 7 Days</option>

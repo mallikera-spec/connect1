@@ -18,7 +18,7 @@ export default function DashboardPage() {
 
     const userRoles = user?.roles?.map(r => typeof r === 'string' ? r.toLowerCase() : r.name?.toLowerCase()).filter(Boolean) || [];
 
-    const isSuperAdmin = userRoles.includes('super admin') || userRoles.includes('super_admin');
+    const isSuperAdmin = userRoles.includes('super admin') || userRoles.includes('super_admin') || userRoles.includes('director');
     const isAdmin = isSuperAdmin || hasPermission('view_overall_report') || hasPermission('manage_projects');
     const isHR = userRoles.includes('hr') || userRoles.includes('hr manager');
     const isBDM = userRoles.includes('bdm');
@@ -124,8 +124,8 @@ export default function DashboardPage() {
                 }
                 
                 .emp-avatar-img {
-                    width: 32px;
-                    height: 32px;
+                    width: 48px;
+                    height: 48px;
                     border-radius: 50%;
                     object-fit: cover;
                     border: 2px solid var(--border);

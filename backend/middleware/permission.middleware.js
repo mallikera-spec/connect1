@@ -16,8 +16,8 @@ export const requirePermission = (permissionName, allowedRoles = []) => {
             });
         }
 
-        // Super-admin bypasses all permission checks
-        const isSuperAdmin = req.user.roles?.some(r => ['super_admin', 'super admin'].includes(r.toLowerCase()));
+        // Super-admin / Director bypasses all permission checks
+        const isSuperAdmin = req.user.roles?.some(r => ['super_admin', 'super admin', 'director'].includes(r.toLowerCase()));
         if (isSuperAdmin) return next();
 
         // Check if user has explicit permission

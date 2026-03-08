@@ -125,73 +125,126 @@ export default function ClientsList() {
                         <table className="users-table">
                             <thead>
                                 <tr>
-                                    <th style={{ cursor: 'pointer' }} onClick={() => handleSort('company_name')}>
+                                    <th style={{ width: '50px', paddingLeft: '24px' }}>S.No</th>
+                                    <th style={{ cursor: 'pointer', width: '180px' }} onClick={() => handleSort('company_name')}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                                             Company {sortBy === 'company_name' && (sortOrder === 'asc' ? <ChevronUp size={12} /> : <ChevronDown size={12} />)}
                                         </div>
                                     </th>
-                                    <th style={{ cursor: 'pointer' }} onClick={() => handleSort('contact_name')}>
+                                    <th style={{ width: '150px' }}>Acquisition Date</th>
+                                    <th style={{ width: '120px' }}>Value (Rs)</th>
+                                    <th style={{ cursor: 'pointer', width: '150px' }} onClick={() => handleSort('contact_name')}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                                             Contact {sortBy === 'contact_name' && (sortOrder === 'asc' ? <ChevronUp size={12} /> : <ChevronDown size={12} />)}
                                         </div>
                                     </th>
-                                    <th>Status</th>
-                                    <th>BDM / Owner</th>
-                                    <th style={{ width: '120px', cursor: 'pointer' }} onClick={() => handleSort('created_at')}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                            Created {sortBy === 'created_at' && (sortOrder === 'asc' ? <ChevronUp size={12} /> : <ChevronDown size={12} />)}
-                                        </div>
-                                    </th>
-                                    <th style={{ textAlign: 'right', paddingRight: '24px' }}>Actions</th>
+                                    <th style={{ width: '180px' }}>Project Service Types</th>
+                                    <th>Description</th>
+                                    <th style={{ width: '100px' }}>Status</th>
+                                    <th style={{ width: '120px' }}>BDM / Owner</th>
+                                    <th style={{ textAlign: 'right', paddingRight: '24px', width: '100px' }}>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {clients.length > 0 ? clients.map(client => (
-                                    <tr key={client.id}>
-                                        <td>
-                                            <div style={{ fontWeight: 600, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                                <Building size={14} color="var(--accent)" />
-                                                {client.company_name}
-                                            </div>
-                                        </td>
-                                        <td>
-                                            <div style={{ fontWeight: 500 }}>{client.contact_name || '--'}</div>
-                                            <div style={{ fontSize: '11px', color: 'var(--text-dim)', display: 'flex', gap: '8px', marginTop: '2px' }}>
-                                                {client.email && <span><Mail size={10} style={{ marginRight: '2px' }} />{client.email}</span>}
-                                                {client.phone && <span><Phone size={10} style={{ marginRight: '2px' }} />{client.phone}</span>}
-                                            </div>
-                                        </td>
-                                        <td>
-                                            <span className={`status-badge ${client.status.toLowerCase()}`}>
-                                                {client.status}
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <div style={{ fontSize: '13px' }}>
-                                                {client.owner?.full_name || 'System'}
-                                            </div>
-                                        </td>
-                                        <td style={{ fontSize: '12px', color: 'var(--text-dim)' }}>
-                                            {new Date(client.created_at).toLocaleDateString()}
-                                        </td>
-                                        <td style={{ textAlign: 'right', paddingRight: '24px' }}>
-                                            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
-                                                {client.lead_id && (
-                                                    <button className="btn-icon" title="View Full Journey" onClick={() => setViewJourneyLeadId(client.lead_id)}>
-                                                        <TrendingUp size={16} color="var(--accent)" />
-                                                    </button>
+                                {clients.length > 0 ? clients.map((client, index) => {
+                                    // Get primary project (most recent)
+                                    const primaryProject = client.projects && client.projects.length > 0
+                                        ? [...client.projects].sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0]
+                                        : null;
+
+                                    return (
+                                        <tr key={client.id}>
+                                            <td style={{ paddingLeft: '24px', color: 'var(--text-dim)', fontSize: '13px' }}>
+                                                {index + 1}
+                                            </td>
+                                            <td>
+                                                <div style={{ fontWeight: 600, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                    <Building size={14} color="var(--accent)" />
+                                                    {client.company_name}
+                                                </div>
+                                                <div style={{ fontSize: '10px', color: 'var(--text-dim)', marginTop: '2px' }}>
+                                                    Created: {new Date(client.created_at).toLocaleDateString()}
+                                                </div>
+                                            </td>
+                                            <td style={{ fontSize: '13px', fontWeight: 500 }}>
+                                                {primaryProject?.acquisition_date ? (
+                                                    new Date(primaryProject.acquisition_date).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })
+                                                ) : (
+                                                    <span style={{ opacity: 0.3 }}>--</span>
                                                 )}
-                                                {isAdmin && (
-                                                    <button className="btn-icon" title="Delete" onClick={() => handleDelete(client.id)}>
-                                                        <Trash2 size={16} color="var(--danger)" />
-                                                    </button>
+                                            </td>
+                                            <td style={{ fontSize: '13px', fontWeight: 700, color: 'var(--accent-light)' }}>
+                                                {client.deal_value || primaryProject?.deal_value ? (
+                                                    `₹${(client.deal_value || primaryProject?.deal_value).toLocaleString()}`
+                                                ) : (
+                                                    <span style={{ opacity: 0.3 }}>--</span>
                                                 )}
-                                            </div>
-                                        </td>
-                                    </tr>
-                                )) : (
+                                            </td>
+                                            <td>
+                                                <div style={{ fontWeight: 500, fontSize: '13px' }}>{client.contact_name || '--'}</div>
+                                                <div style={{ fontSize: '10px', color: 'var(--text-dim)', display: 'flex', gap: '6px', marginTop: '2px' }}>
+                                                    {client.phone && <span>{client.phone}</span>}
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                                                    {primaryProject?.sub_types && primaryProject.sub_types.length > 0 ? (
+                                                        primaryProject.sub_types.map((type, i) => (
+                                                            <span key={i} style={{
+                                                                fontSize: '9px',
+                                                                background: 'rgba(108, 92, 231, 0.1)',
+                                                                color: 'var(--accent-light)',
+                                                                padding: '1px 6px',
+                                                                borderRadius: '4px',
+                                                                fontWeight: 700,
+                                                                textTransform: 'uppercase'
+                                                            }}>
+                                                                {type}
+                                                            </span>
+                                                        ))
+                                                    ) : (
+                                                        <span style={{ opacity: 0.3, fontSize: '12px' }}>--</span>
+                                                    )}
+                                                </div>
+                                            </td>
+                                            <td style={{ maxWidth: '250px' }}>
+                                                <div style={{ fontSize: '12px', color: 'var(--text-dim)', fontStyle: 'italic', lineHeight: '1.4' }}>
+                                                    {primaryProject?.description ? (
+                                                        <ExpandableClientDesc text={primaryProject.description} />
+                                                    ) : (
+                                                        <span style={{ opacity: 0.3 }}>No description provided.</span>
+                                                    )}
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <span className={`status-badge ${client.status.toLowerCase()}`}>
+                                                    {client.status}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <div style={{ fontSize: '13px', fontWeight: 500 }}>
+                                                    {client.owner?.full_name || 'System'}
+                                                </div>
+                                            </td>
+                                            <td style={{ textAlign: 'right', paddingRight: '24px' }}>
+                                                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '4px' }}>
+                                                    {client.lead_id && (
+                                                        <button className="btn-icon" style={{ padding: '6px' }} title="View Full Journey" onClick={() => setViewJourneyLeadId(client.lead_id)}>
+                                                            <TrendingUp size={15} color="var(--accent)" />
+                                                        </button>
+                                                    )}
+                                                    {isAdmin && (
+                                                        <button className="btn-icon" style={{ padding: '6px' }} title="Delete" onClick={() => handleDelete(client.id)}>
+                                                            <Trash2 size={15} color="var(--danger)" />
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    );
+                                }) : (
                                     <tr>
-                                        <td colSpan={isAdmin ? 6 : 5} style={{ textAlign: 'center', padding: '60px 0', color: 'var(--text-dim)' }}>
+                                        <td colSpan={10} style={{ textAlign: 'center', padding: '60px 0', color: 'var(--text-dim)' }}>
                                             <div style={{ fontSize: '32px', marginBottom: '16px', color: 'var(--success)' }}><CheckCircle size={32} /></div>
                                             <div>No clients found. Win some deals to populate this module!</div>
                                         </td>
@@ -225,5 +278,28 @@ export default function ClientsList() {
                 .form-select-minimal { background: var(--bg-app); border: 1px solid var(--border); border-radius: 6px; font-size: 12px; padding: 4px 8px; color: var(--text); outline: none; }
             `}</style>
         </div>
+    );
+}
+
+function ExpandableClientDesc({ text, limit = 80 }) {
+    const [expanded, setExpanded] = useState(false);
+    if (!text) return null;
+    if (text.length <= limit) return <span>{text}</span>;
+
+    return (
+        <span>
+            {expanded ? text : `${text.slice(0, limit)}... `}
+            <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); setExpanded(!expanded); }}
+                style={{
+                    background: 'none', border: 'none', color: 'var(--accent-light)',
+                    cursor: 'pointer', fontSize: '10px', fontWeight: 800,
+                    padding: '0 4px', textTransform: 'uppercase'
+                }}
+            >
+                {expanded ? 'Less' : 'More'}
+            </button>
+        </span>
     );
 }

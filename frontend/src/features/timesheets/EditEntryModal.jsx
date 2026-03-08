@@ -44,7 +44,7 @@ export default function EditEntryModal({ entry, myProjects, onClose, onSaved }) 
                     <h2 className="modal-title">Edit Activity</h2>
                     <button className="btn-icon" onClick={onClose}><X size={18} /></button>
                 </div>
-                <form onSubmit={handleSave} className="modal-body">
+                <form id="edit-entry-form" onSubmit={handleSave} className="modal-body">
                     <div className="form-group">
                         <label className="form-label">Project</label>
                         <select
@@ -86,7 +86,7 @@ export default function EditEntryModal({ entry, myProjects, onClose, onSaved }) 
                             className="form-textarea"
                             value={notes}
                             onChange={e => setNotes(e.target.value)}
-                            rows={3}
+                            rows={20}
                             placeholder="Brief details..."
                             required
                         />
@@ -140,14 +140,14 @@ export default function EditEntryModal({ entry, myProjects, onClose, onSaved }) 
                             )}
                         </div>
                     )}
-
-                    <div className="modal-footer" style={{ marginTop: 20 }}>
-                        <button type="button" className="btn btn-ghost" onClick={onClose}>Cancel</button>
-                        <button type="submit" className="btn btn-primary" disabled={saving}>
-                            {saving ? <span className="spinner-sm" /> : <><Save size={16} /> Save Changes</>}
-                        </button>
-                    </div>
                 </form>
+
+                <div className="modal-footer">
+                    <button type="button" className="btn btn-ghost" onClick={onClose}>Cancel</button>
+                    <button type="submit" form="edit-entry-form" className="btn btn-primary" disabled={saving}>
+                        {saving ? <span className="spinner-sm" /> : <><Save size={16} /> Save Changes</>}
+                    </button>
+                </div>
             </div>
         </div>
     )

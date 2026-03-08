@@ -423,23 +423,35 @@ export default function ProjectDetailPage() {
             {/* Client & Types Strip */}
             {(project.client_name || project.sub_types?.length > 0) && (
                 <div style={{ display: 'flex', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
-                    {project.client_name && (
-                        <div className="card" style={{ flex: 1, padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12, minWidth: 280, background: 'var(--bg-card)' }}>
-                            <div style={{ background: 'rgba(124, 58, 237, 0.1)', color: 'var(--accent)', padding: 8, borderRadius: 8 }}><Users size={18} /></div>
-                            <div>
-                                <div style={{ fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>Client Information</div>
-                                <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>{project.client_name}</div>
-                                <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 2 }}>
-                                    {project.client_email} {project.client_phone ? ` • ${project.client_phone}` : ''}
+                    {project.client_name && (() => {
+                        const canSeeClient = hasPermission('manage_projects') || hasRole('director') || hasRole('Director');
+                        return (
+                            <div className="card" style={{ flex: 1, padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12, minWidth: 280, background: 'var(--bg-card)' }}>
+                                <div style={{ background: 'rgba(124, 58, 237, 0.1)', color: 'var(--accent)', padding: 8, borderRadius: 8 }}><Users size={18} /></div>
+                                <div>
+                                    <div style={{ fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>Client Information</div>
+                                    {canSeeClient ? (
+                                        <>
+                                            <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>{project.client_name}</div>
+                                            <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 2 }}>
+                                                {project.client_email} {project.client_phone ? ` • ${project.client_phone}` : ''} {project.client_alt_phone ? ` • ${project.client_alt_phone}` : ''}
+                                            </div>
+                                            {project.acquisition_date && (
+                                                <div style={{ fontSize: 11, color: 'var(--accent)', marginTop: 4, fontWeight: 700 }}>
+                                                    Acquired on: {new Date(project.acquisition_date).toLocaleDateString()}
+                                                </div>
+                                            )}
+                                        </>
+                                    ) : (
+                                        <>
+                                            <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>{project.client_name}</div>
+                                            <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 2, fontStyle: 'italic' }}>Contact details restricted</div>
+                                        </>
+                                    )}
                                 </div>
-                                {project.acquisition_date && (
-                                    <div style={{ fontSize: 11, color: 'var(--accent)', marginTop: 4, fontWeight: 700 }}>
-                                        Acquired on: {new Date(project.acquisition_date).toLocaleDateString()}
-                                    </div>
-                                )}
                             </div>
-                        </div>
-                    )}
+                        );
+                    })()}
                     {project.sub_types?.length > 0 && (
                         <div className="card" style={{ flex: 1, padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12, minWidth: 280, background: 'var(--bg-card)' }}>
                             <div style={{ background: 'rgba(8, 145, 178, 0.1)', color: '#0891b2', padding: 8, borderRadius: 8 }}><Flag size={18} /></div>
@@ -590,7 +602,7 @@ export default function ProjectDetailPage() {
                                                             <td style={{ padding: '9px 6px', textAlign: 'right' }}>
                                                                 <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
                                                                     <button className="btn btn-ghost btn-sm btn-icon" title="Edit" onClick={() => openEditTask(t)}><Pencil size={13} /></button>
-                                                                    {hasRole('super_admin') && <button className="btn btn-danger btn-sm btn-icon" title="Delete" onClick={async () => { if (confirm('Delete this task?')) { try { await api.delete(`/tasks/${t.id}`); load() } catch (e) { toast.error(e.message) } } }}><Trash2 size={13} /></button>}
+                                                                    {(hasRole('super_admin') || hasRole('director') || hasRole('Director')) && <button className="btn btn-danger btn-sm btn-icon" title="Delete" onClick={async () => { if (confirm('Delete this task?')) { try { await api.delete(`/tasks/${t.id}`); load() } catch (e) { toast.error(e.message) } } }}><Trash2 size={13} /></button>}
                                                                 </div>
                                                             </td>
                                                         </tr>

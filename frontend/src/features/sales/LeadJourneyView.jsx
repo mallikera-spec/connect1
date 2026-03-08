@@ -24,6 +24,20 @@ export default function LeadJourneyView({ leadId }) {
         }
     };
 
+    const formatFullTimestamp = (dateString) => {
+        if (!dateString) return 'N/A';
+        const date = new Date(dateString);
+        if (isNaN(date.getTime())) return 'Invalid Date';
+        return date.toLocaleString([], {
+            year: 'numeric',
+            month: 'numeric',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true
+        });
+    };
+
     if (loading) return <div style={{ padding: '40px', textAlign: 'center' }}><div className="spinner" /></div>;
     if (error) return <div style={{ padding: '40px', color: 'var(--danger)', textAlign: 'center' }}>{error}</div>;
     if (!journey) return null;
@@ -84,12 +98,16 @@ export default function LeadJourneyView({ leadId }) {
 
                 {/* Stage 1: Lead Details */}
                 <div className="card polished-card" style={{ padding: '20px', borderLeft: currentStage === 1 ? '4px solid var(--accent)' : '4px solid var(--border)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-                        <Target size={20} color={currentStage >= 1 ? 'var(--accent)' : 'var(--text-dim)'} />
-                        <h3 style={{ fontSize: '16px', fontWeight: 700 }}>Lead Acquisition</h3>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                            <Target size={20} color={currentStage >= 1 ? 'var(--accent)' : 'var(--text-dim)'} />
+                            <h3 style={{ fontSize: '16px', fontWeight: 700 }}>Lead Acquisition</h3>
+                        </div>
+                        <div style={{ fontSize: '11px', color: 'var(--text-dim)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <Clock size={12} /> {formatFullTimestamp(lead.created_at)}
+                        </div>
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', fontSize: '13px' }}>
-                        <div><span style={{ color: 'var(--text-dim)' }}>Created:</span> <b>{new Date(lead.created_at).toLocaleDateString()}</b></div>
                         <div><span style={{ color: 'var(--text-dim)' }}>Source:</span> <b>{lead.source || 'Unknown'}</b></div>
                         <div><span style={{ color: 'var(--text-dim)' }}>Initial Value:</span> <b>Rs {lead.deal_value || '0'}</b></div>
                         <div><span style={{ color: 'var(--text-dim)' }}>Interactions:</span> <b>{lead.follow_ups?.length || 0} Logged</b></div>
@@ -99,9 +117,14 @@ export default function LeadJourneyView({ leadId }) {
                 {/* Stage 2: Proposal (If reached) */}
                 {(currentStage >= 2 || lead.status === 'Lost') && (
                     <div className="card polished-card" style={{ padding: '20px', borderLeft: currentStage === 2 ? '4px solid var(--accent)' : '4px solid var(--border)' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-                            <FileText size={20} color={currentStage >= 2 ? 'var(--accent)' : 'var(--text-dim)'} />
-                            <h3 style={{ fontSize: '16px', fontWeight: 700 }}>Proposal & Negotiation</h3>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                <FileText size={20} color={currentStage >= 2 ? 'var(--accent)' : 'var(--text-dim)'} />
+                                <h3 style={{ fontSize: '16px', fontWeight: 700 }}>Proposal & Negotiation</h3>
+                            </div>
+                            <div style={{ fontSize: '11px', color: 'var(--text-dim)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                <Clock size={12} /> {formatFullTimestamp(lead.updated_at)}
+                            </div>
                         </div>
                         <div style={{ fontSize: '13px' }}>
                             <span style={{ color: 'var(--text-dim)' }}>Status:</span> <b>{lead.status}</b>
@@ -113,14 +136,19 @@ export default function LeadJourneyView({ leadId }) {
                 {/* Stage 3: Client Conversion (If reached) */}
                 {(client || lead.status === 'Won') && (
                     <div className="card polished-card" style={{ padding: '20px', borderLeft: currentStage === 3 ? '4px solid var(--success)' : '4px solid var(--border)' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-                            <Building2 size={20} color="var(--success)" />
-                            <h3 style={{ fontSize: '16px', fontWeight: 700 }}>Client Converted</h3>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                <Building2 size={20} color="var(--success)" />
+                                <h3 style={{ fontSize: '16px', fontWeight: 700 }}>Client Converted</h3>
+                            </div>
+                            <div style={{ fontSize: '11px', color: 'var(--text-dim)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                <Clock size={12} /> {formatFullTimestamp(client?.created_at)}
+                            </div>
                         </div>
                         {client ? (
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', fontSize: '13px' }}>
-                                <div><span style={{ color: 'var(--text-dim)' }}>Converted On:</span> <b>{new Date(client.created_at).toLocaleDateString()}</b></div>
                                 <div><span style={{ color: 'var(--text-dim)' }}>Company:</span> <b>{client.company_name}</b></div>
+                                <div><span style={{ color: 'var(--text-dim)' }}>Final Value:</span> <b style={{ color: 'var(--success)' }}>Rs {client.deal_value || lead.deal_value || '0'}</b></div>
                                 <div><span style={{ color: 'var(--text-dim)' }}>Status:</span> <b style={{ color: 'var(--success)' }}>{client.status}</b></div>
                             </div>
                         ) : (
@@ -139,14 +167,19 @@ export default function LeadJourneyView({ leadId }) {
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                             {projects.map(proj => (
                                 <div key={proj.id} style={{ padding: '12px', background: 'var(--bg-app)', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                    <div>
-                                        <div style={{ fontWeight: 600, fontSize: '14px' }}>{proj.name}</div>
-                                        <div style={{ fontSize: '12px', color: 'var(--text-dim)', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px' }}>
-                                            <Clock size={12} /> {new Date(proj.start_date).toLocaleDateString()} - {new Date(proj.end_date).toLocaleDateString()}
+                                    <div style={{ flex: 1 }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                            <div style={{ fontWeight: 600, fontSize: '14px' }}>{proj.name}</div>
+                                            <div style={{ fontSize: '10px', color: 'var(--text-dim)', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                                                <Clock size={10} /> {formatFullTimestamp(proj.created_at)}
+                                            </div>
+                                        </div>
+                                        <div style={{ fontSize: '11px', color: 'var(--text-dim)', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px' }}>
+                                            <span>Timeline:</span> <b>{new Date(proj.acquisition_date).toLocaleDateString()}</b> - <b>{proj.due_date ? new Date(proj.due_date).toLocaleDateString() : 'TBD'}</b>
                                         </div>
                                     </div>
                                     <div style={{
-                                        padding: '4px 8px', borderRadius: '4px', fontSize: '12px', fontWeight: 600,
+                                        padding: '4px 8px', borderRadius: '4px', fontSize: '10px', fontWeight: 800, textTransform: 'uppercase', marginLeft: '16px',
                                         background: proj.status === 'Completed' ? 'rgba(34,197,94,0.1)' : 'rgba(59,130,246,0.1)',
                                         color: proj.status === 'Completed' ? 'var(--success)' : '#3b82f6'
                                     }}>

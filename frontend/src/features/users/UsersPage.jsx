@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { Plus, Pencil, Trash2, Search, UserPlus, ShieldPlus, X, Users, FileText, Calendar } from 'lucide-react'
+import { Plus, Pencil, Trash2, Search, UserPlus, ShieldPlus, X, Users, FileText, Calendar, Eye, EyeOff, Download } from 'lucide-react'
 import api from '../../lib/api'
 import toast from 'react-hot-toast'
 import { useAuth } from '../../context/AuthContext'
@@ -194,6 +194,7 @@ export default function UsersPage() {
     const [modal, setModal] = useState(null)
     const [selected, setSelected] = useState(null)
     const [form, setForm] = useState(EMPTY)
+    const [showPassword, setShowPassword] = useState(false)
 
     const load = () => {
         setLoading(true)
@@ -225,7 +226,7 @@ export default function UsersPage() {
         }
     }, [location.state])
 
-    const openCreate = () => { setForm(EMPTY); setModal('create') }
+    const openCreate = () => { setForm(EMPTY); setShowPassword(false); setModal('create') }
     const openEdit = (u) => navigate(`/profile/${u.id}`)
     const openRole = (u) => { setSelected(u); setModal('role') }
     const openPerms = (u) => { setSelected(u); setModal('perms') }
@@ -255,13 +256,36 @@ export default function UsersPage() {
 
     const { sorted: sortedUsers, sortKey, sortDir, toggleSort } = useSortable(filtered, 'full_name', 'asc')
 
+    const handleExportCSV = () => {
+        if (!sortedUsers.length) return toast.error('No data to export')
+        const headers = ['Name', 'Email', 'Department', 'Designation', 'Roles']
+        const rows = sortedUsers.map(u => [
+            `"${u.full_name || ''}"`,
+            `"${u.email || ''}"`,
+            `"${u.department || ''}"`,
+            `"${u.designation || ''}"`,
+            `"${(u.roles || []).join(', ')}"`
+        ])
+        const csv = [headers, ...rows].map(r => r.join(',')).join('\n')
+        const link = document.createElement('a')
+        link.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }))
+        link.download = `employees_${new Date().toISOString().split('T')[0]}.csv`
+        link.click()
+    }
+
+    const handleExportPDF = () => window.print()
+
     return (
         <div>
             <div className="page-header">
                 <div><h1>Employees</h1><p>Manage employees, roles and access</p></div>
-                {hasPermission('create_user') && (
-                    <button className="btn btn-primary" onClick={openCreate}><Plus size={16} />New Employee</button>
-                )}
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <button className="btn btn-outline btn-sm" onClick={handleExportCSV} style={{ display: 'flex', alignItems: 'center', gap: 4 }}><Download size={14} /> CSV</button>
+                    <button className="btn btn-outline btn-sm" onClick={handleExportPDF} style={{ display: 'flex', alignItems: 'center', gap: 4 }}><FileText size={14} /> PDF</button>
+                    {hasPermission('create_user') && (
+                        <button className="btn btn-primary" onClick={openCreate}><Plus size={16} />New Employee</button>
+                    )}
+                </div>
             </div>
 
             <div className="table-wrapper">
@@ -335,7 +359,24 @@ export default function UsersPage() {
                         <div className="form-group"><label className="form-label">Full Name</label><input className="form-input" value={form.full_name} onChange={f('full_name')} required /></div>
                         <div className="form-group"><label className="form-label">Email</label><input type="email" className="form-input" value={form.email} onChange={f('email')} required /></div>
                     </div>
-                    <div className="form-group"><label className="form-label">Password</label><input type="password" className="form-input" value={form.password} onChange={f('password')} required minLength={8} /></div>
+                    <div className="form-group">
+                        <label className="form-label">Password</label>
+                        <div style={{ position: 'relative' }}>
+                            <input type={showPassword ? 'text' : 'password'} className="form-input" value={form.password} onChange={f('password')} required minLength={8} style={{ paddingRight: '40px' }} />
+                            <button
+                                type="button"
+                                onClick={() => setShowPassword(!showPassword)}
+                                style={{
+                                    position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)',
+                                    background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0
+                                }}
+                                tabIndex="-1"
+                            >
+                                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                            </button>
+                        </div>
+                    </div>
                     <div className="form-group"><label className="form-label">Date of Joining</label><input type="date" className="form-input" value={form.date_of_joining} onChange={f('date_of_joining')} required /></div>
                     <div className="form-row">
                         <div className="form-group">

@@ -17,51 +17,76 @@ const parseTime = (timeStr) => {
 
 // No time_entries table — reporting uses actual_hours on tasks (auto-calculated by DB trigger)
 
-export const getProjectReport = async (projectId) => {
-    // 1. Fetch Project Details
-    const { data: project } = await supabaseAdmin
+export const getProjectReport = async (projectId, options = {}) => {
+    const data = await getProjectsReport([projectId], options);
+    return {
+        ...data,
+        project: data.projects?.[0] || null,
+        project_id: projectId
+    };
+};
+
+export const getProjectsReport = async (projectIds, { startDate, endDate } = {}) => {
+    if (!projectIds || projectIds.length === 0) return null;
+
+    const sDate = startDate ? startDate.slice(0, 10) : null;
+    const eDate = endDate ? endDate.slice(0, 10) : null;
+
+    // 1. Fetch Projects Details
+    const { data: projects } = await supabaseAdmin
         .from('projects')
         .select('*')
-        .eq('id', projectId)
-        .single();
+        .in('id', projectIds);
 
-    // 2. Fetch Tasks with Assignee Details
-    const { data: tasks, error: tasksError } = await supabaseAdmin
+    // 2. Fetch Tasks for these projects
+    let tasksQuery = supabaseAdmin
         .from('tasks')
         .select(`
-            id, title, status, priority, estimated_hours, actual_hours, assigned_to,
-            assignee:profiles!tasks_assigned_to_fkey(id, full_name)
+            id, title, status, priority, estimated_hours, actual_hours, assigned_to, project_id,
+            assignee:profiles!tasks_assigned_to_fkey(id, full_name),
+            project:projects(id, name)
         `)
-        .eq('project_id', projectId);
+        .in('project_id', projectIds);
+
+    if (startDate) tasksQuery = tasksQuery.gte('created_at', startDate);
+    if (endDate) {
+        const end = endDate.includes('T') ? endDate : `${endDate} 23:59:59.999`;
+        tasksQuery = tasksQuery.lte('created_at', end);
+    }
+
+    const { data: tasks, error: tasksError } = await tasksQuery;
     if (tasksError) throw tasksError;
 
-    // 3. Fetch Timesheet Entries for the project (either direct or via tasks)
+    // 3. Fetch Timesheet Entries for these projects within date range
     const taskIds = (tasks || []).map(t => t.id);
     let tsQuery = supabaseAdmin
         .from('timesheet_entries')
         .select(`
             *,
-            timesheet:timesheets(user_id)
+            timesheet:timesheets!inner(user_id, work_date)
         `);
 
+    // Filter by project OR task ids belonging to these projects
+    // AND filter by work_date
     if (taskIds.length > 0) {
-        tsQuery = tsQuery.or(`project_id.eq.${projectId},task_id.in.(${taskIds.join(',')})`);
+        tsQuery = tsQuery.or(`project_id.in.(${projectIds.map(id => `"${id}"`).join(',')}),task_id.in.(${taskIds.map(id => `"${id}"`).join(',')})`);
     } else {
-        tsQuery = tsQuery.eq('project_id', projectId);
+        tsQuery = tsQuery.in('project_id', projectIds);
     }
+
+    if (sDate) tsQuery = tsQuery.gte('timesheet.work_date', sDate);
+    if (eDate) tsQuery = tsQuery.lte('timesheet.work_date', eDate);
+
     const { data: timesheetEntries, error: tsError } = await tsQuery;
     if (tsError) throw tsError;
 
-    // 4. Calculate stats for summary cards
-    // Use timesheet entries for actual hours to ensure consistency with costing
+    // 4. Calculate stats
     const totalActualHours = timesheetEntries.reduce((sum, te) => sum + parseTime(te.hours_spent), 0);
     const totalEstimatedHours = tasks.reduce((sum, t) => sum + (t.estimated_hours || 0), 0);
 
     // --- Development Costing Logic ---
-    // Hourly Rate = CTC / (12 months * 22 days * 8 hours) => CTC / 2112
     const WORKING_HOURS_PER_YEAR = 12 * 22 * 8;
 
-    // Get all user CTCs for people who worked on this project
     const userIds = [...new Set(timesheetEntries.map(te => te.timesheet?.user_id))].filter(Boolean);
     const { data: userProfiles } = await supabaseAdmin
         .from('profiles')
@@ -70,7 +95,6 @@ export const getProjectReport = async (projectId) => {
 
     const profileMap = Object.fromEntries((userProfiles || []).map(p => [p.id, p]));
 
-    // Aggregate time and cost per user
     const userCosting = {};
     timesheetEntries.forEach(te => {
         const uId = te.timesheet?.user_id;
@@ -104,8 +128,8 @@ export const getProjectReport = async (projectId) => {
     const totalProjectCost = costingBreakdown.reduce((sum, item) => sum + item.totalCost, 0);
 
     return {
-        project,
-        project_id: projectId,
+        projects,
+        project_ids: projectIds,
         total_tasks: tasks.length,
         tasks_by_status: {
             pending: tasks.filter((t) => String(t.status).toLowerCase() === 'pending').length,
@@ -125,7 +149,8 @@ export const getProjectReport = async (projectId) => {
 export const getUserReport = async (userId, { startDate, endDate, roles = [] } = {}) => {
     const isTester = roles.map(r => String(r).toLowerCase()).includes('tester') ||
         roles.map(r => String(r).toLowerCase()).includes('super admin') ||
-        roles.map(r => String(r).toLowerCase()).includes('super_admin');
+        roles.map(r => String(r).toLowerCase()).includes('super_admin') ||
+        roles.map(r => String(r).toLowerCase()).includes('director');
 
     const sDate = startDate ? startDate.slice(0, 10) : null;
     const eDate = endDate ? endDate.slice(0, 10) : null;
@@ -379,7 +404,7 @@ export const getEmployeeOverview = async ({ startDate, endDate } = {}) => {
 
     const filteredProfiles = profiles.filter(p => {
         const roles = p.user_roles?.map(ur => ur.role?.name.toLowerCase()) || [];
-        const isSuperAdmin = roles.includes('super admin') || roles.includes('super_admin');
+        const isSuperAdmin = roles.includes('super admin') || roles.includes('super_admin') || roles.includes('director');
         const isManagement = String(p.department || '').toLowerCase() === 'management';
         return !isSuperAdmin && !isManagement;
     });
@@ -512,7 +537,8 @@ export const getEmployeeOverview = async ({ startDate, endDate } = {}) => {
         let leadQuery = supabaseAdmin
             .from('leads')
             .select('assigned_agent_id, status, deal_value, created_at')
-            .in('assigned_agent_id', bdmProfileIds);
+            .in('assigned_agent_id', bdmProfileIds)
+            .limit(10000);
         if (startDate) leadQuery = leadQuery.gte('created_at', startDate);
         if (endDate) {
             const end = endDate.includes('T') ? endDate : `${endDate} 23:59:59.999`;
@@ -526,16 +552,16 @@ export const getEmployeeOverview = async ({ startDate, endDate } = {}) => {
                     const m = userMetrics[l.assigned_agent_id];
                     const s = m.sales_stats;
                     if (!s) return;
-                    const val = parseFloat(l.deal_value || 0);
+                    const val = parseFloat(l.deal_value) || 0;
                     s.total_leads++;
                     const status = String(l.status || '').toLowerCase();
                     if (status === 'won') {
                         s.won_count++;
                         s.won_value += val;
-                    } else if (status === 'proposal') {
+                    } else if (['proposal', 'proposal sent', 'meeting', 'meeting scheduled', 'negotiation', 'qualified'].includes(status)) {
                         s.pipeline_value += val;
                     }
-                    if (['proposal', 'won'].includes(status)) {
+                    if (['proposal', 'proposal sent', 'meeting', 'meeting scheduled', 'negotiation', 'won'].includes(status)) {
                         s.quotation_count++;
                     }
                 }
@@ -549,10 +575,23 @@ export const getEmployeeOverview = async ({ startDate, endDate } = {}) => {
             if (m.sales_stats.total_leads > 0) {
                 m.sales_stats.conversion_rate = (m.sales_stats.won_count / m.sales_stats.total_leads) * 100;
             }
+
+            // Calculate number of days in range for scaling target
+            let daysInRange = 30.4; // Default to a month
+            if (startDate && endDate) {
+                const s = new Date(startDate);
+                const e = new Date(endDate);
+                daysInRange = Math.max(1, (e - s) / (1000 * 60 * 60 * 24) + 1);
+            }
+
             // Monthly Target = (Monthly Salary) * 15
-            const monthlySalary = (m.ctc || 0) / 12;
-            m.sales_stats.monthly_target = Math.round(monthlySalary * 15);
-            m.sales_stats.variance = m.sales_stats.won_value - m.sales_stats.monthly_target;
+            // Scaled Target = (Monthly Target / 30.4) * daysInRange
+            const ctcNum = parseFloat(m.ctc) || 0;
+            const monthlySalary = ctcNum / 12;
+            const fullMonthlyTarget = monthlySalary * 15;
+
+            m.sales_stats.monthly_target = Math.round((fullMonthlyTarget / 30.4) * daysInRange);
+            m.sales_stats.variance = (m.sales_stats.won_value || 0) - m.sales_stats.monthly_target;
         }
 
         // Calculate Quality Metrics for Developers/Testers

@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from 'react'
-import { ShieldCheck, Search, Users, Briefcase, Clock, FileBarChart, Filter, CheckCircle2, AlertCircle } from 'lucide-react'
+import { ShieldCheck, Search, Users, Briefcase, Clock, FileBarChart, Filter, CheckCircle2, AlertCircle, Download, FileText } from 'lucide-react'
 import api from '../../lib/api'
 import toast from 'react-hot-toast'
 import { useAuth } from '../../context/AuthContext'
@@ -90,6 +90,27 @@ export default function TestingReports() {
         return { total, passed, failed, passRate }
     }, [filtered])
 
+    const handleExportCSV = () => {
+        if (!filtered.length) return
+        const headers = ['Date', 'Developer', 'Project', 'Title', 'Hours', 'Result', 'QA Notes']
+        const rows = filtered.map(e => [
+            e.date ? new Date(e.date).toLocaleDateString() : '',
+            `"${e.userName || ''}"`,
+            `"${e.project?.name || 'In-House'}"`,
+            `"${e.title || ''}"`,
+            e.hours_spent || '',
+            e.status === 'verified' ? 'PASSED' : 'FAILED',
+            `"${(e.qa_notes || '').replace(/"/g, '""')}"`
+        ])
+        const csv = [headers, ...rows].map(r => r.join(',')).join('\n')
+        const link = document.createElement('a')
+        link.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }))
+        link.download = `testing_reports_${new Date().toISOString().split('T')[0]}.csv`
+        link.click()
+    }
+
+    const handleExportPDF = () => window.print()
+
     return (
         <div className="page-content">
             <div className="page-header">
@@ -106,6 +127,8 @@ export default function TestingReports() {
                             setEndDate(range.endDate);
                         }}
                     />
+                    <button className="btn btn-outline btn-sm" onClick={handleExportCSV} style={{ display: 'flex', alignItems: 'center', gap: 4 }}><Download size={14} /> CSV</button>
+                    <button className="btn btn-outline btn-sm" onClick={handleExportPDF} style={{ display: 'flex', alignItems: 'center', gap: 4 }}><FileText size={14} /> PDF</button>
                 </div>
             </div>
 

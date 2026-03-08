@@ -11,7 +11,7 @@ export const createClient = async (req, res) => {
 
 export const getAllClients = async (req, res) => {
     const userRoles = req.user.roles || [];
-    const isAdmin = userRoles.includes('super_admin') || userRoles.includes('admin') || userRoles.includes('project_manager') || userRoles.includes('sales_manager') || userRoles.includes('Super Admin') || userRoles.includes('Admin') || userRoles.includes('Project Manager') || userRoles.includes('Sales Manager');
+    const isAdmin = userRoles.includes('super_admin') || userRoles.includes('admin') || userRoles.includes('project_manager') || userRoles.includes('sales_manager') || userRoles.includes('Super Admin') || userRoles.includes('Admin') || userRoles.includes('Project Manager') || userRoles.includes('Sales Manager') || userRoles.includes('Director') || userRoles.includes('director');
 
     let options = {
         status: req.query.status,

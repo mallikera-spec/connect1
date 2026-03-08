@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { ShieldCheck, AlertCircle, Clock, Search, Filter, CheckCircle2, X, Users, Briefcase, ListTodo, Trash2 } from 'lucide-react'
+import { ShieldCheck, AlertCircle, Clock, Search, Filter, CheckCircle2, X, Users, Briefcase, ListTodo, Trash2, Download, FileText } from 'lucide-react'
 import api from '../../lib/api'
 import toast from 'react-hot-toast'
 import { useAuth } from '../../context/AuthContext'
@@ -136,6 +136,26 @@ export default function TestingTasks() {
         }
     }
 
+    const handleExportCSV = () => {
+        if (!filtered.length) return
+        const headers = ['Title', 'Assignee', 'Project', 'Status', 'Priority', 'Created']
+        const rows = filtered.map(t => [
+            `"${t.title || ''}"`,
+            `"${t.assignee?.full_name || ''}"`,
+            `"${t.project?.name || ''}"`,
+            t.status || '',
+            t.priority || '',
+            t.created_at ? new Date(t.created_at).toLocaleDateString() : ''
+        ])
+        const csv = [headers, ...rows].map(r => r.join(',')).join('\n')
+        const link = document.createElement('a')
+        link.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }))
+        link.download = `testing_tasks_${new Date().toISOString().split('T')[0]}.csv`
+        link.click()
+    }
+
+    const handleExportPDF = () => window.print()
+
     return (
         <div className="page-content">
             <div className="page-header">
@@ -152,6 +172,8 @@ export default function TestingTasks() {
                             setEndDate(range.endDate);
                         }}
                     />
+                    <button className="btn btn-outline btn-sm" onClick={handleExportCSV} style={{ display: 'flex', alignItems: 'center', gap: 4 }}><Download size={14} /> CSV</button>
+                    <button className="btn btn-outline btn-sm" onClick={handleExportPDF} style={{ display: 'flex', alignItems: 'center', gap: 4 }}><FileText size={14} /> PDF</button>
                 </div>
             </div>
 
@@ -270,7 +292,7 @@ export default function TestingTasks() {
                                         ) : (
                                             <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
                                                 <button className="btn-icon-sm" onClick={(e) => { e.stopPropagation(); openQaModal(t, t.status); }} title="Details"><Search size={16} /></button>
-                                                {hasRole('super_admin') && (
+                                                {(hasRole('super_admin') || hasRole('director') || hasRole('Director')) && (
                                                     <button className="btn-icon-sm danger" onClick={(e) => { e.stopPropagation(); handleDeleteTask(t.id); }} title="Delete Task"><Trash2 size={16} /></button>
                                                 )}
                                             </div>

@@ -16,7 +16,8 @@ export const getAllClients = async (options = {}) => {
         .from('clients')
         .select(`
             *,
-            owner:profiles!clients_owner_id_fkey(full_name, email)
+            owner:profiles!clients_owner_id_fkey(full_name, email),
+            projects(*)
         `)
         .order('created_at', { ascending: false });
 

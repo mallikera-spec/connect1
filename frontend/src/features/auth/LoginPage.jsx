@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
+import { Eye, EyeOff } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import api from '../../lib/api'
 import toast from 'react-hot-toast'
@@ -9,6 +10,7 @@ export default function LoginPage() {
     const navigate = useNavigate()
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
+    const [showPassword, setShowPassword] = useState(false)
     const [loading, setLoading] = useState(false)
     const [quote, setQuote] = useState({ quote: "Loading your daily inspiration...", author: "AI" })
 
@@ -73,14 +75,29 @@ export default function LoginPage() {
                                     Forgot password?
                                 </Link>
                             </div> */}
-                            <input
-                                type="password"
-                                className="form-input"
-                                placeholder="••••••••"
-                                value={password}
-                                onChange={e => setPassword(e.target.value)}
-                                required
-                            />
+                            <div style={{ position: 'relative' }}>
+                                <input
+                                    type={showPassword ? 'text' : 'password'}
+                                    className="form-input"
+                                    placeholder="••••••••"
+                                    value={password}
+                                    onChange={e => setPassword(e.target.value)}
+                                    required
+                                    style={{ paddingRight: '40px' }}
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPassword(!showPassword)}
+                                    style={{
+                                        position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)',
+                                        background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0
+                                    }}
+                                    tabIndex="-1"
+                                >
+                                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                                </button>
+                            </div>
                         </div>
 
                         <button className="login-submit" type="submit" disabled={loading}>

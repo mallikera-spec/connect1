@@ -21,7 +21,7 @@ export const createLead = async (req, res, next) => {
 export const getLeads = async (req, res, next) => {
     try {
         const filters = { ...req.query };
-        const adminRoles = ['Super Admin', 'super_admin', 'Admin', 'Sales Manager'];
+        const adminRoles = ['Super Admin', 'super_admin', 'Admin', 'Sales Manager', 'Director', 'director'];
         const hasAdminRole = req.user.roles?.some(role => adminRoles.includes(role));
         const hasPermission = req.user.permissions?.includes('manage_leads') || req.user.permissions?.includes('admin');
 
@@ -85,6 +85,18 @@ export const updateLead = async (req, res, next) => {
 };
 
 /**
+ * Controller to onboard a lead (Won -> Client -> Project).
+ */
+export const onboardLead = async (req, res, next) => {
+    try {
+        const result = await salesService.onboardLead(req.params.id, req.body, req.user.id);
+        res.json({ success: true, data: result, message: 'Lead onboarded and project created successfully' });
+    } catch (error) {
+        next(error);
+    }
+};
+
+/**
  * Controller to delete a lead.
  */
 export const deleteLead = async (req, res, next) => {
@@ -125,12 +137,24 @@ export const updateFollowUp = async (req, res, next) => {
 };
 
 /**
+ * Controller to delete a follow-up.
+ */
+export const deleteFollowUp = async (req, res, next) => {
+    try {
+        await salesService.deleteFollowUp(req.params.fid);
+        res.json({ success: true, message: 'Follow-up deleted successfully' });
+    } catch (error) {
+        next(error);
+    }
+};
+
+/**
  * Controller to fetch dashboard metrics.
  */
 export const getMetrics = async (req, res, next) => {
     try {
         const filters = { ...req.query };
-        const adminRoles = ['Super Admin', 'super_admin', 'Admin', 'Sales Manager'];
+        const adminRoles = ['Super Admin', 'super_admin', 'Admin', 'Sales Manager', 'Director', 'director'];
         const hasAdminRole = req.user.roles?.some(role => adminRoles.includes(role));
         const hasPermission = req.user.permissions?.includes('manage_leads') || req.user.permissions?.includes('admin');
 
@@ -154,7 +178,7 @@ export const getMetrics = async (req, res, next) => {
 export const getFollowUps = async (req, res, next) => {
     try {
         const filters = { ...req.query };
-        const adminRoles = ['Super Admin', 'super_admin', 'Admin', 'Sales Manager'];
+        const adminRoles = ['Super Admin', 'super_admin', 'Admin', 'Sales Manager', 'Director', 'director'];
         const hasAdminRole = req.user.roles?.some(role => adminRoles.includes(role));
         const hasPermission = req.user.permissions?.includes('manage_leads') || req.user.permissions?.includes('admin');
 
@@ -178,7 +202,7 @@ export const getFollowUps = async (req, res, next) => {
 export const bulkAssignLeads = async (req, res, next) => {
     try {
         const { leadIds, assigned_agent_id } = req.body;
-        const adminRoles = ['Super Admin', 'super_admin', 'Admin', 'Sales Manager'];
+        const adminRoles = ['Super Admin', 'super_admin', 'Admin', 'Sales Manager', 'Director', 'director'];
         const hasAdminRole = req.user.roles?.some(role => adminRoles.includes(role));
         const hasPermission = req.user.permissions?.includes('manage_leads') || req.user.permissions?.includes('admin');
         const isAuthorized = hasAdminRole || hasPermission;
@@ -204,7 +228,7 @@ export const bulkAssignLeads = async (req, res, next) => {
 export const bulkUpdateStatus = async (req, res, next) => {
     try {
         const { leadIds, status } = req.body;
-        const adminRoles = ['Super Admin', 'super_admin', 'Admin', 'Sales Manager'];
+        const adminRoles = ['Super Admin', 'super_admin', 'Admin', 'Sales Manager', 'Director', 'director'];
         const hasAdminRole = req.user.roles?.some(role => adminRoles.includes(role));
         const hasPermission = req.user.permissions?.includes('manage_leads') || req.user.permissions?.includes('admin');
         const isAuthorized = hasAdminRole || hasPermission;
@@ -230,7 +254,7 @@ export const bulkUpdateStatus = async (req, res, next) => {
 export const bulkDeleteLeads = async (req, res, next) => {
     try {
         const { leadIds } = req.body;
-        const adminRoles = ['Super Admin', 'super_admin', 'Admin', 'Sales Manager'];
+        const adminRoles = ['Super Admin', 'super_admin', 'Admin', 'Sales Manager', 'Director', 'director'];
         const hasAdminRole = req.user.roles?.some(role => adminRoles.includes(role));
         const hasPermission = req.user.permissions?.includes('manage_leads') || req.user.permissions?.includes('admin');
         const isAuthorized = hasAdminRole || hasPermission;

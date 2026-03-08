@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { Plus, Pencil, Trash2, X, Users, UserPlus, UserMinus, Info, ChevronUp, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Plus, Pencil, Trash2, X, Users, UserPlus, UserMinus, Info, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Download, FileText } from 'lucide-react'
 import api from '../../lib/api'
 import toast from 'react-hot-toast'
 import { useAuth } from '../../context/AuthContext'
@@ -19,7 +19,7 @@ export default function ProjectsPage() {
     const [modal, setModal] = useState(null)
     const [selected, setSelected] = useState(null)
     const [filters, setFilters] = useState({ status: '' })
-    const [sortConfig, setSortConfig] = useState({ key: 'created_at', direction: 'desc' })
+    const [sortConfig, setSortConfig] = useState({ key: 'due_date', direction: 'asc' })
     const [currentPage, setCurrentPage] = useState(1)
     const [itemsPerPage, setItemsPerPage] = useState(10)
     const [form, setForm] = useState({
@@ -30,11 +30,13 @@ export default function ProjectsPage() {
         client_email: '',
         client_phone: '',
         sub_types: [],
-        acquisition_date: ''
+        acquisition_date: '',
+        days_committed: 0,
+        due_date: ''
     })
 
     const SUB_TYPES = [
-        'Website', 'Android app', 'IOS app', 'Digital Marketing', 'Automations'
+        'Website', 'Android app', 'IOS app', 'Digital Marketing', 'Automations', 'Maintenance', 'AI/ML'
     ]
 
     const PROJECT_STATUS = {
@@ -100,7 +102,9 @@ export default function ProjectsPage() {
             client_email: '',
             client_phone: '',
             sub_types: [],
-            acquisition_date: ''
+            acquisition_date: '',
+            days_committed: 0,
+            due_date: ''
         });
         setModal('create')
     }
@@ -114,7 +118,9 @@ export default function ProjectsPage() {
             client_email: p.client_email || '',
             client_phone: p.client_phone || '',
             sub_types: p.sub_types || [],
-            acquisition_date: p.acquisition_date || ''
+            acquisition_date: p.acquisition_date || '',
+            days_committed: p.days_committed || 0,
+            due_date: p.due_date || ''
         });
         setModal('edit')
     }
@@ -130,20 +136,46 @@ export default function ProjectsPage() {
     }
 
     const handleEdit = async (e) => {
-        e.preventDefault(); setSaving(true)
+        e.preventDefault();
+        if (!selected) return;
+        setSaving(true)
         try { await api.patch(`/projects/${selected.id}`, form); toast.success('Project updated'); load(); closeModal() }
         catch (err) { toast.error(err.message) }
         finally { setSaving(false) }
     }
 
     const handleDelete = async () => {
+        if (!selected) return;
         setSaving(true)
         try { await api.delete(`/projects/${selected.id}`); toast.success('Project deleted'); load(); closeModal() }
         catch (err) { toast.error(err.message) }
         finally { setSaving(false) }
     }
 
-    const f = (k) => (e) => setForm(p => ({ ...p, [k]: e.target.value }))
+    const f = (k) => (e) => {
+        const val = e.target.value;
+        setForm(p => {
+            const next = { ...p, [k]: val };
+            // Auto-calculate due date if acquisition_date or days_committed changes
+            if (k === 'acquisition_date' || k === 'days_committed') {
+                const acq = k === 'acquisition_date' ? val : p.acquisition_date;
+                const days = k === 'days_committed' ? val : p.days_committed;
+
+                if (acq && days !== undefined && days !== '') {
+                    try {
+                        const date = new Date(acq);
+                        if (!isNaN(date.getTime())) {
+                            date.setDate(date.getDate() + parseInt(days));
+                            next.due_date = date.toISOString().split('T')[0];
+                        }
+                    } catch (err) {
+                        console.warn('Date calculation failed:', err);
+                    }
+                }
+            }
+            return next;
+        });
+    }
     const handleSubtypeChange = (type) => {
         setForm(p => {
             const sub_types = p.sub_types || [];
@@ -189,11 +221,46 @@ export default function ProjectsPage() {
             : <ChevronDown size={12} style={{ marginLeft: 4, color: 'var(--accent)' }} />;
     };
 
+    const handleExportCSV = () => {
+        if (!projects || projects.length === 0) {
+            toast.error('No projects to export');
+            return;
+        }
+
+        const headers = ['Project Name', 'Client Name', 'Status', 'Due Date', 'Sub-Types', 'Description'];
+        const csvContent = [
+            headers.join(','),
+            ...projects.map(p => {
+                const s = PROJECT_STATUS[p.status] ? PROJECT_STATUS[p.status].label : p.status;
+                const d = p.due_date ? new Date(p.due_date).toLocaleDateString() : '—';
+                const subs = p.sub_types ? p.sub_types.join('; ') : '';
+                return `"${p.name || ''}","${p.client_name || ''}","${s}","${d}","${subs}","${(p.description || '').replace(/"/g, '""')}"`;
+            })
+        ].join('\n');
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `projects_export_${new Date().toISOString().split('T')[0]}.csv`;
+        link.click();
+    };
+
+    const handleExportPDF = () => {
+        // Simple print triggered. The global CSS should ideally handle hiding headers/navbars during print.
+        window.print();
+    };
+
     return (
         <div>
-            <div className="page-header">
+            <div className="page-header print-hide">
                 <div><h1>Projects</h1><p>Manage all projects and their team members</p></div>
                 <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                    <button className="btn btn-outline btn-sm" onClick={handleExportCSV} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <Download size={14} /> CSV
+                    </button>
+                    <button className="btn btn-outline btn-sm" onClick={handleExportPDF} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <FileText size={14} /> PDF
+                    </button>
                     <div style={{ minWidth: 150 }}>
                         <select
                             className="form-select"
@@ -229,6 +296,7 @@ export default function ProjectsPage() {
                             <th>Client Name</th>
                             <th>Client Phone</th>
                             <th onClick={() => handleSort('status')} style={{ cursor: 'pointer' }}>Status <SortIcon column="status" /></th>
+                            <th onClick={() => handleSort('due_date')} style={{ cursor: 'pointer' }}>Due Date <SortIcon column="due_date" /></th>
                             <th>Actions</th>
                         </tr></thead>
                         <tbody>
@@ -253,6 +321,28 @@ export default function ProjectsPage() {
                                                 </span>
                                             )
                                         })()}
+                                    </td>
+                                    <td>
+                                        {p.due_date ? (() => {
+                                            const today = new Date();
+                                            today.setHours(0, 0, 0, 0);
+                                            const due = new Date(p.due_date);
+                                            const diff = (due - today) / (1000 * 60 * 60 * 24);
+
+                                            let color = 'var(--text-main)';
+                                            let fontWeight = 400;
+
+                                            if (diff < 0) { color = '#dc2626'; fontWeight = 700; } // Overdue
+                                            else if (diff <= 2) { color = '#dc2626'; fontWeight = 700; } // 2 days
+                                            else if (diff <= 7) { color = '#f59e0b'; fontWeight = 600; } // 7 days
+
+                                            return (
+                                                <div style={{ color, fontWeight, fontSize: 13 }}>
+                                                    {formatDate(p.due_date)}
+                                                    {diff < 0 && <span style={{ fontSize: 10, marginLeft: 4 }}>(Overdue)</span>}
+                                                </div>
+                                            )
+                                        })() : '—'}
                                     </td>
                                     <td>
                                         <div className="actions-cell">
@@ -322,17 +412,22 @@ export default function ProjectsPage() {
                 <div className="modal-overlay" onClick={e => e.target === e.currentTarget && closeModal()}>
                     <div className="modal">
                         <div className="modal-header"><h2 className="modal-title">New Project</h2><button className="btn-icon" onClick={closeModal}><X size={18} /></button></div>
-                        <form onSubmit={handleCreate}>
+                        <form id="create-project-form" onSubmit={handleCreate}>
                             <div className="modal-body">
                                 <div className="form-group"><label className="form-label">Project Name</label><input className="form-input" value={form.name} onChange={f('name')} required /></div>
-                                <div className="form-group"><label className="form-label">Description</label><textarea className="form-textarea" rows={2} value={form.description} onChange={f('description')} style={{ resize: 'vertical' }} /></div>
+                                <div className="form-group"><label className="form-label">Description</label><textarea className="form-textarea" rows={5} value={form.description} onChange={f('description')} style={{ resize: 'vertical' }} /></div>
 
+                                <div className="form-group"><label className="form-label">Client Name</label><input className="form-input" value={form.client_name || ''} onChange={f('client_name')} /></div>
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                                    <div className="form-group"><label className="form-label">Client Name</label><input className="form-input" value={form.client_name} onChange={f('client_name')} /></div>
-                                    <div className="form-group"><label className="form-label">Client Phone</label><input className="form-input" value={form.client_phone} onChange={f('client_phone')} /></div>
+                                    <div className="form-group"><label className="form-label">Client Phone</label><input className="form-input" value={form.client_phone || ''} onChange={f('client_phone')} /></div>
+                                    <div className="form-group"><label className="form-label">Alt Phone</label><input className="form-input" value={form.client_alt_phone || ''} onChange={f('client_alt_phone')} /></div>
                                 </div>
-                                <div className="form-group"><label className="form-label">Client Email</label><input type="email" className="form-input" value={form.client_email} onChange={f('client_email')} /></div>
+                                <div className="form-group"><label className="form-label">Client Email</label><input type="email" className="form-input" value={form.client_email || ''} onChange={f('client_email')} /></div>
                                 <div className="form-group"><label className="form-label">Project Acquisition Date</label><input type="date" className="form-input" value={form.acquisition_date} onChange={f('acquisition_date')} /></div>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                                    <div className="form-group"><label className="form-label">Committed Days</label><input type="number" className="form-input" value={form.days_committed} onChange={f('days_committed')} /></div>
+                                    <div className="form-group"><label className="form-label">Due Date</label><input type="date" className="form-input" value={form.due_date} onChange={f('due_date')} /></div>
+                                </div>
 
                                 <div className="form-group">
                                     <label className="form-label">Project Sub-types</label>
@@ -357,11 +452,11 @@ export default function ProjectsPage() {
                                     </select>
                                 </div>
                             </div>
-                            <div className="modal-footer">
-                                <button type="button" className="btn btn-ghost" onClick={closeModal}>Cancel</button>
-                                <button type="submit" className="btn btn-primary" disabled={saving}>{saving ? <span className="spinner" style={{ width: 16, height: 16 }} /> : 'Create'}</button>
-                            </div>
                         </form>
+                        <div className="modal-footer">
+                            <button type="button" className="btn btn-ghost" onClick={closeModal}>Cancel</button>
+                            <button type="submit" form="create-project-form" className="btn btn-primary" disabled={saving}>{saving ? <span className="spinner" style={{ width: 16, height: 16 }} /> : 'Create'}</button>
+                        </div>
                     </div>
                 </div>
             )}
@@ -370,17 +465,22 @@ export default function ProjectsPage() {
                 <div className="modal-overlay" onClick={e => e.target === e.currentTarget && closeModal()}>
                     <div className="modal">
                         <div className="modal-header"><h2 className="modal-title">Edit Project</h2><button className="btn-icon" onClick={closeModal}><X size={18} /></button></div>
-                        <form onSubmit={handleEdit}>
+                        <form id="edit-project-form" onSubmit={handleEdit}>
                             <div className="modal-body">
                                 <div className="form-group"><label className="form-label">Project Name</label><input className="form-input" value={form.name} onChange={f('name')} required /></div>
-                                <div className="form-group"><label className="form-label">Description</label><textarea className="form-textarea" rows={2} value={form.description} onChange={f('description')} style={{ resize: 'vertical' }} /></div>
+                                <div className="form-group"><label className="form-label">Description</label><textarea className="form-textarea" rows={5} value={form.description} onChange={f('description')} style={{ resize: 'vertical' }} /></div>
 
+                                <div className="form-group"><label className="form-label">Client Name</label><input className="form-input" value={form.client_name || ''} onChange={f('client_name')} /></div>
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                                    <div className="form-group"><label className="form-label">Client Name</label><input className="form-input" value={form.client_name} onChange={f('client_name')} /></div>
-                                    <div className="form-group"><label className="form-label">Client Phone</label><input className="form-input" value={form.client_phone} onChange={f('client_phone')} /></div>
+                                    <div className="form-group"><label className="form-label">Client Phone</label><input className="form-input" value={form.client_phone || ''} onChange={f('client_phone')} /></div>
+                                    <div className="form-group"><label className="form-label">Alt Phone</label><input className="form-input" value={form.client_alt_phone || ''} onChange={f('client_alt_phone')} /></div>
                                 </div>
-                                <div className="form-group"><label className="form-label">Client Email</label><input type="email" className="form-input" value={form.client_email} onChange={f('client_email')} /></div>
+                                <div className="form-group"><label className="form-label">Client Email</label><input type="email" className="form-input" value={form.client_email || ''} onChange={f('client_email')} /></div>
                                 <div className="form-group"><label className="form-label">Project Acquisition Date</label><input type="date" className="form-input" value={form.acquisition_date} onChange={f('acquisition_date')} /></div>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                                    <div className="form-group"><label className="form-label">Committed Days</label><input type="number" className="form-input" value={form.days_committed} onChange={f('days_committed')} /></div>
+                                    <div className="form-group"><label className="form-label">Due Date</label><input type="date" className="form-input" value={form.due_date} onChange={f('due_date')} /></div>
+                                </div>
 
                                 <div className="form-group">
                                     <label className="form-label">Project Sub-types</label>
@@ -405,11 +505,11 @@ export default function ProjectsPage() {
                                     </select>
                                 </div>
                             </div>
-                            <div className="modal-footer">
-                                <button type="button" className="btn btn-ghost" onClick={closeModal}>Cancel</button>
-                                <button type="submit" className="btn btn-primary" disabled={saving}>{saving ? <span className="spinner" style={{ width: 16, height: 16 }} /> : 'Save'}</button>
-                            </div>
                         </form>
+                        <div className="modal-footer">
+                            <button type="button" className="btn btn-ghost" onClick={closeModal}>Cancel</button>
+                            <button type="submit" form="edit-project-form" className="btn btn-primary" disabled={saving}>{saving ? <span className="spinner" style={{ width: 16, height: 16 }} /> : 'Save'}</button>
+                        </div>
                     </div>
                 </div>
             )}
@@ -420,7 +520,7 @@ export default function ProjectsPage() {
 
             {modal === 'delete' && selected && (
                 <div className="modal-overlay" onClick={e => e.target === e.currentTarget && closeModal()}>
-                    <div className="modal" style={{ maxWidth: 400 }}>
+                    <div className="modal">
                         <div className="modal-header"><h2 className="modal-title">Delete Project</h2><button className="btn-icon" onClick={closeModal}><X size={18} /></button></div>
                         <div className="modal-body"><p style={{ fontSize: 14 }}>Delete project <strong>{selected.name}</strong>? All associated tasks will also be removed.</p></div>
                         <div className="modal-footer">

@@ -48,7 +48,10 @@ export default function BDMPerformance() {
 
     if (loading && data.length === 0) return <div className="page-loader"><div className="spinner" /></div>;
 
-    const aggregateTotal = (key) => filteredData.reduce((sum, u) => sum + (u.sales_stats?.[key] || 0), 0);
+    const aggregateTotal = (key) => filteredData.reduce((sum, u) => {
+        const val = u.sales_stats?.[key];
+        return sum + (isFinite(val) ? val : 0);
+    }, 0);
     const totalLeads = aggregateTotal('total_leads');
     const totalWonValue = aggregateTotal('won_value');
     const totalPipeline = aggregateTotal('pipeline_value');
@@ -107,9 +110,9 @@ export default function BDMPerformance() {
             <div className="stats-grid" style={{ marginBottom: 32 }}>
                 {[
                     { label: 'Total Leads', value: totalLeads, icon: Target, color: '#3b82f6', status: '' },
-                    { label: 'Won Value', value: `₹${(totalWonValue / 100000).toFixed(2)}L`, icon: Award, color: '#10b981', status: 'Won' },
-                    { label: 'Pipeline', value: `₹${(totalPipeline / 100000).toFixed(2)}L`, icon: TrendingUp, color: '#8b5cf6', status: 'Proposal' },
-                    { label: 'Avg Conv. %', value: `${avgConvRate.toFixed(1)}%`, icon: Percent, color: '#f59e0b', status: '' },
+                    { label: 'Won Value', value: `₹${(totalWonValue / 1000).toFixed(0)}k`, icon: Award, color: '#10b981', status: 'Won' },
+                    { label: 'Period Target', value: `₹${(aggregateTotal('monthly_target') / 1000).toFixed(0)}k`, icon: Target, color: '#6366f1', status: '' },
+                    { label: 'Total Variance', value: `₹${(aggregateTotal('variance') / 1000).toFixed(0)}k`, icon: TrendingUp, color: aggregateTotal('variance') >= 0 ? '#10b981' : '#ef4444', status: '' },
                 ].map(s => (
                     <div
                         key={s.label}
@@ -150,10 +153,9 @@ export default function BDMPerformance() {
                             <thead>
                                 <tr>
                                     <th>BDM / Agent</th>
-                                    <th style={{ textAlign: 'center' }}>Leads</th>
-                                    <th style={{ textAlign: 'center' }}>Pipeline Value</th>
-                                    <th style={{ textAlign: 'center' }}>Won Value</th>
-                                    <th style={{ textAlign: 'center' }}>Quotations</th>
+                                    <th style={{ textAlign: 'right' }}>Target</th>
+                                    <th style={{ textAlign: 'right' }}>Won Value</th>
+                                    <th style={{ textAlign: 'right' }}>Variance</th>
                                     <th style={{ textAlign: 'center' }}>Conv. %</th>
                                     <th style={{ textAlign: 'center' }}>Action</th>
                                 </tr>
@@ -164,9 +166,9 @@ export default function BDMPerformance() {
                                         <td>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                                                 {u.avatar_url ? (
-                                                    <img src={u.avatar_url} alt={u.full_name} style={{ width: 32, height: 32, borderRadius: '50%' }} />
+                                                    <img src={u.avatar_url} alt={u.full_name} style={{ width: 40, height: 40, borderRadius: '50%' }} />
                                                 ) : (
-                                                    <div className="user-avatar" style={{ width: 32, height: 32, fontSize: 10, margin: 0 }}>{u.full_name?.slice(0, 2).toUpperCase()}</div>
+                                                    <div className="user-avatar" style={{ width: 40, height: 40, fontSize: 12, margin: 0 }}>{u.full_name?.slice(0, 2).toUpperCase()}</div>
                                                 )}
                                                 <div>
                                                     <div style={{ fontWeight: 600, fontSize: 14 }}>{u.full_name}</div>
@@ -174,29 +176,24 @@ export default function BDMPerformance() {
                                                 </div>
                                             </div>
                                         </td>
-                                        <td
-                                            style={{ textAlign: 'center', fontWeight: 600, cursor: 'pointer' }}
-                                            onClick={() => navigate('/leads', { state: { agent: u.id, ...dateRange } })}
-                                        >
-                                            {u.sales_stats.total_leads}
+                                        <td style={{ textAlign: 'right', fontWeight: 600 }}>
+                                            ₹{(isFinite(u.sales_stats.monthly_target) ? u.sales_stats.monthly_target : 0).toLocaleString()}
                                         </td>
                                         <td
-                                            style={{ textAlign: 'center', cursor: 'pointer' }}
-                                            onClick={() => navigate('/leads', { state: { agent: u.id, status: 'Proposal', ...dateRange } })}
-                                        >
-                                            ₹{(u.sales_stats.pipeline_value / 1000).toFixed(1)}k
-                                        </td>
-                                        <td
-                                            style={{ textAlign: 'center', color: 'var(--success)', fontWeight: 700, cursor: 'pointer' }}
+                                            style={{ textAlign: 'right', color: 'var(--success)', fontWeight: 700, cursor: 'pointer' }}
                                             onClick={() => navigate('/leads', { state: { agent: u.id, status: 'Won', ...dateRange } })}
                                         >
-                                            ₹{(u.sales_stats.won_value / 1000).toFixed(1)}k
+                                            ₹{u.sales_stats.won_value?.toLocaleString()}
                                         </td>
-                                        <td
-                                            style={{ textAlign: 'center', cursor: 'pointer' }}
-                                            onClick={() => navigate('/leads', { state: { agent: u.id, ...dateRange } })}
-                                        >
-                                            {u.sales_stats.quotation_count}
+                                        <td style={{
+                                            textAlign: 'right',
+                                            color: (isFinite(u.sales_stats.variance) ? u.sales_stats.variance : 0) >= 0 ? 'var(--success)' : 'var(--danger)',
+                                            fontWeight: 600
+                                        }}>
+                                            {(() => {
+                                                const v = isFinite(u.sales_stats.variance) ? u.sales_stats.variance : 0;
+                                                return `${v >= 0 ? '+' : '-'}₹${Math.abs(v).toLocaleString()}`;
+                                            })()}
                                         </td>
                                         <td style={{ textAlign: 'center' }}>
                                             <div style={{ display: 'inline-block', background: u.sales_stats.conversion_rate > 15 ? 'var(--success-bg)' : 'var(--warning-bg)', color: u.sales_stats.conversion_rate > 15 ? 'var(--success)' : 'var(--warning)', padding: '2px 8px', borderRadius: 20, fontSize: 12, fontWeight: 700 }}>
@@ -209,7 +206,7 @@ export default function BDMPerformance() {
                                                 onClick={() => navigate('/leads', { state: { agent: u.id, ...dateRange } })}
                                                 style={{ color: 'var(--accent-light)' }}
                                             >
-                                                View Leads <ArrowUpRight size={14} style={{ marginLeft: 4 }} />
+                                                Details <ArrowUpRight size={14} style={{ marginLeft: 4 }} />
                                             </button>
                                         </td>
                                     </tr>

@@ -8,6 +8,26 @@ import { useAuth } from '../../context/AuthContext';
 import api from '../../lib/api';
 import toast from 'react-hot-toast';
 import LeadDetailsModal from './LeadDetailsModal';
+import DateRangePicker from '../../components/DateRangePicker';
+
+const ExpandableNote = ({ text }) => {
+    const [expanded, setExpanded] = useState(false);
+    if (!text || text.length < 150) return <span>{text || 'No notes recorded.'}</span>;
+    return (
+        <div>
+            <span>{expanded ? text : `${text.substring(0, 150)}...`} </span>
+            <button
+                onClick={(e) => { e.stopPropagation(); setExpanded(!expanded); }}
+                style={{
+                    background: 'none', border: 'none', color: 'var(--accent)', cursor: 'pointer',
+                    fontSize: '11px', fontWeight: 700, padding: 0, textTransform: 'uppercase', display: 'inline'
+                }}
+            >
+                {expanded ? 'Show Less' : 'Read More'}
+            </button>
+        </div>
+    );
+};
 
 /**
  * InteractionHistory — Comprehensive log of all past BDM-Client interactions.
@@ -29,6 +49,8 @@ export default function InteractionHistory() {
     });
     const [selectedLeadId, setSelectedLeadId] = useState(null);
     const [sortConfig, setSortConfig] = useState({ key: 'created_at', direction: 'desc' });
+    const [page, setPage] = useState(1);
+    const limit = 50;
 
     // Role Checks
     const userRoles = currentUser?.roles?.map(r => typeof r === 'string' ? r.toLowerCase() : r.name?.toLowerCase()).filter(Boolean) || [];
@@ -40,6 +62,7 @@ export default function InteractionHistory() {
     }, []);
 
     useEffect(() => {
+        setPage(1); // Reset to first page when fetching new data
         fetchData();
     }, [agentFilter, dateRange]);
 
@@ -54,11 +77,15 @@ export default function InteractionHistory() {
     const fetchData = async () => {
         setLoading(true);
         try {
+            const todayStr = new Date().toISOString().split('T')[0];
+            // If the filter is for Tomorrow, we want to look at scheduled callbacks, not past activities
+            const isFuture = dateRange.start > todayStr;
+
             const params = {
                 agent_id: isAdmin ? agentFilter : currentUser.id,
                 startDate: dateRange.start,
                 endDate: dateRange.end,
-                trackActivity: true // This will filter by created_at in the backend
+                trackActivity: !isFuture
             };
             const res = await SalesService.getFollowUps(params);
             setInteractions(res.data || []);
@@ -180,6 +207,10 @@ export default function InteractionHistory() {
         setExpandedLeads(next);
     };
 
+    // Pagination Logic
+    const totalPages = Math.ceil(sortedGroups.length / limit);
+    const paginatedGroups = sortedGroups.slice((page - 1) * limit, page * limit);
+
     // Summary Metrics
     const stats = {
         total: filteredInteractions.length,
@@ -195,9 +226,16 @@ export default function InteractionHistory() {
                     <h1>Interaction & Activity History</h1>
                     <p style={{ color: 'var(--text-dim)', fontSize: '14px' }}>Complete log of BDM notes and engagements recorded in this period.</p>
                 </div>
-                <button className="btn btn-secondary" onClick={handleExportCSV} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <Download size={18} /> Export Activity CSV
-                </button>
+                <div style={{ display: 'flex', gap: '16px', alignItems: 'center', flexWrap: 'wrap' }}>
+                    <DateRangePicker
+                        startDate={dateRange.start}
+                        endDate={dateRange.end}
+                        onRangeChange={(range) => setDateRange({ start: range.startDate, end: range.endDate })}
+                    />
+                    <button className="btn btn-secondary" onClick={handleExportCSV} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <Download size={18} /> Export Activity CSV
+                    </button>
+                </div>
             </div>
 
             {/* Filters Bar */}
@@ -222,7 +260,10 @@ export default function InteractionHistory() {
                                 className="form-control"
                                 style={{ height: '40px', width: '160px' }}
                                 value={agentFilter}
-                                onChange={e => setAgentFilter(e.target.value)}
+                                onChange={e => {
+                                    setAgentFilter(e.target.value);
+                                    setPage(1);
+                                }}
                             >
                                 <option value="">All BDMs</option>
                                 {allAgents.map(a => <option key={a.id} value={a.id}>{a.full_name}</option>)}
@@ -236,7 +277,10 @@ export default function InteractionHistory() {
                             className="form-control"
                             style={{ height: '40px', width: '160px' }}
                             value={leadStatusFilter}
-                            onChange={e => setLeadStatusFilter(e.target.value)}
+                            onChange={e => {
+                                setLeadStatusFilter(e.target.value);
+                                setPage(1);
+                            }}
                         >
                             <option value="">All Status</option>
                             <option value="New">New</option>
@@ -247,26 +291,6 @@ export default function InteractionHistory() {
                         </select>
                     </div>
 
-                    <div className="filter-group">
-                        <label style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-dim)', display: 'block', marginBottom: '4px' }}>Activity Period</label>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <input
-                                type="date"
-                                className="form-control"
-                                style={{ width: '145px', height: '40px' }}
-                                value={dateRange.start}
-                                onChange={e => setDateRange(p => ({ ...p, start: e.target.value }))}
-                            />
-                            <span style={{ color: 'var(--text-dim)' }}>to</span>
-                            <input
-                                type="date"
-                                className="form-control"
-                                style={{ width: '145px', height: '40px' }}
-                                value={dateRange.end}
-                                onChange={e => setDateRange(p => ({ ...p, end: e.target.value }))}
-                            />
-                        </div>
-                    </div>
                 </div>
             </div>
 
@@ -275,7 +299,7 @@ export default function InteractionHistory() {
                 <div
                     className={`card polished-card stat-card-enhanced ${!leadStatusFilter ? 'active-filter' : ''}`}
                     style={{ borderLeft: '4px solid var(--accent)', cursor: 'pointer' }}
-                    onClick={() => setLeadStatusFilter('')}
+                    onClick={() => { setLeadStatusFilter(''); setPage(1); }}
                 >
                     <div className="stat-icon-box" style={{ background: 'rgba(124, 58, 237, 0.1)', color: 'var(--accent)' }}>
                         <LayoutGrid size={24} />
@@ -290,7 +314,7 @@ export default function InteractionHistory() {
                 <div
                     className={`card polished-card stat-card-enhanced ${leadStatusFilter === 'Won' ? 'active-filter' : ''}`}
                     style={{ borderLeft: '4px solid #22c55e', cursor: 'pointer' }}
-                    onClick={() => setLeadStatusFilter('Won')}
+                    onClick={() => { setLeadStatusFilter('Won'); setPage(1); }}
                 >
                     <div className="stat-icon-box" style={{ background: 'rgba(34, 197, 94, 0.1)', color: '#22c55e' }}>
                         <CheckCircle size={24} />
@@ -305,7 +329,7 @@ export default function InteractionHistory() {
                 <div
                     className={`card polished-card stat-card-enhanced ${leadStatusFilter === 'Proposal' ? 'active-filter' : ''}`}
                     style={{ borderLeft: '4px solid #fbbf24', cursor: 'pointer' }}
-                    onClick={() => setLeadStatusFilter('Proposal')}
+                    onClick={() => { setLeadStatusFilter('Proposal'); setPage(1); }}
                 >
                     <div className="stat-icon-box" style={{ background: 'rgba(251, 191, 36, 0.1)', color: '#fbbf24' }}>
                         <FileText size={24} />
@@ -361,10 +385,11 @@ export default function InteractionHistory() {
                                     <th style={{ width: '100px' }}>Actions</th>
                                 </tr>
                             </thead>
-                            {sortedGroups.length > 0 ? sortedGroups.map((group, groupIdx) => {
+                            {paginatedGroups.length > 0 ? paginatedGroups.map((group, groupIdx) => {
                                 const lid = group.lead?.id || `group-${groupIdx}`;
                                 const isExpanded = expandedLeads.has(lid);
                                 const hasMultiple = group.items.length > 1;
+                                const globalIndex = (page - 1) * limit + groupIdx + 1;
 
                                 return (
                                     <tbody key={lid} style={{ borderBottom: '1px solid var(--border)' }}>
@@ -374,7 +399,7 @@ export default function InteractionHistory() {
                                             onClick={() => hasMultiple && toggleExpand(lid)}
                                             style={{ background: isExpanded ? 'rgba(124, 58, 237, 0.04)' : 'transparent' }}
                                         >
-                                            <td><span style={{ color: 'var(--text-dim)', fontSize: '12px' }}>#{groupIdx + 1}</span></td>
+                                            <td><span style={{ color: 'var(--text-dim)', fontSize: '12px' }}>#{globalIndex}</span></td>
                                             <td>
                                                 <div style={{ fontWeight: 600, fontSize: '13px' }}>
                                                     {new Date(group.lastActive).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}
@@ -421,7 +446,7 @@ export default function InteractionHistory() {
                                                     </td>
                                                     <td>
                                                         <div className="text-truncate" style={{ maxWidth: '350px', fontSize: '13px', color: 'var(--text-muted)', lineHeight: '1.5' }}>
-                                                            {group.items[0].notes || 'No notes recorded.'}
+                                                            <ExpandableNote text={group.items[0].notes} />
                                                         </div>
                                                     </td>
                                                     <td>
@@ -474,7 +499,7 @@ export default function InteractionHistory() {
                                         {isExpanded && group.items.map((it, itIdx) => (
                                             <tr key={it.id} style={{ background: 'rgba(255,255,255,0.01)' }}>
                                                 <td style={{ textAlign: 'right', paddingRight: '12px' }}>
-                                                    <span style={{ fontSize: '10px', opacity: 0.4, fontWeight: 800 }}>{groupIdx + 1}.{itIdx + 1}</span>
+                                                    <span style={{ fontSize: '10px', opacity: 0.4, fontWeight: 800 }}>{globalIndex}.{itIdx + 1}</span>
                                                 </td>
                                                 <td>
                                                     <div style={{ fontSize: '12px', opacity: 0.9 }}>
@@ -496,12 +521,22 @@ export default function InteractionHistory() {
                                                     </div>
                                                 </td>
                                                 <td>
-                                                    <div style={{ fontSize: '12px', color: 'var(--text-muted)', lineHeight: '1.4', whiteSpace: 'pre-wrap' }}>
-                                                        {it.notes || 'No notes.'}
+                                                    <div style={{ maxWidth: '350px', fontSize: '12px', color: 'var(--text-muted)', lineHeight: '1.4', whiteSpace: 'pre-wrap' }}>
+                                                        <ExpandableNote text={it.notes} />
                                                     </div>
                                                 </td>
                                                 <td>
-                                                    <span style={{ fontSize: '10px', opacity: 0.3, fontWeight: 700 }}>{group.lead?.status}</span>
+                                                    <span style={{
+                                                        padding: '2px 8px', borderRadius: '4px', fontSize: '10px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.4px',
+                                                        background: group.lead?.status === 'Won' ? 'rgba(34,197,94,0.1)' :
+                                                            group.lead?.status === 'Lost' ? 'rgba(239,68,68,0.1)' :
+                                                                group.lead?.status === 'Proposal' ? 'rgba(124,58,237,0.1)' : 'rgba(255,255,255,0.04)',
+                                                        color: group.lead?.status === 'Won' ? '#22c55e' :
+                                                            group.lead?.status === 'Lost' ? '#ef4444' :
+                                                                group.lead?.status === 'Proposal' ? '#a78bfa' : '#a1a1aa',
+                                                    }}>
+                                                        {group.lead?.status || 'Active'}
+                                                    </span>
                                                 </td>
                                                 {isAdmin && (
                                                     <td>
@@ -530,6 +565,36 @@ export default function InteractionHistory() {
                             )}
                         </table>
                     </div>
+
+                    {/* Pagination Controls */}
+                    {totalPages > 1 && (
+                        <div style={{ padding: '16px 20px', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span style={{ fontSize: '12px', color: 'var(--text-dim)' }}>
+                                Showing {(page - 1) * limit + 1} to {Math.min(page * limit, sortedGroups.length)} of {sortedGroups.length} groups
+                            </span>
+                            <div style={{ display: 'flex', gap: '8px' }}>
+                                <button
+                                    className="btn btn-secondary"
+                                    onClick={() => setPage(p => Math.max(1, p - 1))}
+                                    disabled={page === 1}
+                                    style={{ padding: '6px' }}
+                                >
+                                    <ChevronLeft size={16} />
+                                </button>
+                                <div style={{ display: 'flex', alignItems: 'center', padding: '0 12px', background: 'rgba(255,255,255,0.05)', borderRadius: '6px', fontSize: '12px', fontWeight: 600 }}>
+                                    {page} / {totalPages}
+                                </div>
+                                <button
+                                    className="btn btn-secondary"
+                                    onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                                    disabled={page === totalPages}
+                                    style={{ padding: '6px' }}
+                                >
+                                    <ChevronRight size={16} />
+                                </button>
+                            </div>
+                        </div>
+                    )}
                 </div>
             )}
 

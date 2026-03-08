@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useLocation, NavLink } from 'react-router-dom';
 import { HRService } from './HRService';
-import { Clock, Calendar, FileText, Check, X } from 'lucide-react';
+import { Clock, Calendar, FileText, Check, X, Download } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useSortable, SortableHeader } from '../../hooks/useSortable';
 
@@ -213,6 +213,37 @@ export default function HRAdminPanel() {
     const { sorted: sortedEmployees, sortKey: empSK, sortDir: empSD, toggleSort: empSort } = useSortable(filteredEmployees, 'full_name', 'asc');
     const sortedSlips = filteredSlips; // Keep current order
 
+    const handleExportAttendanceCSV = () => {
+        if (!sortedAttendance.length) return
+        const headers = ['Employee', 'Date', 'Check In', 'Check Out', 'Duration (h)']
+        const rows = sortedAttendance.map(rec => {
+            let dur = 0
+            if (rec.check_in_time && rec.check_out_time) dur = ((new Date(rec.check_out_time) - new Date(rec.check_in_time)) / 3600000).toFixed(2)
+            return [`"${rec.user?.full_name || ''}"`, new Date(rec.date).toLocaleDateString(), rec.check_in_time ? new Date(rec.check_in_time).toLocaleTimeString() : '', rec.check_out_time ? new Date(rec.check_out_time).toLocaleTimeString() : '', dur]
+        })
+        const csv = [headers, ...rows].map(r => r.join(',')).join('\n')
+        const link = document.createElement('a'); link.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' })); link.download = `attendance_${new Date().toISOString().split('T')[0]}.csv`; link.click()
+    }
+
+    const handleExportLeavesCSV = () => {
+        if (!sortedLeaves.length) return
+        const headers = ['Employee', 'Type', 'From', 'To', 'Days', 'Reason', 'Status']
+        const rows = sortedLeaves.map(req => {
+            const days = Math.ceil(Math.abs(new Date(req.end_date) - new Date(req.start_date)) / 86400000) + 1
+            return [`"${req.user?.full_name || ''}"`, req.type || '', new Date(req.start_date).toLocaleDateString(), new Date(req.end_date).toLocaleDateString(), days, `"${req.reason || ''}"`, req.status || 'Pending']
+        })
+        const csv = [headers, ...rows].map(r => r.join(',')).join('\n')
+        const link = document.createElement('a'); link.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' })); link.download = `leaves_${new Date().toISOString().split('T')[0]}.csv`; link.click()
+    }
+
+    const handleExportPayrollCSV = () => {
+        if (!sortedSlips.length) return
+        const headers = ['Employee', 'Month', 'Year', 'Base Salary', 'Deductions', 'Net Salary', 'Status']
+        const rows = sortedSlips.map(slip => [`"${slip.user?.full_name || ''}"`, slip.month, slip.year, slip.base_salary, slip.deductions, slip.net_salary, slip.status])
+        const csv = [headers, ...rows].map(r => r.join(',')).join('\n')
+        const link = document.createElement('a'); link.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' })); link.download = `payroll_${payrollMonth}_${payrollYear}.csv`; link.click()
+    }
+
     const tabs = [
         { key: 'attendance', label: 'Pending Attendance', icon: Clock, count: pendingAttendance.length },
         { key: 'leaves', label: 'Pending Leaves', icon: Calendar, count: pendingLeaves.length },
@@ -304,6 +335,7 @@ export default function HRAdminPanel() {
                 <div className="table-wrapper">
                     <div className="table-toolbar">
                         <h2 style={{ fontSize: 15, fontWeight: 600 }}>Pending Attendance Records</h2>
+                        <button className="btn btn-outline btn-sm" onClick={handleExportAttendanceCSV} style={{ display: 'flex', alignItems: 'center', gap: 4 }}><Download size={14} /> CSV</button>
                     </div>
                     <table>
                         <thead>
@@ -363,48 +395,58 @@ export default function HRAdminPanel() {
                 <div className="table-wrapper">
                     <div className="table-toolbar">
                         <h2 style={{ fontSize: 15, fontWeight: 600 }}>Pending Leave Requests</h2>
-                        <NavLink to="/leave-tracker" className="btn btn-ghost btn-sm">View Full Report</NavLink>
+                        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                            <button className="btn btn-outline btn-sm" onClick={handleExportLeavesCSV} style={{ display: 'flex', alignItems: 'center', gap: 4 }}><Download size={14} /> CSV</button>
+                            <NavLink to="/leave-tracker" className="btn btn-ghost btn-sm">View Full Report</NavLink>
+                        </div>
                     </div>
                     <table>
                         <thead>
                             <tr>
+                                <th>S.No</th>
                                 <SortableHeader sortKey="user.full_name" label="Employee" currentSortKey={lvSK} sortDir={lvSD} onSort={lvSort} />
                                 <SortableHeader sortKey="type" label="Type" currentSortKey={lvSK} sortDir={lvSD} onSort={lvSort} />
                                 <SortableHeader sortKey="start_date" label="From" currentSortKey={lvSK} sortDir={lvSD} onSort={lvSort} />
                                 <SortableHeader sortKey="end_date" label="To" currentSortKey={lvSK} sortDir={lvSD} onSort={lvSort} />
+                                <th>Days</th>
                                 <th>Reason</th>
                                 <th style={{ textAlign: 'right' }}>Action</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {sortedLeaves.length > 0 ? sortedLeaves.map(req => (
-                                <tr key={req.id}>
-                                    <td><strong>{req.user?.full_name || '—'}</strong></td>
-                                    <td>
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                                            <span className="badge badge-purple">{req.type}</span>
-                                            {req.leave_type && <span style={{ fontSize: 10, color: 'var(--text-dim)', fontWeight: 600 }}>Policy: {req.leave_type.name}</span>}
-                                        </div>
-                                    </td>
-                                    <td style={{ color: 'var(--text-muted)', fontSize: 13 }}>{new Date(req.start_date).toLocaleDateString()}</td>
-                                    <td style={{ color: 'var(--text-muted)', fontSize: 13 }}>{new Date(req.end_date).toLocaleDateString()}</td>
-                                    <td style={{ color: 'var(--text-muted)', fontSize: 13, maxWidth: 200 }} title={req.reason}>{req.reason}</td>
-                                    <td style={{ textAlign: 'right' }}>
-                                        <div className="actions-cell" style={{ justifyContent: 'flex-end' }}>
-                                            <button className="btn btn-ghost btn-sm btn-icon" title="Approve"
-                                                style={{ color: 'var(--success)' }}
-                                                onClick={() => openApprovalModal('leave', req, 'Approved')}>
-                                                <Check size={15} />
-                                            </button>
-                                            <button className="btn btn-danger btn-sm btn-icon" title="Reject"
-                                                onClick={() => openApprovalModal('leave', req, 'Rejected')}>
-                                                <X size={15} />
-                                            </button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            )) : (
-                                <tr><td colSpan="6"><div className="empty-state"><p>No pending leave requests</p></div></td></tr>
+                            {sortedLeaves.length > 0 ? sortedLeaves.map((req, index) => {
+                                const days = Math.ceil(Math.abs(new Date(req.end_date) - new Date(req.start_date)) / (1000 * 60 * 60 * 24)) + 1;
+                                return (
+                                    <tr key={req.id}>
+                                        <td>{index + 1}</td>
+                                        <td><strong>{req.user?.full_name || '—'}</strong></td>
+                                        <td>
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                                <span className="badge badge-purple">{req.type}</span>
+                                                {req.leave_type && <span style={{ fontSize: 10, color: 'var(--text-dim)', fontWeight: 600 }}>Policy: {req.leave_type.name}</span>}
+                                            </div>
+                                        </td>
+                                        <td style={{ color: 'var(--text-muted)', fontSize: 13 }}>{new Date(req.start_date).toLocaleDateString()}</td>
+                                        <td style={{ color: 'var(--text-muted)', fontSize: 13 }}>{new Date(req.end_date).toLocaleDateString()}</td>
+                                        <td style={{ fontWeight: 600 }}>{days}</td>
+                                        <td style={{ color: 'var(--text-muted)', fontSize: 13, maxWidth: 200 }} title={req.reason}>{req.reason}</td>
+                                        <td style={{ textAlign: 'right' }}>
+                                            <div className="actions-cell" style={{ justifyContent: 'flex-end' }}>
+                                                <button className="btn btn-ghost btn-sm btn-icon" title="Approve"
+                                                    style={{ color: 'var(--success)' }}
+                                                    onClick={() => openApprovalModal('leave', req, 'Approved')}>
+                                                    <Check size={15} />
+                                                </button>
+                                                <button className="btn btn-danger btn-sm btn-icon" title="Reject"
+                                                    onClick={() => openApprovalModal('leave', req, 'Rejected')}>
+                                                    <X size={15} />
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                );
+                            }) : (
+                                <tr><td colSpan="8"><div className="empty-state"><p>No pending leave requests</p></div></td></tr>
                             )}
                         </tbody>
                     </table>
@@ -423,6 +465,7 @@ export default function HRAdminPanel() {
                                 style={{ marginRight: 8 }}>
                                 {generatingPayroll ? <span className="spinner" style={{ width: 14, height: 14 }} /> : 'Generate Payroll'}
                             </button>
+                            <button className="btn btn-outline btn-sm" onClick={handleExportPayrollCSV} style={{ display: 'flex', alignItems: 'center', gap: 4 }}><Download size={14} /> CSV</button>
                             <select className="form-select" style={{ height: 36, fontSize: 13, width: 120 }}
                                 value={payrollMonth} onChange={e => setPayrollMonth(e.target.value)}>
                                 {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
@@ -470,69 +513,92 @@ export default function HRAdminPanel() {
 
             {/* Employee Settings Tab */}
             {activeTab === 'employees' && (
-                <div className="table-wrapper">
-                    <div className="table-toolbar">
-                        <h2 style={{ fontSize: 15, fontWeight: 600 }}>Employee HR & Costing Settings</h2>
+                <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                        <h2 style={{ fontSize: 15, fontWeight: 600 }}>Employee HR &amp; Costing Settings</h2>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                            <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Set joining date & Annual CTC for leave balance and project costing</span>
+                            <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{sortedEmployees.length} employees</span>
                             <button className="btn btn-ghost btn-sm"
                                 onClick={handleSyncAll}
                                 disabled={syncing}
-                                style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--accent-light)', border: '1px solid var(--accent-transparent)' }}
+                                style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--accent-light)', border: '1px solid var(--border)' }}
                             >
                                 {syncing ? <span className="spinner" style={{ width: 12, height: 12 }} /> : <Clock size={14} />}
                                 Sync All Balances
                             </button>
                         </div>
                     </div>
-                    <table>
-                        <thead>
-                            <tr>
-                                <SortableHeader sortKey="full_name" label="Employee" currentSortKey={empSK} sortDir={empSD} onSort={empSort} />
-                                <SortableHeader sortKey="department" label="Department" currentSortKey={empSK} sortDir={empSD} onSort={empSort} />
-                                <th>Joining Date</th>
-                                <th>Annual CTC (₹)</th>
-                                <th style={{ textAlign: 'right' }}>Action</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {sortedEmployees.length > 0 ? sortedEmployees.map(emp => (
-                                <tr key={emp.id}>
-                                    <td>
-                                        <strong>{emp.full_name}</strong>
-                                        <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{emp.email}</div>
-                                    </td>
-                                    <td style={{ color: 'var(--text-muted)', fontSize: 13 }}>{emp.department || '—'}</td>
-                                    <td>
-                                        <input type="date" className="form-input"
-                                            style={{ fontSize: 13, padding: '6px 10px' }}
-                                            value={empSettings[emp.id]?.joining_date || ''}
-                                            onChange={e => setEmpSettings(p => ({ ...p, [emp.id]: { ...p[emp.id], joining_date: e.target.value } }))}
-                                        />
-                                    </td>
-                                    <td>
-                                        <input type="number" className="form-input"
-                                            style={{ fontSize: 13, padding: '6px 10px' }}
-                                            placeholder="e.g. 1200000"
-                                            value={empSettings[emp.id]?.ctc || ''}
-                                            onChange={e => setEmpSettings(p => ({ ...p, [emp.id]: { ...p[emp.id], ctc: e.target.value } }))}
-                                        />
-                                    </td>
-                                    <td style={{ textAlign: 'right' }}>
-                                        <button className="btn btn-primary btn-sm"
-                                            onClick={() => saveEmpSettings(emp.id)}
-                                            disabled={savingEmp === emp.id}>
-                                            {savingEmp === emp.id ? <span className="spinner" style={{ width: 14, height: 14 }} /> : 'Save'}
-                                        </button>
-                                    </td>
-                                </tr>
-                            )) : (
-                                <tr><td colSpan="5"><div className="empty-state"><p>No employees found</p></div></td></tr>
-                            )}
-                        </tbody>
-                    </table>
+
+                    {sortedEmployees.length === 0 ? (
+                        <div className="empty-state"><p>No employees found</p></div>
+                    ) : (
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
+                            {sortedEmployees.map(emp => (
+                                <div key={emp.id} className="card polished-card" style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 14 }}>
+                                    {/* Card Header: Avatar + Info */}
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                        <div style={{
+                                            width: 44, height: 44, borderRadius: '50%',
+                                            background: 'linear-gradient(135deg, var(--accent), #4f46e5)',
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                            fontSize: 16, fontWeight: 700, color: '#fff', flexShrink: 0
+                                        }}>
+                                            {(emp.full_name || 'U').substring(0, 2).toUpperCase()}
+                                        </div>
+                                        <div style={{ minWidth: 0 }}>
+                                            <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                {emp.full_name}
+                                            </div>
+                                            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2, display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+                                                {emp.designation && <span>{emp.designation}</span>}
+                                                {emp.department && (
+                                                    <span style={{ background: 'rgba(124,58,237,0.12)', color: 'var(--accent-light)', padding: '1px 8px', borderRadius: 10, fontSize: 10, fontWeight: 600 }}>
+                                                        {emp.department}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div style={{ fontSize: 11, color: 'var(--text-dim)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                        {emp.email}
+                                    </div>
+
+                                    {/* Editable Fields */}
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                                        <div>
+                                            <label style={{ fontSize: 10, color: 'var(--text-muted)', display: 'block', marginBottom: 4, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Joining Date</label>
+                                            <input type="date" className="form-input"
+                                                style={{ fontSize: 12, padding: '6px 10px', width: '100%' }}
+                                                value={empSettings[emp.id]?.joining_date || ''}
+                                                onChange={e => setEmpSettings(p => ({ ...p, [emp.id]: { ...p[emp.id], joining_date: e.target.value } }))}
+                                            />
+                                        </div>
+                                        <div>
+                                            <label style={{ fontSize: 10, color: 'var(--text-muted)', display: 'block', marginBottom: 4, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Annual CTC (₹)</label>
+                                            <input type="number" className="form-input"
+                                                style={{ fontSize: 12, padding: '6px 10px', width: '100%' }}
+                                                placeholder="e.g. 1200000"
+                                                value={empSettings[emp.id]?.ctc || ''}
+                                                onChange={e => setEmpSettings(p => ({ ...p, [emp.id]: { ...p[emp.id], ctc: e.target.value } }))}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <button className="btn btn-primary btn-sm"
+                                        onClick={() => saveEmpSettings(emp.id)}
+                                        disabled={savingEmp === emp.id}
+                                        style={{ width: '100%', justifyContent: 'center' }}
+                                    >
+                                        {savingEmp === emp.id ? <span className="spinner" style={{ width: 14, height: 14 }} /> : 'Save Settings'}
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    )}
                 </div>
             )}
+
 
             {/* Approval Comment Modal */}
             {approvalModal && (

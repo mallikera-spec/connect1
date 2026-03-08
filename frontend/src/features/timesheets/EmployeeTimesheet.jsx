@@ -408,7 +408,7 @@ export default function EmployeeTimesheet() {
                                                 <td style={{ textAlign: 'right' }}>
                                                     <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
                                                         <button className="btn-icon-sm" onClick={() => setEditingEntry(e)}><Edit size={14} /></button>
-                                                        {hasRole('super_admin') && (
+                                                        {(hasRole('super_admin') || hasRole('director') || hasRole('Director')) && (
                                                             <button className="btn-icon-sm danger" onClick={() => handleDelete(e.id)}><Trash2 size={14} /></button>
                                                         )}
                                                     </div>

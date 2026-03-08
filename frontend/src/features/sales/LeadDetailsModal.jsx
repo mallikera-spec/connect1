@@ -1,9 +1,12 @@
 import { useState, useEffect } from 'react';
-import { X, Phone, Mail, MessageSquare, Plus, Save, History, TrendingUp } from 'lucide-react';
+import { X, Phone, Mail, MessageSquare, Plus, Save, History, TrendingUp, Rocket } from 'lucide-react';
 import { SalesService } from './SalesService';
 import toast from 'react-hot-toast';
 import LogFollowUpModal from './LogFollowUpModal';
 import LeadJourneyView from './LeadJourneyView';
+import OnboardModal from './OnboardModal';
+import LeadFilesTab from './LeadFilesTab';
+import { FolderOpen } from 'lucide-react';
 
 /**
  * LeadDetailsModal — Detailed view for a single lead with interaction history.
@@ -13,6 +16,9 @@ export default function LeadDetailsModal({ leadId, onClose, onSaved }) {
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState('timeline');
     const [isLogModalOpen, setIsLogModalOpen] = useState(false);
+    const [isOnboardModalOpen, setIsOnboardModalOpen] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
+    const [dealValue, setDealValue] = useState(0);
 
     useEffect(() => {
         if (leadId) loadLeadDetails();
@@ -23,6 +29,7 @@ export default function LeadDetailsModal({ leadId, onClose, onSaved }) {
         try {
             const res = await SalesService.getLead(leadId);
             setLead(res.data);
+            setDealValue(res.data.deal_value || 0);
         } catch (err) {
             toast.error('Failed to load lead details');
         } finally {
@@ -31,6 +38,11 @@ export default function LeadDetailsModal({ leadId, onClose, onSaved }) {
     };
 
     const handleUpdateStatus = async (newStatus) => {
+        if (newStatus === 'Won') {
+            setIsOnboardModalOpen(true);
+            return;
+        }
+
         try {
             await SalesService.updateLead(leadId, { status: newStatus });
             toast.success(`Status updated to ${newStatus}`);
@@ -38,6 +50,19 @@ export default function LeadDetailsModal({ leadId, onClose, onSaved }) {
             onSaved();
         } catch (err) {
             toast.error(err.message);
+        }
+    };
+
+    const handleSaveChanges = async () => {
+        setIsSaving(true);
+        try {
+            await SalesService.updateLead(leadId, { deal_value: dealValue });
+            toast.success('Lead details saved');
+            loadLeadDetails();
+        } catch (err) {
+            toast.error(err.message);
+        } finally {
+            setIsSaving(false);
         }
     };
 
@@ -49,7 +74,7 @@ export default function LeadDetailsModal({ leadId, onClose, onSaved }) {
 
     return (
         <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
-            <div className="modal modal-lg" style={{ height: '85vh', display: 'flex', flexDirection: 'column' }}>
+            <div className="modal modal-lg">
                 <div className="modal-header">
                     <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
                         <div className="user-avatar" style={{ width: '48px', height: '48px', margin: 0, fontSize: '18px' }}>
@@ -75,10 +100,14 @@ export default function LeadDetailsModal({ leadId, onClose, onSaved }) {
                     <button className={`tab-btn ${activeTab === 'journey' ? 'active' : ''}`} onClick={() => setActiveTab('journey')}>
                         <TrendingUp size={14} style={{ marginRight: '6px' }} /> Full Journey
                     </button>
+                    <button className={`tab-btn ${activeTab === 'files' ? 'active' : ''}`} onClick={() => setActiveTab('files')}>
+                        <FolderOpen size={14} style={{ marginRight: '6px' }} /> Files
+                    </button>
                 </div>
 
                 <div className="modal-body" style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
                     {activeTab === 'journey' && <LeadJourneyView leadId={leadId} />}
+                    {activeTab === 'files' && <LeadFilesTab leadId={leadId} />}
                     {activeTab === 'timeline' && (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -161,12 +190,32 @@ export default function LeadDetailsModal({ leadId, onClose, onSaved }) {
                                         <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-dim)', marginBottom: '4px' }}>Phone Number</label>
                                         <div style={{ fontWeight: 600 }}>{lead.phone || '--'}</div>
                                     </div>
+                                    <div className="info-group">
+                                        <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-dim)', marginBottom: '4px' }}>Alt Phone Number</label>
+                                        <div style={{ fontWeight: 600 }}>{lead.alt_phone || '--'}</div>
+                                    </div>
+                                    <div className="info-group">
+                                        <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-dim)', marginBottom: '4px' }}>Location</label>
+                                        <div style={{ fontWeight: 600 }}>{lead.location || '--'}</div>
+                                    </div>
                                 </div>
                             </div>
+
 
                             <div className="card polished-card" style={{ padding: '20px' }}>
                                 <h3 style={{ fontSize: '12px', fontWeight: 800, textTransform: 'uppercase', color: 'var(--accent-light)', marginBottom: '20px', letterSpacing: '1px' }}>Lead Lifecycle</h3>
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                                    <div>
+                                        <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-dim)', marginBottom: '8px' }}>Deal Value (Rs)</label>
+                                        <input
+                                            type="number"
+                                            className="form-control"
+                                            placeholder="Enter final deal value"
+                                            value={dealValue}
+                                            onChange={e => setDealValue(Number(e.target.value))}
+                                            style={{ height: '40px', fontWeight: 600 }}
+                                        />
+                                    </div>
                                     <div>
                                         <label style={{ display: 'block', fontSize: '11px', color: 'var(--text-dim)', marginBottom: '8px' }}>Current Sales Stage</label>
                                         <select
@@ -207,7 +256,10 @@ export default function LeadDetailsModal({ leadId, onClose, onSaved }) {
                     )}
                 </div>
 
-                <div className="modal-footer" style={{ borderTop: '1px solid var(--border)', padding: '16px 24px', display: 'flex', justifyContent: 'flex-end', gap: '12px', background: 'var(--bg-card)' }}>
+                <div className="modal-footer">
+                    <button className="btn btn-primary" onClick={handleSaveChanges} disabled={isSaving || !lead}>
+                        {isSaving ? 'Saving...' : <><Save size={16} style={{ marginRight: '8px' }} /> Save Changes</>}
+                    </button>
                     <button className="btn btn-ghost" onClick={onClose}>Close</button>
                 </div>
             </div>
@@ -217,6 +269,16 @@ export default function LeadDetailsModal({ leadId, onClose, onSaved }) {
                 onClose={() => setIsLogModalOpen(false)}
                 leadId={leadId}
                 onSuccess={loadLeadDetails}
+            />
+
+            <OnboardModal
+                isOpen={isOnboardModalOpen}
+                onClose={() => setIsOnboardModalOpen(false)}
+                lead={{ ...lead, deal_value: dealValue }}
+                onSuccess={() => {
+                    loadLeadDetails();
+                    if (onClose) onClose(); // Close details modal too? Or keep it? Usually onboarding is a terminal step for lead
+                }}
             />
         </div>
     );

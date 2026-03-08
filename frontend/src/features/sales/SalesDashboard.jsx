@@ -11,6 +11,7 @@ import { useAuth } from '../../context/AuthContext';
 import DateRangePicker from '../../components/DateRangePicker';
 import { getISTMonthStartString, getISTTodayString } from '../../lib/dateUtils';
 import { EmployeeCard, AttendanceWidget } from '../dashboard/DashboardComponents';
+import LeadDetailsModal from './LeadDetailsModal';
 
 /**
  * SalesDashboard — High-level strategic overview of sales pipeline and agent performance.
@@ -25,6 +26,7 @@ export default function SalesDashboard() {
         startDate: getISTMonthStartString(),
         endDate: getISTTodayString()
     });
+    const [selectedLeadId, setSelectedLeadId] = useState(null);
 
     const userRoles = currentUser?.roles?.map(r => typeof r === 'string' ? r.toLowerCase() : r.name?.toLowerCase()).filter(Boolean) || [];
     const isAdmin = userRoles.some(r => r && (r.includes('admin') || r.includes('manager') || r.includes('lead')));
@@ -120,13 +122,13 @@ export default function SalesDashboard() {
                     </div>
                 </div>
 
-                <div className="card polished-card stat-card-dashboard">
+                <div className="card polished-card stat-card-dashboard" onClick={() => handleStatClick('status', 'Won')}>
                     <div className="stat-icon-box" style={{ background: 'rgba(168, 85, 247, 0.1)', color: '#a855f7' }}>
                         <TrendingUp size={24} />
                     </div>
                     <div className="stat-content">
                         <label>Conversion Rate</label>
-                        <h3>{overallMetrics?.total ? Math.round(((overallMetrics?.Won || 0) / overallMetrics.total) * 100) : 0}%</h3>
+                        <h3>{(overallMetrics?.conversionRate || 0).toFixed(1)}%</h3>
                         <div className="stat-footer">
                             <span style={{ color: 'var(--text-dim)' }}>From {overallMetrics?.total || 0} Total Leads</span>
                         </div>
@@ -146,7 +148,7 @@ export default function SalesDashboard() {
                     </div>
                 </div>
 
-                <div className="card polished-card stat-card-dashboard">
+                <div className="card polished-card stat-card-dashboard" onClick={() => handleStatClick('status', 'Proposal,Meeting,Negotiation,Won')}>
                     <div className="stat-icon-box" style={{ background: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b' }}>
                         <Briefcase size={24} />
                     </div>
@@ -158,6 +160,43 @@ export default function SalesDashboard() {
                         </div>
                     </div>
                 </div>
+
+                {/* Target vs Achieved for BDM Dashboard */}
+                {bdmStats.length === 1 && (
+                    <>
+                        <div className="card polished-card stat-card-dashboard" style={{ borderBottomColor: 'var(--accent)' }} onClick={() => handleStatClick('agent', bdmStats[0].id)}>
+                            <div className="stat-icon-box" style={{ background: 'rgba(99, 102, 241, 0.1)', color: '#6366f1' }}>
+                                <Target size={24} />
+                            </div>
+                            <div className="stat-content">
+                                <label>Period Target</label>
+                                <h3>Rs {(bdmStats[0]?.sales_stats?.monthly_target || 0).toLocaleString()}</h3>
+                                <div className="stat-footer">
+                                    <span style={{ color: 'var(--text-dim)' }}>Target for selected period</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="card polished-card stat-card-dashboard" style={{ borderBottomColor: (bdmStats[0]?.sales_stats?.variance || 0) >= 0 ? 'var(--success)' : 'var(--danger)' }} onClick={() => handleStatClick('status', 'Won')}>
+                            <div className="stat-icon-box" style={{
+                                background: (bdmStats[0]?.sales_stats?.variance || 0) >= 0 ? 'rgba(34, 197, 94, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                                color: (bdmStats[0]?.sales_stats?.variance || 0) >= 0 ? 'var(--success)' : 'var(--danger)'
+                            }}>
+                                {(bdmStats[0]?.sales_stats?.variance || 0) >= 0 ? <ArrowUpRight size={24} /> : <ArrowDownRight size={24} />}
+                            </div>
+                            <div className="stat-content">
+                                <label>Target Variance</label>
+                                <h3 style={{ color: (bdmStats[0]?.sales_stats?.variance || 0) >= 0 ? 'var(--success)' : 'var(--danger)' }}>
+                                    {(bdmStats[0]?.sales_stats?.variance || 0) >= 0 ? '+' : ''}
+                                    Rs {Math.abs(bdmStats[0]?.sales_stats?.variance || 0).toLocaleString()}
+                                </h3>
+                                <div className="stat-footer">
+                                    <span style={{ color: 'var(--text-dim)' }}>Performance against target</span>
+                                </div>
+                            </div>
+                        </div>
+                    </>
+                )}
             </div>
 
             {/* Pending Follow-ups Section */}
@@ -186,7 +225,7 @@ export default function SalesDashboard() {
                                     <div
                                         key={fu.id}
                                         className="followup-item clickable-row"
-                                        onClick={() => navigate('/leads', { state: { leadId: fu.lead?.id } })}
+                                        onClick={() => setSelectedLeadId(fu.lead?.id)}
                                         style={{ display: 'flex', alignItems: 'flex-start', gap: '16px', padding: '16px 20px', borderBottom: '1px solid var(--border)' }}
                                     >
                                         <div style={{
@@ -199,7 +238,11 @@ export default function SalesDashboard() {
                                         </div>
                                         <div style={{ flex: 1 }}>
                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '4px' }}>
-                                                <div style={{ fontWeight: 600, fontSize: '15px' }}>{fu.lead?.name} <span style={{ color: 'var(--text-dim)', fontWeight: 400 }}>{fu.lead?.company ? `@ ${fu.lead.company}` : ''}</span></div>
+                                                <div style={{ fontWeight: 600, fontSize: '15px' }}>
+                                                    {fu.lead?.name}
+                                                    <span style={{ color: 'var(--text-dim)', fontWeight: 400 }}>{fu.lead?.company ? ` @ ${fu.lead.company}` : ''}</span>
+                                                    {fu.lead?.phone && <span style={{ color: 'var(--accent-light)', marginLeft: '8px', fontSize: '13px' }}>• {fu.lead.phone}</span>}
+                                                </div>
                                                 <div style={{
                                                     fontSize: '12px', fontWeight: 600,
                                                     color: isOverdue ? 'var(--danger)' : 'var(--text-dim)',
@@ -245,7 +288,8 @@ export default function SalesDashboard() {
                             return (
                                 <div
                                     key={it.id}
-                                    className="interaction-feed-item"
+                                    className="interaction-feed-item clickable-row"
+                                    onClick={() => setSelectedLeadId(it.lead?.id)}
                                     style={{ display: 'flex', alignItems: 'flex-start', gap: '16px', padding: '16px 20px', borderBottom: '1px solid var(--border)' }}
                                 >
                                     <div style={{
@@ -294,12 +338,34 @@ export default function SalesDashboard() {
 
             <div className="bdm-grid">
                 {bdmStats.map(bdm => (
-                    <EmployeeCard
+                    <div
                         key={bdm.id}
-                        employee={bdm}
-                        isAdminView={true}
-                        currentRange={dateRange}
-                    />
+                        className="card polished-card"
+                        style={{ padding: '20px', cursor: 'pointer' }}
+                        onClick={() => navigate('/bdm-performance', { state: { agentId: bdm.id, ...dateRange } })}
+                    >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+                            {bdm.avatar_url ? (
+                                <img src={bdm.avatar_url} alt={bdm.full_name} style={{ width: 64, height: 64, borderRadius: '50%' }} />
+                            ) : (
+                                <div className="user-avatar" style={{ width: 64, height: 64, fontSize: 24, margin: 0 }}>{bdm.full_name?.slice(0, 2).toUpperCase()}</div>
+                            )}
+                            <div>
+                                <div style={{ fontWeight: 600, fontSize: '16px' }}>{bdm.full_name}</div>
+                                <div style={{ fontSize: '12px', color: 'var(--text-dim)' }}>{bdm.designation}</div>
+                            </div>
+                        </div>
+                        <div className="stats-grid" style={{ gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                            <div style={{ background: 'var(--bg-app)', padding: '12px', borderRadius: '8px' }}>
+                                <div style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase' }}>Target</div>
+                                <div style={{ fontSize: '14px', fontWeight: 700 }}>₹{(bdm.sales_stats?.monthly_target / 1000).toFixed(0)}k</div>
+                            </div>
+                            <div style={{ background: 'var(--bg-app)', padding: '12px', borderRadius: '8px' }}>
+                                <div style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase' }}>Achieved</div>
+                                <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--success)' }}>₹{(bdm.sales_stats?.won_value / 1000).toFixed(0)}k</div>
+                            </div>
+                        </div>
+                    </div>
                 ))}
             </div>
 
@@ -358,7 +424,22 @@ export default function SalesDashboard() {
                     grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
                     gap: 24px;
                 }
+                .interaction-feed-item.clickable-row {
+                    cursor: pointer;
+                    transition: background 0.2s;
+                }
+                .interaction-feed-item.clickable-row:hover {
+                    background: var(--bg-hover);
+                }
             `}</style>
+
+            {selectedLeadId && (
+                <LeadDetailsModal
+                    leadId={selectedLeadId}
+                    onClose={() => setSelectedLeadId(null)}
+                    onSaved={fetchData}
+                />
+            )}
         </div>
     );
 }

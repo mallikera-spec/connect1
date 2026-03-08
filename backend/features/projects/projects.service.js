@@ -69,7 +69,7 @@ export const getAllProjects = async (options = {}) => {
         }
     }
 
-    const { data, error } = await query.order('created_at', { ascending: false });
+    const { data, error } = await query.order('due_date', { ascending: true, nullsFirst: false });
     if (error) throw error;
     return data;
 };

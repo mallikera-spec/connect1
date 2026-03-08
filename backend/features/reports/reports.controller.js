@@ -7,6 +7,13 @@ export const getProjectReport = async (req, res) => {
     successResponse(res, data, 'Project report generated');
 };
 
+export const getProjectsReport = async (req, res) => {
+    const { ids, startDate, endDate } = req.query;
+    const projectIds = ids ? ids.split(',') : [];
+    const data = await reportsService.getProjectsReport(projectIds, { startDate, endDate });
+    successResponse(res, data, 'Projects report generated');
+};
+
 export const getUserReport = async (req, res) => {
     const { startDate, endDate } = req.query;
     const data = await reportsService.getUserReport(req.params.id, { startDate, endDate });
