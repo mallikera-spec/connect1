@@ -14,7 +14,7 @@ router.get('/project/:id', requirePermission('view_project_report'), getProjectR
 router.get('/projects', requirePermission('view_project_report'), getProjectsReport);
 router.get('/user/:id', requirePermission('view_user_report'), getUserReport);
 router.get('/overall', requirePermission('view_overall_report'), getOverallReport);
-router.get('/employee-overview', requirePermission('view_overall_report'), getEmployeeOverview);
+router.get('/employee-overview', getEmployeeOverview);
 router.get('/hr-overview', requirePermission('view_employees'), getHROverview);
 router.get('/calendar', requirePermission('view_reports'), getDeveloperCalendar);
 

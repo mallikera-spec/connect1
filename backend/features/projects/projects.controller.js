@@ -10,7 +10,7 @@ export const createProject = async (req, res) => {
 };
 
 export const getAllProjects = async (req, res) => {
-    const isAdmin = req.user.roles?.some(r => ['super_admin', 'project_manager', 'hr', 'tester'].includes(r.toLowerCase()));
+    const isAdmin = req.user.roles?.some(r => ['super_admin', 'director', 'project_manager', 'hr', 'tester'].includes(r.toLowerCase()));
 
     let options = {};
     if (isAdmin) {

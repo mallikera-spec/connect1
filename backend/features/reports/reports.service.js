@@ -411,7 +411,7 @@ export const getEmployeeOverview = async ({ startDate, endDate } = {}) => {
 
     let taskQuery = supabaseAdmin
         .from('tasks')
-        .select('assigned_to, status, actual_hours, created_at');
+        .select('assigned_to, status, actual_hours, estimated_hours, created_at');
 
     if (startDate) taskQuery = taskQuery.gte('created_at', startDate);
     if (endDate) {
@@ -447,6 +447,8 @@ export const getEmployeeOverview = async ({ startDate, endDate } = {}) => {
         const roles = p.user_roles?.map(ur => ur.role?.name.toLowerCase()) || [];
         const isTester = roles.includes('tester') || roles.includes('qa');
         const isBDM = roles.includes('bdm');
+        const devRoles = ['developer', 'senior developer', 'full stack developer', 'backend developer', 'frontend developer', 'mobile developer'];
+        const isDeveloper = devRoles.some(r => roles.includes(r)) || String(p.department || '').toLowerCase().includes('development');
 
         userMetrics[p.id] = {
             id: p.id,
@@ -457,28 +459,57 @@ export const getEmployeeOverview = async ({ startDate, endDate } = {}) => {
             avatar_url: p.avatar_url,
             ctc: p.ctc || 0,
             isTester,
-            total_tasks: 0,
-            tasks: { total: 0, verified: 0, failed: 0 },
-            todos: { total: 0, verified: 0, failed: 0 },
             total_hours: 0,
             timesheet_items: [],
             sales_stats: null,
+            isTester,
+            isDeveloper,
             metrics: {
-                qa_pass_rate: 100,
-                estimation_accuracy: 100,
-                blocker_frequency: 0
+                total_items: 0,
+                completed_items: 0,
+                audited_items: 0,
+                pending_qa_items: 0,
+                verified_items: 0,
+                failed_items: 0,
+                audited_hours: 0,
+                qa_pass_rate: 0,
+                estimation_accuracy: 0,
+                efficiency: 0,
+                rework_count: 0
             }
         };
     });
 
     tasks.forEach(t => {
         if (t.assigned_to && userMetrics[t.assigned_to]) {
-            const m = userMetrics[t.assigned_to];
-            m.total_tasks++;
-            m.tasks.total++;
+            const m = userMetrics[t.assigned_to].metrics;
             const status = String(t.status || '').toLowerCase();
-            if (status === 'verified') m.tasks.verified++;
-            else if (status === 'failed') m.tasks.failed++;
+
+            m.total_items++;
+
+            if (['done', 'ready_for_qa', 'verified', 'failed'].includes(status)) {
+                m.completed_items++;
+            }
+
+            if (['verified', 'failed'].includes(status)) {
+                m.audited_items++;
+                if (status === 'verified') m.verified_items++;
+                else {
+                    m.failed_items++;
+                    m.rework_count++;
+                }
+
+                // Estimation Accuracy calculation - only for audited tasks
+                if (t.actual_hours > 0 && t.estimated_hours > 0) {
+                    const diff = Math.abs(t.actual_hours - t.estimated_hours);
+                    const acc = Math.max(0, 100 - (diff / t.estimated_hours) * 100);
+                    m.estimation_accuracy = m.audited_items === 1 ? acc : (m.estimation_accuracy + acc) / 2;
+                }
+            }
+
+            if (['done', 'ready_for_qa'].includes(status)) {
+                m.pending_qa_items++;
+            }
         }
     });
 
@@ -491,19 +522,42 @@ export const getEmployeeOverview = async ({ startDate, endDate } = {}) => {
             if (eDate && workDate > eDate) return;
 
             if (userId && userMetrics[userId]) {
-                const m = userMetrics[userId];
+                const u = userMetrics[userId];
+                const m = u.metrics;
                 const hours = parseTime(entry.hours_spent);
-                m.total_hours += hours;
+                u.total_hours += hours;
 
-                m.todos.total++;
                 const status = String(entry.status || '').toLowerCase();
-                if (status === 'verified') m.todos.verified++;
-                else if (status === 'failed') m.todos.failed++;
+                const isAudited = ['verified', 'failed'].includes(status);
 
-                m.timesheet_items.push({
+                if (isAudited) {
+                    m.audited_hours += hours;
+                }
+
+                m.total_items++;
+
+                if (['done', 'ready_for_qa', 'verified', 'failed'].includes(status)) {
+                    m.completed_items++;
+                }
+
+                if (isAudited) {
+                    m.audited_items++;
+                    if (status === 'verified') m.verified_items++;
+                    else {
+                        m.failed_items++;
+                        m.rework_count++;
+                    }
+                }
+
+                if (['done', 'ready_for_qa'].includes(status)) {
+                    m.pending_qa_items++;
+                }
+
+                u.timesheet_items.push({
                     id: entry.id,
                     title: entry.title,
                     hours: entry.hours_spent,
+                    status: entry.status,
                     date: workDate,
                     project: entry.task?.project?.name || 'No Project'
                 });
@@ -570,36 +624,88 @@ export const getEmployeeOverview = async ({ startDate, endDate } = {}) => {
         await fetchLeads();
     }
 
-    Object.values(userMetrics).forEach(m => {
-        if (m.sales_stats) {
-            if (m.sales_stats.total_leads > 0) {
-                m.sales_stats.conversion_rate = (m.sales_stats.won_count / m.sales_stats.total_leads) * 100;
+    Object.values(userMetrics).forEach(u => {
+        const m = u.metrics;
+        if (u.sales_stats) {
+            const s = u.sales_stats;
+            if (s.total_leads > 0) {
+                s.conversion_rate = (s.won_count / s.total_leads) * 100;
             }
 
             // Calculate number of days in range for scaling target
             let daysInRange = 30.4; // Default to a month
             if (startDate && endDate) {
-                const s = new Date(startDate);
-                const e = new Date(endDate);
-                daysInRange = Math.max(1, (e - s) / (1000 * 60 * 60 * 24) + 1);
+                const startDt = new Date(startDate);
+                const endDt = new Date(endDate);
+                daysInRange = Math.max(1, (endDt - startDt) / (1000 * 60 * 60 * 24) + 1);
             }
 
-            // Monthly Target = (Monthly Salary) * 15
-            // Scaled Target = (Monthly Target / 30.4) * daysInRange
-            const ctcNum = parseFloat(m.ctc) || 0;
+            const ctcNum = parseFloat(u.ctc) || 0;
             const monthlySalary = ctcNum / 12;
             const fullMonthlyTarget = monthlySalary * 15;
 
-            m.sales_stats.monthly_target = Math.round((fullMonthlyTarget / 30.4) * daysInRange);
-            m.sales_stats.variance = (m.sales_stats.won_value || 0) - m.sales_stats.monthly_target;
+            s.monthly_target = Math.round((fullMonthlyTarget / 30.4) * daysInRange);
+            s.variance = (s.won_value || 0) - s.monthly_target;
         }
 
-        // Calculate Quality Metrics for Developers/Testers
-        const totalVerdict = m.tasks.verified + m.tasks.failed + m.todos.verified + m.todos.failed;
-        if (totalVerdict > 0) {
-            const pass = m.tasks.verified + m.todos.verified;
-            m.metrics.qa_pass_rate = (pass / totalVerdict) * 100;
+        // Calculate Quality & Performance Metrics
+        if (m.audited_items > 0) {
+            m.qa_pass_rate = (m.verified_items / m.audited_items) * 100;
         }
+
+        if (m.audited_hours > 0) {
+            // Efficiency: Verified items per hour of audited work
+            m.efficiency = (m.verified_items / m.audited_hours);
+        }
+
+        // Aggregate Daily Metrics
+        const daily = {};
+        u.timesheet_items.forEach(item => {
+            if (!daily[item.date]) daily[item.date] = { hours: 0, verified: 0 };
+            daily[item.date].hours += parseTime(item.hours);
+            if (String(item.status).toLowerCase() === 'verified') {
+                daily[item.date].verified++;
+            }
+        });
+
+        // Also include verified tasks just in case they are verified directly
+        tasks.forEach(t => {
+            if (t.assigned_to === u.id && String(t.status).toLowerCase() === 'verified') {
+                const date = (t.created_at || '').slice(0, 10);
+                if (date) {
+                    if (!daily[date]) daily[date] = { hours: 0, verified: 0 };
+                    daily[date].verified++;
+                }
+            }
+        });
+
+        u.daily_metrics = Object.entries(daily).map(([date, vals]) => ({
+            date,
+            ...vals
+        })).sort((a, b) => a.date.localeCompare(b.date));
+    });
+
+    // Calculate Performance Score for Leaderboard (only for developers)
+    const devs = Object.values(userMetrics).filter(m => m.isDeveloper);
+    const maxVerified = Math.max(...devs.map(m => m.metrics.verified_items), 1);
+
+    devs.forEach(u => {
+        const m = u.metrics;
+
+        if (m.audited_items === 0) {
+            m.performance_score = 0;
+            return;
+        }
+
+        const normalizedThroughput = (m.verified_items / maxVerified) * 100;
+
+        // Score = (Accuracy * 0.4) + (EstimationAccuracy * 0.4) + (Throughput * 0.2)
+        // Accuracy here means Pass Rate
+        m.performance_score = (
+            (m.qa_pass_rate * 0.4) +
+            (m.estimation_accuracy * 0.4) +
+            (normalizedThroughput * 0.2)
+        );
     });
 
     const grouped = {};

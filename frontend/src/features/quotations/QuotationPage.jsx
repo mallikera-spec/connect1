@@ -15,7 +15,7 @@ const STEPS = [
     { id: 5, icon: '✨', title: "Key Features", field: 'keyFeatures', type: 'tags', question: "What are the key features they discussed?", hint: "Press Enter after each feature to add it", placeholder: 'Type a feature and press Enter...' },
     { id: 6, icon: '👥', title: "Target Users", field: 'targetAudience', type: 'textarea', question: "Who are the primary users of this system?", hint: "Describe end-users and their roles", placeholder: 'e.g. ~50 warehouse staff, 5 managers, 3 super admins. Staff are non-technical...' },
     { id: 7, icon: '💰', title: "Budget & Timeline", field: ['budget', 'timeline'], type: 'dual', question: "What is their budget & expected timeline?", hint: "Rough figures help the AI calibrate", placeholders: ['e.g. 8,00,000 INR', 'e.g. 4 months'] },
-    { id: 8, icon: '⚙️', title: "Settings", field: ['provider', 'style'], type: 'selection', question: "Choose document style", hint: "This controls the visual theme of your final quotation", options: [{ value: 'corporate', label: 'Corporate', desc: 'Charcoal & amber' }, { value: 'modern', label: 'Modern', desc: 'Dark & golden' }, { value: 'minimal', label: 'Minimal', desc: 'Clean & typographic' }] },
+    { id: 8, icon: '⚙️', title: "Settings", field: ['provider', 'style'], type: 'selection', question: "Choose document style", hint: "This controls the visual theme of your final quotation", options: [{ value: 'template1', label: 'Template 1', desc: 'Consulting / Enterprise Style' }, { value: 'template2', label: 'Template 2', desc: 'Standard Corporate Style' }, { value: 'template3', label: 'Template 3', desc: 'Features Explained Style' }] },
 ];
 
 function TagInput({ value = [], onChange, placeholder }) {
@@ -43,12 +43,13 @@ function TagInput({ value = [], onChange, placeholder }) {
 }
 
 function EditableBullets({ items, onChange }) {
-    const update = (i, val) => { const arr = [...items]; arr[i] = val; onChange(arr); };
-    const remove = (i) => onChange(items.filter((_, idx) => idx !== i));
-    const add = () => onChange([...items, '']);
+    const safeItems = Array.isArray(items) ? items : [];
+    const update = (i, val) => { const arr = [...safeItems]; arr[i] = val; onChange(arr); };
+    const remove = (i) => onChange(safeItems.filter((_, idx) => idx !== i));
+    const add = () => onChange([...safeItems, '']);
     return (
         <div className="q-edit-bullets">
-            {items.map((item, i) => (
+            {safeItems.map((item, i) => (
                 <div key={i} className="q-edit-bullet-row">
                     <span className="q-bullet-chevron">›</span>
                     <input className="q-edit-bullet-input" value={item} onChange={e => update(i, e.target.value)} />
@@ -144,30 +145,85 @@ function PreviewPanel({ formData, currentStep, previewData, setPreviewData, isGe
                         placeholder="Catchy Project Title" />
                 </div>
 
-                <div className="q-preview-section">
-                    <div className="q-preview-section-label">📋 Executive Overview</div>
-                    <EditableBullets items={previewData.overview || []} onChange={v => updateField('overview', v)} />
-                </div>
+                {previewData.overview && (
+                    <div className="q-preview-section">
+                        <div className="q-preview-section-label">📋 Executive Overview</div>
+                        <EditableBullets items={previewData.overview || []} onChange={v => updateField('overview', v)} />
+                    </div>
+                )}
 
-                <div className="q-preview-section">
-                    <div className="q-preview-section-label">🔭 Technical Scope</div>
-                    <EditableBullets items={previewData.scope || []} onChange={v => updateField('scope', v)} />
-                </div>
+                {previewData.introduction && (
+                    <div className="q-preview-section">
+                        <div className="q-preview-section-label">📋 Project Introduction</div>
+                        <textarea style={{ width: '100%', padding: '10px', fontSize: '14px', border: '1px solid #e5e7eb', borderRadius: '4px', height: '80px', fontFamily: 'inherit' }}
+                            value={previewData.introduction || ''} onChange={e => updateField('introduction', e.target.value)} />
+                    </div>
+                )}
 
-                <div className="q-preview-section">
-                    <div className="q-preview-section-label">⚙️ Feature Modules</div>
-                    {(previewData.features || []).map((f, fi) => (
-                        <div key={fi} className="q-preview-feature">
-                            <input className="q-feature-name-input" value={f.module || ''} onChange={e => updateFeature(fi, 'module', e.target.value)} placeholder="Module name" />
-                            <EditableBullets items={f.items || []} onChange={v => updateFeature(fi, 'items', v)} />
-                        </div>
-                    ))}
-                </div>
+                {previewData.scope && (
+                    <div className="q-preview-section">
+                        <div className="q-preview-section-label">🔭 Technical Scope</div>
+                        <EditableBullets items={previewData.scope || []} onChange={v => updateField('scope', v)} />
+                    </div>
+                )}
+
+                {previewData.deliveryScope && (
+                    <div className="q-preview-section">
+                        <div className="q-preview-section-label">🔭 Delivery Scope</div>
+                        <EditableBullets items={previewData.deliveryScope || []} onChange={v => updateField('deliveryScope', v)} />
+                    </div>
+                )}
+
+                {previewData.features && (
+                    <div className="q-preview-section">
+                        <div className="q-preview-section-label">⚙️ Feature Modules</div>
+                        {(previewData.features || []).map((f, fi) => (
+                            <div key={fi} className="q-preview-feature">
+                                <input className="q-feature-name-input" value={f.module || ''} onChange={e => updateFeature(fi, 'module', e.target.value)} placeholder="Module name" />
+                                <EditableBullets items={f.items || []} onChange={v => updateFeature(fi, 'items', v)} />
+                            </div>
+                        ))}
+                    </div>
+                )}
+
+                {previewData.keyModules && (
+                    <div className="q-preview-section">
+                        <div className="q-preview-section-label">⚙️ Key Modules</div>
+                        {(previewData.keyModules || []).map((mod, mi) => (
+                            <div key={mi} className="q-preview-feature" style={{ marginBottom: '15px', padding: '10px', border: '1px solid #e5e7eb', borderRadius: '6px' }}>
+                                <input className="q-feature-name-input" style={{ width: '100%', marginBottom: '5px', fontWeight: 'bold' }} value={mod.title || ''} onChange={e => { const arr = [...previewData.keyModules]; arr[mi] = { ...arr[mi], title: e.target.value }; updateField('keyModules', arr); }} placeholder="Module Title" />
+                                <input style={{ width: '100%', marginBottom: '10px', padding: '6px', border: '1px solid #eee' }} value={mod.description || ''} onChange={e => { const arr = [...previewData.keyModules]; arr[mi] = { ...arr[mi], description: e.target.value }; updateField('keyModules', arr); }} placeholder="Description" />
+                                <EditableBullets items={mod.features || []} onChange={v => { const arr = [...previewData.keyModules]; arr[mi] = { ...arr[mi], features: v }; updateField('keyModules', arr); }} />
+                            </div>
+                        ))}
+                    </div>
+                )}
 
                 <div className="q-preview-section">
                     <div className="q-preview-section-label">🛠 Tech Stack</div>
-                    <EditableBullets items={previewData.techStack || []} onChange={v => updateField('techStack', v)} />
+                    {Array.isArray(previewData.techStack) ? (
+                        <EditableBullets items={previewData.techStack || []} onChange={v => updateField('techStack', v)} />
+                    ) : (previewData.techStack && typeof previewData.techStack === 'object') ? (
+                        Object.entries(previewData.techStack).map(([domain, tools]) => (
+                            <div key={domain} style={{ marginBottom: '15px' }}>
+                                <strong style={{ textTransform: 'uppercase', fontSize: '12px', color: '#666' }}>{domain}</strong>
+                                <EditableBullets items={tools || []} onChange={v => { const ts = { ...previewData.techStack }; ts[domain] = v; updateField('techStack', ts); }} />
+                            </div>
+                        ))
+                    ) : null}
                 </div>
+
+                {previewData.proposedTeam && (
+                    <div className="q-preview-section">
+                        <div className="q-preview-section-label">👥 Proposed Team</div>
+                        {(previewData.proposedTeam || []).map((t, ti) => (
+                            <div key={ti} style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
+                                <input style={{ flex: 1, padding: '6px', border: '1px solid #ddd', borderRadius: '4px' }} value={t.role || ''} onChange={e => { const pt = [...previewData.proposedTeam]; pt[ti] = { ...pt[ti], role: e.target.value }; updateField('proposedTeam', pt); }} placeholder="Role (e.g. Backend Dev)" />
+                                <input style={{ width: '80px', padding: '6px', border: '1px solid #ddd', borderRadius: '4px' }} value={t.count || ''} onChange={e => { const pt = [...previewData.proposedTeam]; pt[ti] = { ...pt[ti], count: e.target.value }; updateField('proposedTeam', pt); }} placeholder="Count" type="number" />
+                            </div>
+                        ))}
+                    </div>
+                )}
 
                 <div className="q-preview-section">
                     <div className="q-preview-section-label">📅 Timeline</div>
@@ -177,75 +233,56 @@ function PreviewPanel({ formData, currentStep, previewData, setPreviewData, isGe
                                 <input className="q-timeline-phase-input" value={t.phase || ''} onChange={e => { const tl = [...(previewData.timeline || [])]; tl[ti] = { ...tl[ti], phase: e.target.value }; updateField('timeline', tl); }} placeholder="Phase name" />
                                 <input className="q-timeline-dur-input" value={t.duration || ''} onChange={e => { const tl = [...(previewData.timeline || [])]; tl[ti] = { ...tl[ti], duration: e.target.value }; updateField('timeline', tl); }} placeholder="Duration" />
                             </div>
-                            <EditableBullets items={t.tasks || []} onChange={v => { const tl = [...(previewData.timeline || [])]; tl[ti] = { ...tl[ti], tasks: v }; updateField('timeline', tl); }} />
+                            {t.tasks !== undefined ? (
+                                <EditableBullets items={t.tasks || []} onChange={v => { const tl = [...(previewData.timeline || [])]; tl[ti] = { ...tl[ti], tasks: v }; updateField('timeline', tl); }} />
+                            ) : (
+                                <input style={{ width: '100%', marginTop: '5px', padding: '6px', border: '1px solid #ddd', borderRadius: '4px' }} value={t.deliverables || ''} onChange={e => { const tl = [...(previewData.timeline || [])]; tl[ti] = { ...tl[ti], deliverables: e.target.value }; updateField('timeline', tl); }} placeholder="Key Deliverables" />
+                            )}
                         </div>
                     ))}
                 </div>
 
-                <div className="q-preview-section">
-                    <div className="q-preview-section-label">💰 Investment</div>
-                    <input className="q-edit-commercial-input" value={previewData.commercialEstimate || ''} onChange={e => updateField('commercialEstimate', e.target.value)} placeholder="e.g. ₹8,00,000 – ₹12,00,000 INR" />
-                    <EditableBullets items={previewData.paymentPlan || []} onChange={v => updateField('paymentPlan', v)} />
-                </div>
+                {previewData.commercialEstimate && (
+                    <div className="q-preview-section">
+                        <div className="q-preview-section-label">💰 Investment</div>
+                        <input className="q-edit-commercial-input" value={previewData.commercialEstimate || ''} onChange={e => updateField('commercialEstimate', e.target.value)} placeholder="e.g. ₹8,00,000 – ₹12,00,000 INR" />
+                        <EditableBullets items={previewData.paymentPlan || []} onChange={v => updateField('paymentPlan', v)} />
+                    </div>
+                )}
 
-                <div className="q-preview-section">
-                    <div className="q-preview-section-label">🔒 Security</div>
-                    <EditableBullets items={previewData.security || []} onChange={v => updateField('security', v)} />
-                </div>
-                <div className="q-preview-section">
-                    <div className="q-preview-section-label">⚙️ Methodology</div>
-                    <EditableBullets items={previewData.methodology || []} onChange={v => updateField('methodology', v)} />
-                </div>
-                <div className="q-preview-section">
-                    <div className="q-preview-section-label">📋 Project Assumptions</div>
-                    <EditableBullets items={previewData.assumptions || []} onChange={v => updateField('assumptions', v)} />
-                </div>
-                <div className="q-preview-section">
-                    <div className="q-preview-section-label">🚫 Technical Constraints</div>
-                    <EditableBullets items={previewData.constraints || []} onChange={v => updateField('constraints', v)} />
-                </div>
-                <div className="q-preview-section">
-                    <div className="q-preview-section-label">🏗 Blueprint Diagrams (Architecture)</div>
-                    {(previewData.visuals?.diagrams || []).map((d, di) => (
-                        <div key={di} className="q-preview-visual-item" style={{ marginBottom: '12px', padding: '10px', border: '1px solid #e5e7eb', borderRadius: '8px' }}>
-                            <input className="q-visual-title-input" style={{ width: '100%', marginBottom: '6px', fontWeight: '700', border: 'none', background: 'transparent' }}
-                                value={d.title || ''}
-                                onChange={e => {
-                                    const v = { ...previewData.visuals };
-                                    v.diagrams[di].title = e.target.value;
-                                    updateField('visuals', v);
-                                }} />
-                            <textarea className="q-visual-mermaid-input" style={{ width: '100%', fontSize: '11px', fontFamily: 'monospace', height: '80px', padding: '8px', border: '1px solid #f3f4f6', borderRadius: '4px' }}
-                                value={d.mermaid || ''}
-                                onChange={e => {
-                                    const v = { ...previewData.visuals };
-                                    v.diagrams[di].mermaid = e.target.value;
-                                    updateField('visuals', v);
-                                }} />
-                        </div>
-                    ))}
-                </div>
-                <div className="q-preview-section">
-                    <div className="q-preview-section-label">🗺 User Journey Flows</div>
-                    {(previewData.visuals?.userFlows || []).map((d, di) => (
-                        <div key={di} className="q-preview-visual-item" style={{ marginBottom: '12px', padding: '10px', border: '1px solid #e5e7eb', borderRadius: '8px' }}>
-                            <input className="q-visual-title-input" style={{ width: '100%', marginBottom: '6px', fontWeight: '700', border: 'none', background: 'transparent' }}
-                                value={d.title || ''}
-                                onChange={e => {
-                                    const v = { ...previewData.visuals };
-                                    v.userFlows[di].title = e.target.value;
-                                    updateField('visuals', v);
-                                }} />
-                            <textarea className="q-visual-mermaid-input" style={{ width: '100%', fontSize: '11px', fontFamily: 'monospace', height: '80px', padding: '8px', border: '1px solid #f3f4f6', borderRadius: '4px' }}
-                                value={d.mermaid || ''}
-                                onChange={e => {
-                                    const v = { ...previewData.visuals };
-                                    v.userFlows[di].mermaid = e.target.value;
-                                    updateField('visuals', v);
-                                }} />
-                        </div>
-                    ))}
-                </div>
+                {previewData.costEstimation && (
+                    <div className="q-preview-section">
+                        <div className="q-preview-section-label">💰 Cost Estimation</div>
+                        <input className="q-edit-commercial-input" value={previewData.costEstimation.totalCost || ''} onChange={e => updateField('costEstimation', { ...previewData.costEstimation, totalCost: e.target.value })} placeholder="e.g. ₹8,00,000" />
+                        <div style={{ marginTop: '15px', fontSize: '13px', fontWeight: '600' }}>Payment Milestones</div>
+                        {(previewData.costEstimation.paymentPlan || []).map((p, pi) => (
+                            <div key={pi} style={{ display: 'flex', gap: '6px', marginBottom: '8px', marginTop: '6px' }}>
+                                <input style={{ flex: 1, padding: '6px', border: '1px solid #ddd', borderRadius: '4px' }} value={p.milestone || ''} onChange={e => { const pp = [...previewData.costEstimation.paymentPlan]; pp[pi] = { ...pp[pi], milestone: e.target.value }; updateField('costEstimation', { ...previewData.costEstimation, paymentPlan: pp }); }} placeholder="Milestone Name" />
+                                <input style={{ width: '70px', padding: '6px', border: '1px solid #ddd', borderRadius: '4px' }} value={p.percentage || ''} onChange={e => { const pp = [...previewData.costEstimation.paymentPlan]; pp[pi] = { ...pp[pi], percentage: e.target.value }; updateField('costEstimation', { ...previewData.costEstimation, paymentPlan: pp }); }} placeholder="20%" />
+                                <input style={{ width: '100px', padding: '6px', border: '1px solid #ddd', borderRadius: '4px' }} value={p.amount || ''} onChange={e => { const pp = [...previewData.costEstimation.paymentPlan]; pp[pi] = { ...pp[pi], amount: e.target.value }; updateField('costEstimation', { ...previewData.costEstimation, paymentPlan: pp }); }} placeholder="Amount" />
+                            </div>
+                        ))}
+                    </div>
+                )}
+
+                {previewData.sla && (
+                    <div className="q-preview-section">
+                        <div className="q-preview-section-label">🛟 Service Level Agreement</div>
+                        <input style={{ width: '100%', marginBottom: '8px', padding: '6px', border: '1px solid #ddd', borderRadius: '4px' }} value={previewData.sla.maintenanceCoverage || ''} onChange={e => updateField('sla', { ...previewData.sla, maintenanceCoverage: e.target.value })} placeholder="Maintenance Coverage" />
+                        <div style={{ fontWeight: '600', fontSize: '12px', marginTop: '10px' }}>Response Times</div>
+                        <EditableBullets items={previewData.sla.responseTimes || []} onChange={v => updateField('sla', { ...previewData.sla, responseTimes: v })} />
+                        <div style={{ fontWeight: '600', fontSize: '12px', marginTop: '10px' }}>Resolution Times</div>
+                        <EditableBullets items={previewData.sla.resolutionTimes || []} onChange={v => updateField('sla', { ...previewData.sla, resolutionTimes: v })} />
+                    </div>
+                )}
+
+                {['amc', 'warranty', 'legal', 'changeRequest'].map(key => previewData[key] !== undefined && (
+                    <div key={key} className="q-preview-section">
+                        <div className="q-preview-section-label" style={{ textTransform: 'capitalize' }}>⚖️ {key.replace(/([A-Z])/g, ' $1')}</div>
+                        <textarea style={{ width: '100%', padding: '10px', fontSize: '13px', border: '1px solid #e5e7eb', borderRadius: '4px', height: '80px', fontFamily: 'inherit' }}
+                            value={previewData[key] || ''} onChange={e => updateField(key, e.target.value)} />
+                    </div>
+                ))}
             </div>
 
             <div className="q-preview-action-bar">
@@ -259,7 +296,7 @@ function PreviewPanel({ formData, currentStep, previewData, setPreviewData, isGe
                         : <><FileText size={18} /> Generate Final PDF + Word</>}
                 </button>
             </div>
-        </div>
+        </div >
     );
 }
 
@@ -271,7 +308,7 @@ export default function QuotationPage() {
     const [formData, setFormData] = useState({
         clientName: '', industry: '', projectType: [],
         problemStatement: '', keyFeatures: [], targetAudience: '',
-        budget: '', timeline: '', provider: 'openai', style: 'corporate',
+        budget: '', timeline: '', provider: 'openai', style: 'template1',
     });
 
     const [previewData, setPreviewData] = useState(null);
@@ -370,7 +407,7 @@ export default function QuotationPage() {
     const handleReset = () => {
         setPreviewData(null); setFinalDocs(null); setError('');
         setPreviewError(''); setCurrentStep(0);
-        setFormData({ clientName: '', industry: '', projectType: [], problemStatement: '', keyFeatures: [], targetAudience: '', budget: '', timeline: '', provider: 'openai', style: 'corporate' });
+        setFormData({ clientName: '', industry: '', projectType: [], problemStatement: '', keyFeatures: [], targetAudience: '', budget: '', timeline: '', provider: 'openai', style: 'template1' });
     };
 
     if (finalDocs) {

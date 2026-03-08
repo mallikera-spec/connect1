@@ -23,6 +23,7 @@ import projectFilesRoutes from './features/project-files/project-files.routes.js
 import projectNotesRoutes from './features/project-notes/project-notes.routes.js';
 import notificationRoutes from './features/notifications/notifications.routes.js';
 import quotationRoutes from './features/quotations/quotation.routes.js';
+import payrollRoutes from './features/payroll/payroll.routes.js';
 import salesRoutes from './features/sales/sales.routes.js';
 import clientsRoutes from './features/clients/clients.routes.js';
 import milestonesRoutes from './features/milestones/milestones.routes.js';
@@ -67,6 +68,7 @@ app.use('/api/v1/project-files', projectFilesRoutes);
 app.use('/api/v1/project-notes', projectNotesRoutes);
 app.use('/api/v1/notifications', notificationRoutes);
 app.use('/api/v1/quotations', quotationRoutes);
+app.use('/api/v1/payroll', payrollRoutes);
 app.use('/api/v1/sales', salesRoutes);
 app.use('/api/v1/clients', clientsRoutes);
 app.use('/api/v1/milestones', milestonesRoutes);

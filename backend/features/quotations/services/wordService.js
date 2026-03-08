@@ -307,7 +307,10 @@ export const generateQuotationWord = async (quotationData, style = 'corporate') 
                     sectionHeading('03', 'Solution Architecture'),
                     hr(),
                     subHeading('Core Modules & Feature Breakdown'),
-                    ...(quotationData.features || []).flatMap(f => moduleCard(f)),
+                    ...(quotationData.features || quotationData.keyModules || []).flatMap(f => moduleCard({
+                        module: f.module || f.title,
+                        items: f.items || f.features
+                    })),
 
                     pageBreak(),
 
@@ -317,7 +320,10 @@ export const generateQuotationWord = async (quotationData, style = 'corporate') 
                     subHeading('Security, Compliance & Data Privacy'),
                     ...renderArray(quotationData.security || ['OAuth 2.0 authentication and authorisation', 'AES-256 encryption for data at rest', 'TLS 1.3 for all data in transit', 'Regular vulnerability scans and penetration testing']),
                     subHeading('Technology Stack'),
-                    ...(quotationData.techStack || []).map(tech => bullet(tech)),
+                    ...(Array.isArray(quotationData.techStack)
+                        ? (quotationData.techStack || []).map(tech => bullet(tech))
+                        : Object.entries(quotationData.techStack || {}).map(([key, tools]) => bullet(`${key.toUpperCase()}: ${(tools || []).join(', ')}`))
+                    ),
 
                     pageBreak(),
 
@@ -331,7 +337,10 @@ export const generateQuotationWord = async (quotationData, style = 'corporate') 
                         const phase = typeof t_item === 'object'
                             ? [t_item.phase || t_item.task || `Phase ${i + 1}`, t_item.duration ? `(${t_item.duration})` : ''].filter(Boolean).join(' ')
                             : t_item;
-                        const tasks = typeof t_item === 'object' && Array.isArray(t_item.tasks) ? t_item.tasks : [];
+                        let tasks = typeof t_item === 'object' && Array.isArray(t_item.tasks) ? t_item.tasks : [];
+                        if (tasks.length === 0 && typeof t_item === 'object' && typeof t_item.deliverables === 'string') {
+                            tasks = [t_item.deliverables];
+                        }
                         return [
                             new Paragraph({
                                 spacing: { before: 120, after: 60 },
@@ -353,13 +362,14 @@ export const generateQuotationWord = async (quotationData, style = 'corporate') 
 
                     new Paragraph({ spacing: { after: 300 }, children: [] }),
                     subHeading('Total Project Investment'),
-                    priceBox(quotationData.commercialEstimate),
+                    priceBox(quotationData.commercialEstimate || quotationData.costEstimation?.totalCost),
 
                     new Paragraph({ spacing: { after: 200 }, children: [] }),
                     subHeading('Payment Schedule & Milestones'),
-                    ...(quotationData.paymentPlan || []).map((plan, i) =>
-                        infoBox(plan, `Milestone ${i + 1}`)
-                    ),
+                    ...(quotationData.paymentPlan || quotationData.costEstimation?.paymentPlan || []).map((plan, i) => {
+                        let text = typeof plan === 'object' ? `${plan.percentage} - ${plan.milestone} (${plan.amount})` : plan;
+                        return infoBox(text, `Milestone ${i + 1}`);
+                    }),
 
                     new Paragraph({ spacing: { before: 400, after: 200 }, children: [] }),
                     new Paragraph({
