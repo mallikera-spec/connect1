@@ -43,7 +43,7 @@ export default function EmployeeTimesheet() {
     const [newTitle, setNewTitle] = useState('')
     const [newTime, setNewTime] = useState('00:00')
     const [newNotes, setNewNotes] = useState('')
-    const [newStatus, setNewStatus] = useState('done') // Default to done for quick logging
+    const [newStatus, setNewStatus] = useState('in_progress') // Restored choice: default to in_progress
     const [adding, setAdding] = useState(false)
     const [editingEntry, setEditingEntry] = useState(null)
 
@@ -110,7 +110,7 @@ export default function EmployeeTimesheet() {
             setNewTitle('')
             setNewTime('00:00')
             setNewNotes('')
-            setNewStatus('done')
+            setNewStatus('in_progress')
             toast.success('Activity logged!')
             load()
         } catch (err) {
@@ -268,7 +268,7 @@ export default function EmployeeTimesheet() {
                                 <select className="form-select" value={newStatus} onChange={e => setNewStatus(e.target.value)}>
                                     <option value="todo">To Do (Planned)</option>
                                     <option value="in_progress">In Progress</option>
-                                    {/* <option value="done">Done (Ready for QA)</option> */}
+                                    <option value="done">Done (Ready for QA)</option>
                                 </select>
                             </div>
 

@@ -55,84 +55,121 @@ export default function ExecutiveBI() {
         }
     };
 
-    const renderChart = (aiData) => {
+    const [showVisuals, setShowVisuals] = useState({});
+
+    const toggleVisual = (idx) => {
+        setShowVisuals(prev => ({
+            ...prev,
+            [idx]: !prev[idx]
+        }));
+    };
+
+    const renderChart = (msg, idx) => {
+        const aiData = msg.data;
         const { chartType, chartData } = aiData;
+        const isVisualToggled = showVisuals[idx];
+
         if (!chartData || chartData.length === 0) return (
             <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-dim)', fontSize: '14px' }}>
                 No quantitative data available for visualization.
             </div>
         );
 
-        if (chartType === 'table') {
-            const firstRow = chartData[0];
-            const columns = Object.keys(firstRow).map(key => ({
-                label: key.replace(/_/g, ' ').toUpperCase(),
-                key: key
-            }));
-            return (
-                <div style={{ marginTop: 15, background: 'var(--bg-card)', borderRadius: '12px', overflow: 'hidden', border: '1px solid var(--border)' }}>
+        const firstRow = chartData[0];
+        const columns = Object.keys(firstRow).map(key => ({
+            label: key.replace(/_/g, ' ').toUpperCase(),
+            key: key,
+            sortable: true
+        }));
+
+        return (
+            <div style={{ marginTop: 15, display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                {/* Always Show Table */}
+                <div style={{ background: 'var(--bg-card)', borderRadius: '12px', overflow: 'hidden', border: '1px solid var(--border)' }}>
                     <DataTable
                         data={chartData}
                         columns={columns}
                         fileName="AI_Executive_Report"
                     />
                 </div>
-            );
-        }
 
-        const xKey = Object.keys(chartData[0])[0];
-        const dataKeys = Object.keys(chartData[0]).filter(k => k !== xKey);
+                {/* Optional Visualization */}
+                {chartType !== 'table' && (
+                    <div>
+                        <button
+                            onClick={() => toggleVisual(idx)}
+                            style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                background: 'transparent',
+                                border: '1px solid var(--border)',
+                                color: 'var(--text-dim)',
+                                padding: '6px 12px',
+                                borderRadius: '20px',
+                                fontSize: '12px',
+                                cursor: 'pointer',
+                                transition: 'all 0.2s'
+                            }}
+                        >
+                            {isVisualToggled ? <BarChart2 size={14} /> : <BarChart2 size={14} />}
+                            {isVisualToggled ? 'Hide Visualization' : 'Show Visualization'}
+                        </button>
 
-        return (
-            <div style={{ height: 350, marginTop: 20, width: '100%', background: 'rgba(255,255,255,0.02)', padding: '15px', borderRadius: '12px' }}>
-                <ResponsiveContainer width="100%" height="100%">
-                    {chartType === 'bar' ? (
-                        <BarChart data={chartData} margin={{ top: 25, right: 30, left: 10, bottom: 20 }}>
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
-                            <XAxis dataKey={xKey} axisLine={{ stroke: 'var(--border)' }} tickLine={true} tick={{ fill: 'var(--text)', fontSize: 11 }} height={50} interval={0} angle={-30} textAnchor="end" />
-                            <YAxis axisLine={{ stroke: 'var(--border)' }} tickLine={true} tick={{ fill: 'var(--text)', fontSize: 11 }} />
-                            <Tooltip contentStyle={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text)' }} />
-                            <Legend wrapperStyle={{ paddingTop: '20px' }} />
-                            {dataKeys.map((k, i) => (
-                                <Bar key={k} dataKey={k} fill={COLORS[i % COLORS.length]} radius={[4, 4, 0, 0]}>
-                                    <LabelList dataKey={k} position="top" style={{ fill: 'var(--text)', fontSize: 10, fontWeight: 600 }} />
-                                </Bar>
-                            ))}
-                        </BarChart>
-                    ) : chartType === 'pie' ? (
-                        <PieChart margin={{ top: 10, right: 10, left: 10, bottom: 10 }}>
-                            <Pie
-                                data={chartData}
-                                cx="50%"
-                                cy="50%"
-                                innerRadius={60}
-                                outerRadius={90}
-                                paddingAngle={5}
-                                dataKey="value"
-                                label={({ name, value }) => `${name}: ${value}`}
-                            >
-                                {chartData.map((entry, index) => (
-                                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                ))}
-                            </Pie>
-                            <Tooltip contentStyle={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '8px' }} />
-                            <Legend layout="horizontal" verticalAlign="bottom" align="center" wrapperStyle={{ paddingTop: '30px' }} />
-                        </PieChart>
-                    ) : (
-                        <LineChart data={chartData} margin={{ top: 25, right: 30, left: 10, bottom: 20 }}>
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
-                            <XAxis dataKey={xKey} axisLine={{ stroke: 'var(--border)' }} tickLine={true} tick={{ fill: 'var(--text)', fontSize: 11 }} height={50} interval={0} angle={-30} textAnchor="end" />
-                            <YAxis axisLine={{ stroke: 'var(--border)' }} tickLine={true} tick={{ fill: 'var(--text)', fontSize: 11 }} />
-                            <Tooltip contentStyle={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '8px' }} />
-                            <Legend wrapperStyle={{ paddingTop: '20px' }} />
-                            {dataKeys.map((k, i) => (
-                                <Line key={k} type="monotone" dataKey={k} stroke={COLORS[i % COLORS.length]} strokeWidth={3} dot={{ r: 4, fill: COLORS[i % COLORS.length] }} activeDot={{ r: 6 }}>
-                                    <LabelList dataKey={k} position="top" style={{ fill: 'var(--text)', fontSize: 10, fontWeight: 600, offset: 10 }} />
-                                </Line>
-                            ))}
-                        </LineChart>
-                    )}
-                </ResponsiveContainer>
+                        {isVisualToggled && (
+                            <div style={{ height: 350, marginTop: 15, width: '100%', background: 'rgba(255,255,255,0.02)', padding: '15px', borderRadius: '12px', border: '1px solid var(--border)' }}>
+                                <ResponsiveContainer width="100%" height="100%">
+                                    {chartType === 'bar' ? (
+                                        <BarChart data={chartData} margin={{ top: 25, right: 30, left: 10, bottom: 20 }}>
+                                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
+                                            <XAxis dataKey={Object.keys(chartData[0])[0]} axisLine={{ stroke: 'var(--border)' }} tickLine={true} tick={{ fill: 'var(--text)', fontSize: 11 }} height={50} interval={0} angle={-30} textAnchor="end" />
+                                            <YAxis axisLine={{ stroke: 'var(--border)' }} tickLine={true} tick={{ fill: 'var(--text)', fontSize: 11 }} />
+                                            <Tooltip contentStyle={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text)' }} />
+                                            <Legend wrapperStyle={{ paddingTop: '20px' }} />
+                                            {Object.keys(chartData[0]).slice(1).map((k, i) => (
+                                                <Bar key={k} dataKey={k} fill={COLORS[i % COLORS.length]} radius={[4, 4, 0, 0]}>
+                                                    <LabelList dataKey={k} position="top" style={{ fill: 'var(--text)', fontSize: 10, fontWeight: 600 }} />
+                                                </Bar>
+                                            ))}
+                                        </BarChart>
+                                    ) : chartType === 'pie' ? (
+                                        <PieChart margin={{ top: 10, right: 10, left: 10, bottom: 10 }}>
+                                            <Pie
+                                                data={chartData}
+                                                cx="50%"
+                                                cy="50%"
+                                                innerRadius={60}
+                                                outerRadius={90}
+                                                paddingAngle={5}
+                                                dataKey="value"
+                                                label={({ name, value }) => `${name}: ${value}`}
+                                            >
+                                                {chartData.map((entry, index) => (
+                                                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                                ))}
+                                            </Pie>
+                                            <Tooltip contentStyle={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '8px' }} />
+                                            <Legend layout="horizontal" verticalAlign="bottom" align="center" wrapperStyle={{ paddingTop: '30px' }} />
+                                        </PieChart>
+                                    ) : (
+                                        <LineChart data={chartData} margin={{ top: 25, right: 30, left: 10, bottom: 20 }}>
+                                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
+                                            <XAxis dataKey={Object.keys(chartData[0])[0]} axisLine={{ stroke: 'var(--border)' }} tickLine={true} tick={{ fill: 'var(--text)', fontSize: 11 }} height={50} interval={0} angle={-30} textAnchor="end" />
+                                            <YAxis axisLine={{ stroke: 'var(--border)' }} tickLine={true} tick={{ fill: 'var(--text)', fontSize: 11 }} />
+                                            <Tooltip contentStyle={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '8px' }} />
+                                            <Legend wrapperStyle={{ paddingTop: '20px' }} />
+                                            {Object.keys(chartData[0]).slice(1).map((k, i) => (
+                                                <Line key={k} type="monotone" dataKey={k} stroke={COLORS[i % COLORS.length]} strokeWidth={3} dot={{ r: 4, fill: COLORS[i % COLORS.length] }} activeDot={{ r: 6 }}>
+                                                    <LabelList dataKey={k} position="top" style={{ fill: 'var(--text)', fontSize: 10, fontWeight: 600, offset: 10 }} />
+                                                </Line>
+                                            ))}
+                                        </LineChart>
+                                    )}
+                                </ResponsiveContainer>
+                            </div>
+                        )}
+                    </div>
+                )}
             </div>
         );
     };
@@ -202,7 +239,7 @@ export default function ExecutiveBI() {
                                     <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 12, lineHeight: 1.5, color: msg.role === 'user' ? 'white' : 'var(--text)' }}>
                                         {msg.data.summary}
                                     </div>
-                                    {renderChart(msg.data)}
+                                    {renderChart(msg, idx)}
                                 </div>
                             )}
                         </div>

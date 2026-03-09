@@ -236,7 +236,7 @@ export const generateQuotationPDFTemplate2 = async (quotationData) => {
         <div class="global-footer">
             <div style="display:flex; flex-direction:column; gap:4px;">
                 <span>Email: hello@argosmob.onmicrosoft.com</span>
-                <span>Address: 618, Hope Tower, Galaxy Blue Saffaire, Gr. Noida West, 201009</span>
+                <span>Address: 618, Hope Tower, Galaxy Blue Sapphire, Gr. Noida West, 201016</span>
             </div>
             <div style="text-align:right; display:flex; flex-direction:column; justify-content:flex-end;">
                 <span>Corporate Proposal</span>
