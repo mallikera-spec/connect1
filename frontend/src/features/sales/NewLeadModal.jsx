@@ -11,8 +11,8 @@ import toast from 'react-hot-toast';
 export default function NewLeadModal({ onClose, onSaved }) {
     const { user: currentUser } = useAuth();
 
-    // Role Checks
-    const isAdmin = currentUser?.roles?.includes('Super Admin') || currentUser?.roles?.includes('Sales Manager');
+    // Role Checks - Directors are also allowed to assign agents
+    const isAdmin = currentUser?.roles?.some(r => ['Super Admin', 'Sales Manager', 'Director'].includes(r));
     const isBDM = currentUser?.roles?.includes('BDM') && !isAdmin;
 
     const [formData, setFormData] = useState({
@@ -26,7 +26,8 @@ export default function NewLeadModal({ onClose, onSaved }) {
         status: 'New',
         score: 5,
         deal_value: 0,
-        assigned_agent_id: isBDM ? currentUser.id : ''
+        assigned_agent_id: isBDM ? currentUser.id : '',
+        interaction_note: ''
     });
     const [agents, setAgents] = useState([]);
     const [isSaving, setIsSaving] = useState(false);
@@ -37,8 +38,8 @@ export default function NewLeadModal({ onClose, onSaved }) {
 
     const fetchAgents = async () => {
         try {
-            // Fetch strictly BDMs and Admins as requested
-            const res = await api.get('/users', { params: { role: 'BDM,Admin,Super Admin' } });
+            // Fetch strictly BDMs, Admins, and Directors
+            const res = await api.get('/users', { params: { role: 'BDM,Admin,Super Admin,Director' } });
             setAgents(res.data.data);
         } catch (err) {
             console.error('Failed to fetch agents:', err);
@@ -47,10 +48,38 @@ export default function NewLeadModal({ onClose, onSaved }) {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (!formData.phone) return toast.error('Phone number is required');
+        
+        // Basic Validations
+        if (!formData.name?.trim()) return toast.error('Full Name is required');
+        if (/^\d+$/.test(formData.name)) return toast.error('Full Name cannot be purely numeric');
+        
+        // Strict Phone Validation (Rule #19)
+        const phoneRegex = /^\+?[0-9\s-]{10,20}$/;
+        if (!formData.phone?.trim()) return toast.error('Phone number is required');
+        if (!phoneRegex.test(formData.phone)) return toast.error('Invalid phone number format (needs 10-20 digits)');
+        
+        if (formData.alt_phone && !phoneRegex.test(formData.alt_phone)) {
+            return toast.error('Invalid alternate phone number format');
+        }
 
         setIsSaving(true);
         try {
+            // Check for duplicates first
+            const { duplicate } = await SalesService.checkDuplicateLead({
+                phone: formData.phone,
+                alt_phone: formData.alt_phone
+            });
+
+            if (duplicate) {
+                const agentName = duplicate.assigned_agent?.full_name || 'Unassigned';
+                toast.error(`Duplicate lead, lead already assigned to =>${agentName}`, {
+                    duration: 5000,
+                    position: 'top-center'
+                });
+                setIsSaving(false);
+                return;
+            }
+
             await SalesService.createLead(formData);
             toast.success('Lead created successfully');
             onSaved();
@@ -224,6 +253,18 @@ export default function NewLeadModal({ onClose, onSaved }) {
                                 </select>
                             </div>
                         )}
+
+                        <div className="form-group" style={{ marginTop: '10px' }}>
+                            <label className="form-label">Initial Interaction Note</label>
+                            <textarea
+                                className="form-control"
+                                placeholder="Details of the first contact..."
+                                value={formData.interaction_note}
+                                onChange={e => setFormData(p => ({ ...p, interaction_note: e.target.value }))}
+                                rows={3}
+                                style={{ resize: 'vertical' }}
+                            />
+                        </div>
                     </div>
 
                     <div className="modal-footer">

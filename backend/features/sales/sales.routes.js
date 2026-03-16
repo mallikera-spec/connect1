@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import * as salesController from './sales.controller.js';
 import { authMiddleware } from '../../middleware/auth.middleware.js';
+import { validateRequest } from '../../middleware/validate.middleware.js';
+import { createLeadSchema, updateLeadSchema } from './leads.validation.js';
 
 const router = Router();
 
@@ -8,7 +10,9 @@ const router = Router();
 router.use(authMiddleware);
 
 /* ── Lead Routes ── */
-router.post('/leads', salesController.createLead);
+router.post('/leads/check-duplicate', salesController.checkDuplicateLead);
+router.post('/leads', validateRequest(createLeadSchema), salesController.createLead);
+
 router.get('/leads', salesController.getLeads);
 
 // Bulk Operations (Priortized and prefixed to avoid UUID collision)
@@ -21,7 +25,7 @@ router.delete('/leads/bulk/delete', salesController.bulkDeleteLeads);
 router.get('/leads/:id', salesController.getLead);
 router.get('/leads/:id/journey', salesController.getLeadJourney);
 router.post('/leads/:id/onboard', salesController.onboardLead);
-router.patch('/leads/:id', salesController.updateLead);
+router.patch('/leads/:id', validateRequest(updateLeadSchema), salesController.updateLead);
 router.delete('/leads/:id', salesController.deleteLead);
 
 /* ── Follow-Up Routes ── */

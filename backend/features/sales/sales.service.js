@@ -28,14 +28,37 @@ const sanitizeLeadData = (data) => {
  * @returns {Promise<Object>} The created lead.
  */
 export const createLead = async (leadData) => {
-    const sanitized = sanitizeLeadData(leadData);
-    const { data, error } = await supabaseAdmin
+    const { interaction_note, ...rest } = leadData;
+    const sanitized = sanitizeLeadData(rest);
+    
+    const { data: lead, error } = await supabaseAdmin
         .from('leads')
         .insert(sanitized)
         .select()
         .single();
+    
     if (error) throw error;
-    return data;
+
+    // Handle initial interaction note if provided
+    if (interaction_note && interaction_note.trim()) {
+        const { error: followUpError } = await supabaseAdmin
+            .from('follow_ups')
+            .insert({
+                lead_id: lead.id,
+                agent_id: lead.assigned_agent_id || lead.owner_id,
+                type: 'Note',
+                status: 'Completed',
+                notes: interaction_note.trim(),
+                scheduled_at: new Date().toISOString()
+            });
+
+        if (followUpError) {
+            console.error('Failed to create initial follow-up:', followUpError);
+            // We don't throw here to ensure lead creation isn't rolled back for a note failure
+        }
+    }
+
+    return lead;
 };
 
 /**
@@ -63,12 +86,14 @@ export const getAllLeads = async (filters = {}) => {
     if (filters.assigned_agent_id) query = query.eq('assigned_agent_id', filters.assigned_agent_id);
     if (filters.source) query = query.eq('source', filters.source);
 
-    // Date Range
-    if (filters.startDate) query = query.gte('created_at', filters.startDate);
-    if (filters.endDate) {
-        // If it's a date string without time, append end-of-day time
-        const end = filters.endDate.includes('T') ? filters.endDate : `${filters.endDate} 23:59:59.999`;
-        query = query.lte('created_at', end);
+    // Date Range - Skip if searching to allow finding "old leads" across all history
+    if (!filters.search) {
+        if (filters.startDate) query = query.gte('created_at', filters.startDate);
+        if (filters.endDate) {
+            // If it's a date string without time, append end-of-day time
+            const end = filters.endDate.includes('T') ? filters.endDate : `${filters.endDate} 23:59:59.999`;
+            query = query.lte('created_at', end);
+        }
     }
 
     // Value Range
@@ -76,7 +101,38 @@ export const getAllLeads = async (filters = {}) => {
     if (filters.maxValue) query = query.lte('deal_value', filters.maxValue);
 
     if (filters.search) {
-        query = query.or(`name.ilike.%${filters.search}%,company.ilike.%${filters.search}%`);
+        const term = filters.search;
+
+        // Perform parallel lookups for related data to enable "total" wildcard search
+        const [followUpRes, profileRes] = await Promise.all([
+            supabaseAdmin.from('follow_ups').select('lead_id').or(`notes.ilike.%${term}%,type.ilike.%${term}%,status.ilike.%${term}%`),
+            supabaseAdmin.from('profiles').select('id').or(`full_name.ilike.%${term}%,email.ilike.%${term}%`)
+        ]);
+
+        const matchLeadIdsByFollowUps = followUpRes.data ? [...new Set(followUpRes.data.map(m => m.lead_id))] : [];
+        const matchProfileIds = profileRes.data ? profileRes.data.map(m => m.id) : [];
+
+        let orConditions = [
+            `name.ilike.%${term}%`,
+            `company.ilike.%${term}%`,
+            `phone.ilike.%${term}%`,
+            `alt_phone.ilike.%${term}%`,
+            `email.ilike.%${term}%`,
+            `location.ilike.%${term}%`,
+            `source.ilike.%${term}%`,
+            `status.ilike.%${term}%`
+        ];
+
+        // Inject IDs from related tables into the main OR condition
+        if (matchLeadIdsByFollowUps.length > 0) {
+            orConditions.push(`id.in.(${matchLeadIdsByFollowUps.join(',')})`);
+        }
+        if (matchProfileIds.length > 0) {
+            orConditions.push(`assigned_agent_id.in.(${matchProfileIds.join(',')})`);
+            orConditions.push(`owner_id.in.(${matchProfileIds.join(',')})`);
+        }
+
+        query = query.or(orConditions.join(','));
     }
 
     // Dynamic Soring
@@ -745,3 +801,30 @@ export const onboardLead = async (id, data, userId) => {
         project
     };
 };
+
+/**
+ * Checks if a lead with the given phone or alternate phone already exists.
+ * @param {Object} params - Phone numbers to check.
+ * @returns {Promise<Object|null>} The existing lead with agent info or null.
+ */
+export const checkDuplicateLead = async ({ phone, alt_phone }) => {
+    if (!phone && !alt_phone) return null;
+
+    let orConditions = [];
+    if (phone) orConditions.push(`phone.eq.${phone}`, `alt_phone.eq.${phone}`);
+    if (alt_phone) orConditions.push(`phone.eq.${alt_phone}`, `alt_phone.eq.${alt_phone}`);
+
+    const { data, error } = await supabaseAdmin
+        .from('leads')
+        .select(`
+            id,
+            name,
+            assigned_agent:profiles!assigned_agent_id(full_name)
+        `)
+        .or(orConditions.join(','))
+        .maybeSingle();
+
+    if (error) throw error;
+    return data;
+};
+

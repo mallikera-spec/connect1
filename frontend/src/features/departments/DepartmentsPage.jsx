@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Plus, Pencil, Trash2, X, Building2 } from 'lucide-react'
 import api from '../../lib/api'
 import toast from 'react-hot-toast'
+import DataTable from '../../components/common/DataTable'
 
 export default function DepartmentsPage() {
     const [departments, setDepartments] = useState([])
@@ -14,7 +15,7 @@ export default function DepartmentsPage() {
     const load = () => {
         setLoading(true)
         api.get('/departments')
-            .then(r => setDepartments(r.data.data))
+            .then(res => setDepartments(res.data.data))
             .catch(err => toast.error(err.message))
             .finally(() => setLoading(false))
     }
@@ -27,14 +28,18 @@ export default function DepartmentsPage() {
     const closeModal = () => { setModal(null); setSelected(null) }
 
     const handleCreate = async (e) => {
-        e.preventDefault(); setSaving(true)
+        e.preventDefault();
+        if (/^\d+$/.test(form.name)) return toast.error('Department name cannot be purely numeric');
+        setSaving(true)
         try { await api.post('/departments', form); toast.success('Department created'); load(); closeModal() }
         catch (err) { toast.error(err.message) }
         finally { setSaving(false) }
     }
 
     const handleEdit = async (e) => {
-        e.preventDefault(); setSaving(true)
+        e.preventDefault();
+        if (/^\d+$/.test(form.name)) return toast.error('Department name cannot be purely numeric');
+        setSaving(true)
         try { await api.patch(`/departments/${selected.id}`, form); toast.success('Department updated'); load(); closeModal() }
         catch (err) { toast.error(err.message) }
         finally { setSaving(false) }
@@ -62,6 +67,21 @@ export default function DepartmentsPage() {
         </>
     )
 
+    const columns = [
+        { label: 'Name', key: 'name', sortable: true, render: (val) => <div style={{ fontWeight: 600 }}>{val}</div> },
+        { label: 'Description', key: 'description', render: (val) => <div style={{ color: 'var(--text-dim)', fontSize: '13px' }}>{val || '--'}</div> },
+        {
+            label: 'Actions',
+            key: 'id',
+            render: (_, d) => (
+                <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                    <button className="btn btn-ghost btn-sm btn-icon" onClick={() => openEdit(d)}><Pencil size={14} /></button>
+                    <button className="btn btn-danger btn-sm btn-icon" onClick={() => openDelete(d)}><Trash2 size={14} /></button>
+                </div>
+            )
+        }
+    ];
+
     return (
         <div>
             <div className="page-header">
@@ -72,29 +92,16 @@ export default function DepartmentsPage() {
                 <button className="btn btn-primary" onClick={openCreate}><Plus size={16} />New Department</button>
             </div>
 
-            {loading ? <div className="page-loader"><div className="spinner" /></div> : (
-                <div className="dept-grid">
-                    {departments.length === 0 && (
-                        <div className="empty-state" style={{ gridColumn: '1/-1' }}>
-                            <Building2 size={40} style={{ color: 'var(--text-muted)', marginBottom: 8 }} />
-                            <p>No departments yet. Create the first one.</p>
-                        </div>
-                    )}
-                    {departments.map(d => (
-                        <div key={d.id} className="card dept-card">
-                            <div className="dept-card-header">
-                                <div className="dept-icon"><Building2 size={20} /></div>
-                                <div className="actions-cell">
-                                    <button className="btn btn-ghost btn-sm btn-icon" onClick={() => openEdit(d)}><Pencil size={14} /></button>
-                                    <button className="btn btn-danger btn-sm btn-icon" onClick={() => openDelete(d)}><Trash2 size={14} /></button>
-                                </div>
-                            </div>
-                            <h3 style={{ fontWeight: 600, marginBottom: 4 }}>{d.name}</h3>
-                            <p style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.5 }}>{d.description || 'No description provided'}</p>
-                        </div>
-                    ))}
-                </div>
-            )}
+            <div className="card polished-card" style={{ padding: 0 }}>
+                <DataTable
+                    data={departments}
+                    columns={columns}
+                    fileName="departments-list"
+                    loading={loading}
+                    emptyMessage="No departments found. Create the first one."
+                    onAdd={openCreate}
+                />
+            </div>
 
             {(modal === 'create' || modal === 'edit') && (
                 <div className="modal-overlay" onClick={e => e.target === e.currentTarget && closeModal()}>

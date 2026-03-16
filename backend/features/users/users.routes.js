@@ -3,16 +3,18 @@ import multer from 'multer';
 import { createUser, getAllUsers, getUserById, updateUser, deleteUser, uploadAvatar } from './users.controller.js';
 import { authMiddleware } from '../../middleware/auth.middleware.js';
 import { requirePermission } from '../../middleware/permission.middleware.js';
+import { validateRequest } from '../../middleware/validate.middleware.js';
+import { createUserSchema, updateUserSchema } from './users.validation.js';
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } }); // 5MB limit for avatars
 
 router.use(authMiddleware);
 
-router.post('/', requirePermission('create_user', ['hr', 'HR Manager']), createUser);
+router.post('/', requirePermission('create_user', ['hr', 'HR Manager']), validateRequest(createUserSchema), createUser);
 router.get('/', requirePermission('view_employees', ['tester', 'bdm', 'sales manager', 'hr', 'HR Manager']), getAllUsers);
 router.get('/:id', requirePermission('view_employees', ['bdm', 'sales manager', 'hr', 'HR Manager']), getUserById);
-router.patch('/:id', requirePermission('edit_user'), updateUser);
+router.patch('/:id', requirePermission('edit_user'), validateRequest(updateUserSchema), updateUser);
 router.delete('/:id', requirePermission('delete_user'), deleteUser);
 router.post('/avatar/:id', upload.single('avatar'), uploadAvatar);
 

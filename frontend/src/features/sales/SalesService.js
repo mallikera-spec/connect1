@@ -39,6 +39,14 @@ export const SalesService = {
     },
 
     /**
+     * Checks for duplicate leads by phone numbers.
+     */
+    checkDuplicateLead: async (phoneData) => {
+        const response = await api.post('/sales/leads/check-duplicate', phoneData);
+        return response.data;
+    },
+
+    /**
      * Sends updates for an existing lead.
      */
     updateLead: async (id, updates) => {

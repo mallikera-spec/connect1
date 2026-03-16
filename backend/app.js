@@ -29,7 +29,9 @@ import clientsRoutes from './features/clients/clients.routes.js';
 import milestonesRoutes from './features/milestones/milestones.routes.js';
 import pollsRoutes from './features/polls/polls.routes.js';
 import leadFilesRoutes from './features/lead-files/lead-files.routes.js';
+import financeRoutes from './features/finance/finance.routes.js';
 
+import { authMiddleware } from './middleware/auth.middleware.js';
 import { errorMiddleware } from './middleware/error.middleware.js';
 
 const app = express();
@@ -43,8 +45,22 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(morgan('dev'));
 
-// Health check
+// Health check (Public)
 app.get('/health', (_req, res) => res.json({ status: 'ok' }));
+
+// Apply Authentication globally to all /api/v1 routes
+// EXCEPT specific public endpoints
+app.use('/api/v1', (req, res, next) => {
+    const publicPaths = [
+        '/auth/daily-quote'
+    ];
+    
+    if (publicPaths.some(path => req.path.startsWith(path))) {
+        return next();
+    }
+    
+    return authMiddleware(req, res, next);
+});
 
 // Routes
 app.use('/api/v1/auth', authRoutes);
@@ -74,6 +90,7 @@ app.use('/api/v1/clients', clientsRoutes);
 app.use('/api/v1/milestones', milestonesRoutes);
 app.use('/api/v1/polls', pollsRoutes);
 app.use('/api/v1/lead-files', leadFilesRoutes);
+app.use('/api/v1/finance', financeRoutes);
 
 // 404 handler
 app.use((_req, res) => {

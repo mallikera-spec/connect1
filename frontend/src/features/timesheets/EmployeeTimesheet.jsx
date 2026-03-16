@@ -1,26 +1,24 @@
 import { useEffect, useState, useMemo } from 'react'
-import { Plus, Trash2, Link2, Clock, Calendar, CheckCircle2, Filter, Zap, Target, TrendingUp, History, Edit } from 'lucide-react'
-import { useNavigate, useLocation } from 'react-router-dom'
+import { Plus, Trash2, Clock, Calendar, CheckCircle2, Target, TrendingUp, History, Edit } from 'lucide-react'
+import { useLocation } from 'react-router-dom'
 import api from '../../lib/api'
 import toast from 'react-hot-toast'
 import { useAuth } from '../../context/AuthContext'
 import EditEntryModal from './EditEntryModal'
 import DataTable from '../../components/common/DataTable'
+import { formatDate } from '../../utils/formatters'
+import DateRangePicker from '../../components/DateRangePicker'
 
 const STATUS_OPTS = ['todo', 'in_progress', 'done']
 const STATUS_BADGE = {
     todo: 'badge-gray',
     in_progress: 'badge-yellow',
     done: 'badge-green',
-    // blocked: 'badge-red',
     verified: 'badge-purple',
     failed: 'badge-red'
 }
 
-const fmt = (d) => d ? new Date(d).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' }) : ''
 const todayISO = () => new Date().toISOString().slice(0, 10)
-
-import DateRangePicker from '../../components/DateRangePicker'
 
 export default function EmployeeTimesheet() {
     const { user, hasPermission, hasRole } = useAuth()
@@ -39,11 +37,10 @@ export default function EmployeeTimesheet() {
     // Form for new entry
     const [newDate, setNewDate] = useState(todayISO())
     const [newProjectId, setNewProjectId] = useState('')
-    const [newTaskId, setNewTaskId] = useState('')
     const [newTitle, setNewTitle] = useState('')
     const [newTime, setNewTime] = useState('00:00')
     const [newNotes, setNewNotes] = useState('')
-    const [newStatus, setNewStatus] = useState('in_progress') // Restored choice: default to in_progress
+    const [newStatus, setNewStatus] = useState('in_progress')
     const [adding, setAdding] = useState(false)
     const [editingEntry, setEditingEntry] = useState(null)
 
@@ -85,7 +82,6 @@ export default function EmployeeTimesheet() {
 
     useEffect(() => { loadMyProjects(); loadReport() }, [user?.id])
     useEffect(() => { load() }, [startDate, endDate])
-
 
     const handleAddEntry = async (e) => {
         e.preventDefault()
@@ -145,10 +141,6 @@ export default function EmployeeTimesheet() {
         }
     }
 
-    const handleExportPDF = () => {
-        window.print();
-    };
-
     const handleDelete = async (entryId) => {
         if (!confirm('Remove this activity?')) return
         try {
@@ -158,7 +150,6 @@ export default function EmployeeTimesheet() {
         } catch (err) { toast.error(err.message) }
     }
 
-    // Stats
     const stats = useMemo(() => {
         const todayEntries = allEntries.filter(e => e.date === todayISO())
         const totalMinutes = todayEntries.reduce((acc, e) => {
@@ -167,10 +158,7 @@ export default function EmployeeTimesheet() {
         }, 0)
         const totalHours = (totalMinutes / 60).toFixed(1)
         const completed = todayEntries.filter(e => e.status === 'done').length
-
-        // Count non-completed tasks from report
         const pendingTasks = report?.tasks_by_status ? (report.tasks_by_status.pending + report.tasks_by_status.in_progress) : 0
-
         return { totalHours, count: todayEntries.length, completed, pendingTasks }
     }, [allEntries, report])
 
@@ -187,211 +175,214 @@ export default function EmployeeTimesheet() {
         })
     }, [allEntries, filterProjectId, statusFilter])
 
+    const columns = useMemo(() => [
+        { 
+            label: 'Date', 
+            key: 'date', 
+            width: '120px',
+            render: (val) => formatDate(val)
+        },
+        { 
+            label: 'Project', 
+            key: 'project.name', 
+            width: '150px',
+            render: (val) => <span className="badge badge-purple" style={{ fontSize: 9 }}>{(val || 'In-House').toUpperCase()}</span>
+        },
+        {
+            label: 'Activity',
+            key: 'title',
+            wrap: true,
+            copyable: true,
+            render: (val, e) => (
+                <div style={{ minWidth: 250 }}>
+                    <div style={{ fontWeight: 600 }}>{val}</div>
+                    {e.notes && <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 4, fontStyle: 'italic' }}>{e.notes}</div>}
+                </div>
+            )
+        },
+        { label: 'Time', key: 'hours_spent', width: '80px', type: 'number', render: (val) => <span style={{ fontWeight: 800, color: 'var(--accent)' }}>{val}</span> },
+        {
+            label: 'Status',
+            key: 'status',
+            width: '120px',
+            render: (val, e) => {
+                const isLocked = !['admin', 'super_admin', 'director'].some(r => user?.roles?.some(ur => (typeof ur === 'string' ? ur : ur.name).toLowerCase().includes(r))) && ['done', 'verified', 'failed'].includes(val);
+                const isFailed = val === 'failed';
+
+                if (isLocked && !isFailed) {
+                    return <span className={`badge ${STATUS_BADGE[val] || ''}`} style={{ width: '100%', display: 'block', textAlign: 'center' }}>{val.toUpperCase()}</span>;
+                }
+
+                return (
+                    <select
+                        className={`form-select-badge ${STATUS_BADGE[val] || ''}`}
+                        value={val}
+                        onChange={ev => handleUpdate(e.id, { status: ev.target.value })}
+                        onClick={ev => ev.stopPropagation()}
+                        style={{ textTransform: 'uppercase', fontSize: 10 }}
+                    >
+                        {STATUS_OPTS.map(s => <option key={s} value={s}>{s.toUpperCase()}</option>)}
+                        {isFailed && <option value="done">DONE (RESUBMIT)</option>}
+                    </select>
+                );
+            }
+        },
+        {
+            label: 'QA result',
+            key: 'status',
+            width: '120px',
+            render: (val) => {
+                if (val === 'verified') return <span className="badge badge-green" style={{ width: '100%', display: 'block', textAlign: 'center' }}>PASS</span>;
+                if (val === 'failed') return <span className="badge badge-red" style={{ width: '100%', display: 'block', textAlign: 'center' }}>FAIL</span>;
+                if (['done', 'ready_for_qa'].includes(val)) return <span className="badge badge-yellow" style={{ width: '100%', display: 'block', textAlign: 'center' }}>UNDER REVIEW</span>;
+                return <span className="badge badge-gray" style={{ width: '100%', display: 'block', textAlign: 'center' }}>PENDING</span>;
+            }
+        },
+        { 
+            label: 'Feedback', 
+            key: 'id', 
+            width: '150px',
+            render: (_, e) => (
+                <div style={{ fontSize: 11 }}>
+                    {e.qa_notes && <div style={{ color: 'var(--danger)', fontWeight: 600 }}>QA: {e.qa_notes}</div>}
+                    {e.admin_feedback && <div style={{ color: 'var(--text-dim)' }}>Admin: {e.admin_feedback}</div>}
+                    {!e.qa_notes && !e.admin_feedback && <span style={{ opacity: 0.2 }}>—</span>}
+                </div>
+            )
+        },
+        {
+            label: 'Actions',
+            key: 'id',
+            width: '80px',
+            sticky: true,
+            render: (_, e) => (
+                <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
+                    <button className="btn btn-icon btn-sm" onClick={(ev) => { ev.stopPropagation(); setEditingEntry(e); }}><Edit size={14} /></button>
+                    {(hasRole('super_admin') || hasRole('director') || hasRole('Director')) && (
+                        <button className="btn btn-icon btn-sm btn-danger-ghost" onClick={(ev) => { ev.stopPropagation(); handleDelete(e.id); }}><Trash2 size={14} /></button>
+                    )}
+                </div>
+            )
+        }
+    ], [user, hasRole]);
+
     return (
-        <div className="page-content">
+        <div className="employee-timesheet">
             <div className="page-header">
                 <div>
                     <h1>Activity Hub</h1>
                     <p>Track your flow, conquer your day.</p>
                 </div>
-                <div className="header-actions">
-                    <DateRangePicker
-                        startDate={startDate}
-                        endDate={endDate}
-                        onRangeChange={(range) => {
-                            setStartDate(range.startDate);
-                            setEndDate(range.endDate);
-                        }}
-                    />
-                </div>
+                <DateRangePicker
+                    startDate={startDate}
+                    endDate={endDate}
+                    onRangeChange={(range) => {
+                        setStartDate(range.startDate);
+                        setEndDate(range.endDate);
+                    }}
+                />
             </div>
 
-            {/* Stats Bar */}
-            <div className="stats-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)', marginBottom: 24 }}>
-                <div className="card shadow-sm" style={{ padding: 20, display: 'flex', alignItems: 'center', gap: 16 }}>
+            <div className="stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 24, marginBottom: 24 }}>
+                <div className="card shadow-sm stat-card">
                     <div className="stat-icon-circle purple"><Clock size={20} /></div>
                     <div>
-                        <div style={{ fontSize: 24, fontWeight: 800 }}>{stats.totalHours}h</div>
-                        <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase' }}>Logged Today</div>
+                        <div className="stat-value">{stats.totalHours}h</div>
+                        <div className="stat-label">Logged Today</div>
                     </div>
                 </div>
-                <div className="card shadow-sm" style={{ padding: 20, display: 'flex', alignItems: 'center', gap: 16 }}>
+                <div className="card shadow-sm stat-card">
                     <div className="stat-icon-circle yellow"><CheckCircle2 size={20} /></div>
                     <div>
-                        <div style={{ fontSize: 24, fontWeight: 800 }}>{stats.pendingTasks}</div>
-                        <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase' }}>Pending Tasks</div>
+                        <div className="stat-value">{stats.pendingTasks}</div>
+                        <div className="stat-label">Pending Tasks</div>
                     </div>
                 </div>
-                <div className="card shadow-sm" style={{ padding: 20, display: 'flex', alignItems: 'center', gap: 16 }}>
+                <div className="card shadow-sm stat-card">
                     <div className="stat-icon-circle green"><Target size={20} /></div>
                     <div>
-                        <div style={{ fontSize: 24, fontWeight: 800 }}>{stats.completed}</div>
-                        <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase' }}>Done Today</div>
+                        <div className="stat-value">{stats.completed}</div>
+                        <div className="stat-label">Done Today</div>
                     </div>
                 </div>
             </div>
 
             <div className="dashboard-grid" style={{ display: 'grid', gridTemplateColumns: '380px 1fr', gap: 24 }}>
-                {/* Left Column: Plan Activity */}
                 <div className="grid-column">
-                    <div className="card shadow-sm glass-card" style={{ padding: 24 }}>
-                        <div className="section-title" style={{ marginBottom: 20 }}>
-                            <TrendingUp size={18} style={{ color: 'var(--accent)' }} />
+                    <div className="card polished-card" style={{ padding: 24 }}>
+                        <div className="section-title" style={{ marginBottom: 24, display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <TrendingUp size={18} className="text-accent" />
                             <h3 style={{ margin: 0, fontSize: 16 }}>Plan Activity</h3>
                         </div>
-                        <form onSubmit={handleAddEntry} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                        <form onSubmit={handleAddEntry} style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
                             <div className="form-group">
-                                <label className="form-label"><Calendar size={12} style={{ marginRight: 6 }} /> Date</label>
-                                <input type="date" className="form-control" value={newDate} onChange={e => setNewDate(e.target.value)} required />
+                                <label className="form-label">Date</label>
+                                <input type="date" className="form-input" value={newDate} onChange={e => setNewDate(e.target.value)} required />
                             </div>
-
                             <div className="form-group">
-                                <label className="form-label">Project Scope</label>
+                                <label className="form-label">Project</label>
                                 <select className="form-select" value={newProjectId} onChange={e => setNewProjectId(e.target.value)}>
                                     <option value="">Select Scope...</option>
                                     {myProjects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                                 </select>
                             </div>
-
                             <div className="form-group">
                                 <label className="form-label">Task Description</label>
-                                <input className="form-control" placeholder="e.g. Building login screen" value={newTitle} onChange={e => setNewTitle(e.target.value)} required />
+                                <input className="form-input" placeholder="e.g. Building login screen" value={newTitle} onChange={e => setNewTitle(e.target.value)} required />
                             </div>
-
                             <div className="form-group">
-                                <label className="form-label"><Clock size={12} style={{ marginRight: 6 }} /> Time (hh:mm)</label>
-                                <input type="time" className="form-control" value={newTime} onChange={e => setNewTime(e.target.value)} required />
+                                <label className="form-label">Time (hh:mm)</label>
+                                <input type="time" className="form-input" value={newTime} onChange={e => setNewTime(e.target.value)} required />
                             </div>
-
                             <div className="form-group">
-                                <label className="form-label">Initial Status</label>
+                                <label className="form-label">Status</label>
                                 <select className="form-select" value={newStatus} onChange={e => setNewStatus(e.target.value)}>
-                                    <option value="todo">To Do (Planned)</option>
+                                    <option value="todo">To Do</option>
                                     <option value="in_progress">In Progress</option>
-                                    <option value="done">Done (Ready for QA)</option>
+                                    <option value="done">Done</option>
                                 </select>
                             </div>
-
                             <div className="form-group">
                                 <label className="form-label">Notes</label>
-                                <textarea
-                                    className="form-control"
-                                    placeholder="Brief technical details..."
-                                    value={newNotes}
-                                    onChange={e => setNewNotes(e.target.value)}
-                                    rows={3}
-                                    required
-                                />
+                                <textarea className="form-input" placeholder="Brief details..." value={newNotes} onChange={e => setNewNotes(e.target.value)} rows={3} required />
                             </div>
-
-                            <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: 8 }} disabled={adding || !newTitle.trim() || !newProjectId || !newNotes.trim() || !newTime || newTime === '00:00'}>
+                            <button type="submit" className="btn btn-primary" style={{ width: '100%' }} disabled={adding || !newTitle.trim() || !newProjectId || !newNotes.trim() || !newTime || newTime === '00:00'}>
                                 {adding ? <span className="spinner-sm" /> : <><Plus size={18} /> Log Activity</>}
                             </button>
                         </form>
                     </div>
                 </div>
 
-                {/* Right Column: History */}
                 <div className="grid-column">
-                    <div className="card shadow-sm glass-card" style={{ padding: 0 }}>
-                        <div className="card-header" style={{ padding: '16px 24px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div className="card table-card" style={{ padding: 0 }}>
+                        <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                                <History size={18} style={{ color: 'var(--accent)' }} />
+                                <History size={18} className="text-accent" />
                                 <h3 style={{ margin: 0, fontSize: 16 }}>Activity History</h3>
                             </div>
                             <div style={{ display: 'flex', gap: 12 }}>
-                                <select className="form-select" style={{ width: 'auto', padding: '4px 12px', fontSize: 12 }} value={filterProjectId} onChange={e => setFilterProjectId(e.target.value)}>
+                                <select className="form-select" style={{ width: 'auto', padding: '4px 12px', fontSize: 11 }} value={filterProjectId} onChange={e => setFilterProjectId(e.target.value)}>
                                     <option value="">ALL PROJECTS</option>
                                     {myProjects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                                 </select>
-                                <select className="form-select" style={{ width: 'auto', padding: '4px 12px', fontSize: 12 }} value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
+                                <select className="form-select" style={{ width: 'auto', padding: '4px 12px', fontSize: 11 }} value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
                                     <option value="">ALL STATUS</option>
                                     {['todo', 'in_progress', 'done', 'blocked', 'verified', 'failed'].map(s => (
                                         <option key={s} value={s}>{s.toUpperCase()}</option>
                                     ))}
                                     <option disabled>──────</option>
-                                    <option value="completed">COMPLETED (All QA)</option>
-                                    <option value="audited">AUDITED (Pass/Fail)</option>
+                                    <option value="completed">COMPLETED</option>
+                                    <option value="audited">AUDITED</option>
                                     <option value="pending_qa">PENDING QA</option>
                                 </select>
-                                <div className="btn-group" style={{ display: 'none' }}>
-                                    {/* DataTable already provides these */}
-                                </div>
                             </div>
                         </div>
-
-                        <div style={{ padding: '0 0 24px 0' }}>
-                            <DataTable
-                                loading={loading}
-                                data={filteredEntries}
-                                fileName={`timesheet_${startDate}_${endDate}`}
-                                columns={[
-                                    { label: 'Date', key: 'date', render: (val) => <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-dim)' }}>{fmt(val)}</span>, exportValue: (val) => val },
-                                    { label: 'Project', key: 'project.name', render: (val) => <span className="badge-pill badge-purple" style={{ fontSize: 9 }}>{(val || 'In-House').toUpperCase()}</span> },
-                                    {
-                                        label: 'Activity Details',
-                                        key: 'title',
-                                        render: (val, e) => (
-                                            <div>
-                                                <div style={{ fontWeight: 600 }}>{val}</div>
-                                                {e.notes && <div style={{ fontSize: 11, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 300 }}>{e.notes}</div>}
-                                            </div>
-                                        )
-                                    },
-                                    { label: 'Time', key: 'hours_spent', render: (val) => <span style={{ fontWeight: 800, color: 'var(--accent)' }}>{val}</span> },
-                                    {
-                                        label: 'Status',
-                                        key: 'status',
-                                        render: (val, e) => {
-                                            const isLocked = !['admin', 'super_admin', 'director'].some(r => user?.roles?.some(ur => (typeof ur === 'string' ? ur : ur.name).toLowerCase().includes(r))) && ['done', 'verified', 'failed'].includes(val);
-                                            const isFailed = val === 'failed';
-
-                                            if (isLocked && !isFailed) {
-                                                return <span className={`badge-pill ${STATUS_BADGE[val]}`} style={{ width: '100%', display: 'block', textAlign: 'center' }}>{val.toUpperCase()}</span>;
-                                            }
-
-                                            return (
-                                                <select
-                                                    className={`form-select-badge ${STATUS_BADGE[val]}`}
-                                                    value={val}
-                                                    onChange={ev => handleUpdate(e.id, { status: ev.target.value })}
-                                                    onClick={ev => ev.stopPropagation()}
-                                                    style={{ textTransform: 'uppercase', fontStyle: 'normal' }}
-                                                >
-                                                    {STATUS_OPTS.map(s => <option key={s} value={s}>{s.toUpperCase()}</option>)}
-                                                    {isFailed && <option value="done">DONE (RESUBMIT)</option>}
-                                                </select>
-                                            );
-                                        }
-                                    },
-                                    {
-                                        label: 'QA Status',
-                                        key: 'status',
-                                        render: (val) => {
-                                            if (val === 'verified') return <span className="badge-pill badge-green" style={{ width: '100%', display: 'block', textAlign: 'center' }}>PASS</span>;
-                                            if (val === 'failed') return <span className="badge-pill badge-red" style={{ width: '100%', display: 'block', textAlign: 'center' }}>FAIL</span>;
-                                            if (['done', 'ready_for_qa'].includes(val)) return <span className="badge-pill badge-yellow" style={{ width: '100%', display: 'block', textAlign: 'center' }}>UNDER REVIEW</span>;
-                                            return <span className="badge-pill badge-gray" style={{ width: '100%', display: 'block', textAlign: 'center' }}>PENDING</span>;
-                                        },
-                                        exportValue: (val) => val === 'verified' ? 'PASS' : val === 'failed' ? 'FAIL' : ['done', 'ready_for_qa'].includes(val) ? 'UNDER REVIEW' : 'PENDING'
-                                    },
-                                    { label: 'QA Feedback', key: 'qa_notes', render: (val, e) => <span style={{ fontSize: 11, color: e.status === 'failed' ? '#ef4444' : 'var(--text-muted)', fontWeight: 600 }}>{val ? `🚩 ${val}` : <span style={{ opacity: 0.2 }}>—</span>}</span> },
-                                    { label: 'Admin Feedback', key: 'admin_feedback', render: (val) => <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>{val || <span style={{ opacity: 0.2 }}>—</span>}</span> },
-                                    {
-                                        label: 'Actions',
-                                        key: 'id',
-                                        render: (_, e) => (
-                                            <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
-                                                <button className="btn-icon-sm" onClick={(ev) => { ev.stopPropagation(); setEditingEntry(e); }}><Edit size={14} /></button>
-                                                {(hasRole('super_admin') || hasRole('director') || hasRole('Director')) && (
-                                                    <button className="btn-icon-sm danger" onClick={(ev) => { ev.stopPropagation(); handleDelete(e.id); }}><Trash2 size={14} /></button>
-                                                )}
-                                            </div>
-                                        )
-                                    }
-                                ]}
-                            />
-                        </div>
+                        <DataTable
+                            loading={loading}
+                            data={filteredEntries}
+                            columns={columns}
+                            fileName={`my_timesheet_${startDate}`}
+                        />
                     </div>
                 </div>
             </div>
@@ -408,31 +399,21 @@ export default function EmployeeTimesheet() {
             )}
 
             <style>{`
+                .employee-timesheet { padding: 8px; }
+                .stat-card { padding: 20px; display: flex; alignItems: center; gap: 16px; background: var(--bg-card); border: 1px solid var(--border); }
+                .stat-value { fontSize: 24px; fontWeight: 800; }
+                .stat-label { fontSize: 11px; fontWeight: 700; color: var(--text-dim); textTransform: uppercase; }
                 .stat-icon-circle { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
                 .stat-icon-circle.purple { background: rgba(124, 58, 237, 0.1); color: var(--accent); }
                 .stat-icon-circle.yellow { background: rgba(245, 158, 11, 0.1); color: var(--warning); }
                 .stat-icon-circle.green { background: rgba(34, 197, 94, 0.1); color: var(--success); }
-                
+                .badge-purple { background: rgba(139, 92, 246, 0.1); color: #8b5cf6; }
                 .form-select-badge {
-                    width: 100%;
-                    padding: 4px 8px;
-                    border-radius: 6px;
-                    border: none;
-                    background: var(--bg-card);
-                    color: inherit;
-                    font-size: 10px;
-                    font-weight: 800;
-                    cursor: pointer;
-                    appearance: none;
-                    text-align: center;
+                    width: 100%; border: none; background: transparent; color: inherit; 
+                    font-size: 10px; fontWeight: 800; cursor: pointer; text-align: center;
                 }
-                
-                .btn-icon-sm.danger:hover { color: var(--danger); background: var(--danger-bg); }
-
-                @media (max-width: 1024px) {
-                    .dashboard-grid { grid-template-columns: 1fr !important; }
-                }
+                .btn-danger-ghost:hover { background: rgba(239, 68, 68, 0.1); color: var(--danger); }
             `}</style>
-        </div >
+        </div>
     )
 }

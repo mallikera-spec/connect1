@@ -11,12 +11,19 @@ export const createUser = async (req, res) => {
 };
 
 export const getAllUsers = async (req, res) => {
-    const data = await usersService.getAllUsers(req.query);
+    const data = await usersService.getAllUsers({ 
+        ...req.query,
+        requesterId: req.user.id,
+        requesterRoles: req.user.roles
+    });
     successResponse(res, data, 'Users fetched');
 };
 
 export const getUserById = async (req, res) => {
-    const data = await usersService.getUserById(req.params.id);
+    const data = await usersService.getUserById(req.params.id, {
+        requesterId: req.user.id,
+        requesterRoles: req.user.roles
+    });
     successResponse(res, data, 'User fetched');
 };
 

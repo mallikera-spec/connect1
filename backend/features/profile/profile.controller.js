@@ -23,7 +23,7 @@ const profileSchema = z.object({
     aadhar_number: z.string().optional(),
 });
 
-const ctcSchema = z.object({ ctc: z.number().nonnegative() });
+const ctcSchema = z.object({ ctc: z.coerce.number().nonnegative() });
 
 const adminProfileSchema = profileSchema.extend({
     department: z.string().optional(),

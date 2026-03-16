@@ -30,7 +30,12 @@ export const createUser = async (userData) => {
     return data;
 };
 
-export const getAllUsers = async (filters = {}) => {
+export const getAllUsers = async ({ requesterId, requesterRoles = [], ...filters } = {}) => {
+    const isPrivileged = requesterRoles.some(role => {
+        const r = String(role).toLowerCase();
+        return r.includes('admin') || r.includes('hr') || r.includes('manager') || r.includes('director');
+    });
+
     let query = supabaseAdmin
         .from('profiles')
         .select(`
@@ -39,6 +44,11 @@ export const getAllUsers = async (filters = {}) => {
             date_of_joining, joining_date, base_salary,
             user_roles(role:roles(id, name))
         `);
+
+    // Server-side filtering
+    if (!isPrivileged && requesterId) {
+        query = query.eq('id', requesterId);
+    }
 
     const { data, error } = await query.order('created_at', { ascending: false });
     if (error) throw error;
@@ -58,7 +68,16 @@ export const getAllUsers = async (filters = {}) => {
     return users;
 };
 
-export const getUserById = async (id) => {
+export const getUserById = async (id, { requesterId, requesterRoles = [] } = {}) => {
+    const isPrivileged = requesterRoles.some(role => {
+        const r = String(role).toLowerCase();
+        return r.includes('admin') || r.includes('hr') || r.includes('manager') || r.includes('director');
+    });
+
+    if (!isPrivileged && requesterId && requesterId !== id) {
+        throw { statusCode: 403, message: 'You are not authorized to view this profile' };
+    }
+
     const { data, error } = await supabaseAdmin
         .from('profiles')
         .select(`

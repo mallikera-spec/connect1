@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { Link2, Clock, Calendar, Users, Filter, ShieldCheck, AlertCircle, X, Trash2, RotateCcw } from 'lucide-react'
 import { useLocation } from 'react-router-dom'
 import api from '../../lib/api'
@@ -6,6 +6,8 @@ import toast from 'react-hot-toast'
 import { useAuth } from '../../context/AuthContext'
 import QAFeedbackTrail from '../../components/common/QAFeedbackTrail'
 import DataTable from '../../components/common/DataTable'
+import { formatDate } from '../../utils/formatters'
+import DateRangePicker from '../../components/DateRangePicker'
 
 const STATUS_BADGE = {
     todo: 'badge-blue',
@@ -16,10 +18,7 @@ const STATUS_BADGE = {
     failed: 'badge-red'
 }
 
-const fmt = (d) => d ? new Date(d).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }) : ''
 const todayISO = () => new Date().toISOString().slice(0, 10)
-
-import DateRangePicker from '../../components/DateRangePicker'
 
 export default function AdminTimesheet() {
     const { hasRole, user } = useAuth()
@@ -29,7 +28,6 @@ export default function AdminTimesheet() {
     const [endDate, setEndDate] = useState(location.state?.endDate || todayISO())
     const [viewUserIds, setViewUserIds] = useState(
         location.state?.viewUserId ? [location.state.viewUserId] : []
-        // empty = ALL users
     )
     const [statusFilter, setStatusFilter] = useState(location.state?.statusFilter || '')
     const [allEntries, setAllEntries] = useState([])
@@ -48,7 +46,6 @@ export default function AdminTimesheet() {
             const r = await api.get('/users', { params: { role: 'developer' } })
             const sorted = r.data.data.sort((a, b) => a.full_name.localeCompare(b.full_name))
             setAllUsers(sorted)
-            // Don't auto-select a single user — empty viewUserIds means "show all"
         } catch (_) { }
     }
 
@@ -65,7 +62,6 @@ export default function AdminTimesheet() {
             const params = {
                 startDate,
                 endDate,
-                // empty string = all users (backend handles it)
                 userIds: viewUserIds.length > 0 ? viewUserIds.join(',') : ''
             }
             const tsRes = await api.get('/timesheets', { params });
@@ -147,7 +143,6 @@ export default function AdminTimesheet() {
             }
             await api.patch(`/timesheets/entries/${selectedEntry.id}`, updates)
 
-            // Add to feedback trail
             await api.post(`/timesheets/entries/${selectedEntry.id}/feedback`, {
                 content: qaReport.notes || (qaReport.status === 'verified' ? 'Verified by QA' : 'Failed QA'),
                 new_status: qaReport.status
@@ -163,17 +158,136 @@ export default function AdminTimesheet() {
         }
     }
 
-    const handleExportPDF = () => {
-        window.print();
-    };
-
     const toggleUser = (uid) => {
         setViewUserIds(prev => prev.includes(uid) ? prev.filter(id => id !== uid) : [...prev, uid])
     }
 
+    const filtered = useMemo(() => {
+        let res = allEntries;
+        if (selectedProjectId) {
+            res = res.filter(e => e.project_id === selectedProjectId || e.task?.project_id === selectedProjectId);
+        }
+        if (statusFilter) {
+            if (statusFilter === 'completed') {
+                res = res.filter(e => ['done', 'verified', 'failed'].includes(e.status));
+            } else if (statusFilter === 'audited') {
+                res = res.filter(e => ['verified', 'failed'].includes(e.status));
+            } else if (statusFilter === 'pending_qa') {
+                res = res.filter(e => e.status === 'done');
+            } else {
+                res = res.filter(e => e.status === statusFilter);
+            }
+        }
+        if (qaFilter) {
+            if (qaFilter === 'passed') res = res.filter(e => e.status === 'verified');
+            else if (qaFilter === 'failed') res = res.filter(e => e.status === 'failed');
+            else if (qaFilter === 'pending') res = res.filter(e => !['verified', 'failed'].includes(e.status));
+        }
+        return res;
+    }, [allEntries, selectedProjectId, statusFilter, qaFilter]);
+
+    const columns = useMemo(() => [
+        {
+            label: 'Date',
+            key: 'date',
+            width: '80px',
+            render: (val) => (
+                <div style={{ textAlign: 'center' }}>
+                    <div style={{ fontSize: 13, fontWeight: 700 }}>{new Date(val).getDate()}</div>
+                    <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-dim)', textTransform: 'uppercase' }}>{new Date(val).toLocaleDateString('en-IN', { month: 'short' })}</div>
+                </div>
+            )
+        },
+        {
+            label: 'Hours',
+            key: 'hours_spent',
+            width: '80px',
+            type: 'number',
+            render: (val) => (
+                <div style={{ background: 'var(--accent-transparent)', padding: '4px 8px', borderRadius: 6, display: 'inline-block', minWidth: 45, textAlign: 'center' }}>
+                    <span style={{ fontWeight: 800, color: 'var(--accent-light)', fontSize: 13 }}>{val}</span>
+                    <span style={{ fontSize: 9, color: 'var(--accent-light)', opacity: 0.7, marginLeft: 1 }}>h</span>
+                </div>
+            )
+        },
+        {
+            label: 'Employee',
+            key: 'userName',
+            width: '150px'
+        },
+        {
+            label: 'Project',
+            key: 'project.name',
+            width: '120px',
+            render: (val) => <span className="badge badge-purple" style={{ fontSize: 9 }}>{(val || 'In-House').toUpperCase()}</span>
+        },
+        {
+            label: 'Activity',
+            key: 'title',
+            wrap: true,
+            copyable: true,
+            render: (val, e) => (
+                <div style={{ minWidth: 250 }}>
+                    <div style={{ fontWeight: 600, fontSize: 13 }}>{val}</div>
+                    {e.notes && <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 4, fontStyle: 'italic' }}>{e.notes}</div>}
+                    {e.developer_reply && <div style={{ fontSize: 10, color: 'var(--success)', marginTop: 6, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}><RotateCcw size={10} /> {e.developer_reply}</div>}
+                </div>
+            )
+        },
+        {
+            label: 'Status',
+            key: 'status',
+            width: '120px',
+            render: (val) => <span className={`badge ${STATUS_BADGE[val] || ''}`} style={{ fontSize: 10 }}>{val?.toUpperCase()}</span>
+        },
+        {
+            label: 'QA Verdict',
+            key: 'status',
+            width: '100px',
+            render: (val) => {
+                if (val === 'verified') return <span style={{ color: 'var(--success)', fontWeight: 800, fontSize: 10 }}>✅ PASSED</span>;
+                if (val === 'failed') return <span style={{ color: 'var(--danger)', fontWeight: 800, fontSize: 10 }}>❌ FAILED</span>;
+                return <span style={{ color: 'var(--text-dim)', fontSize: 10 }}>—</span>;
+            }
+        },
+        {
+            label: 'Feedback',
+            key: 'admin_feedback',
+            width: '180px',
+            render: (val, e) => (
+                <input
+                    className="form-input"
+                    placeholder="Add feedback…"
+                    defaultValue={val || ''}
+                    onBlur={ev => handleUpdate(e.id, { admin_feedback: ev.target.value })}
+                    style={{ height: '32px', fontSize: 11 }}
+                />
+            )
+        },
+        {
+            label: 'Actions',
+            key: 'id',
+            width: '120px',
+            sticky: true,
+            render: (_, e) => (
+                <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
+                    {(hasRole('Tester') || hasRole('super_admin') || hasRole('director') || hasRole('Director')) && (e.status === 'done' || e.status === 'verified' || e.status === 'failed') && (
+                        <>
+                            <button className={`btn btn-icon btn-sm ${e.status === 'verified' ? 'btn-success' : 'btn-ghost'}`} onClick={() => openQaModal(e, 'verified')} title="Approve"><ShieldCheck size={14} /></button>
+                            <button className={`btn btn-icon btn-sm ${e.status === 'failed' ? 'btn-danger' : 'btn-ghost'}`} onClick={() => openQaModal(e, 'failed')} title="Reject"><AlertCircle size={14} /></button>
+                        </>
+                    )}
+                    {(hasRole('super_admin') || hasRole('director') || hasRole('Director')) && (
+                        <button className="btn btn-icon btn-sm btn-danger-ghost" onClick={() => handleDeleteEntry(e.id)} title="Delete Entry"><Trash2 size={14} /></button>
+                    )}
+                </div>
+            )
+        }
+    ], [hasRole]);
+
     return (
-        <div style={{ width: '100%', padding: '0 20px' }}>
-            <div className="page-header" style={{ alignItems: 'flex-start' }}>
+        <div className="admin-timesheet">
+            <div className="page-header">
                 <div>
                     <h1>Team Supervision</h1>
                     <p>Review employee timesheets and provide guidance</p>
@@ -188,18 +302,17 @@ export default function AdminTimesheet() {
                 />
             </div>
 
-            {/* Filters Section */}
-            <div className="card polished-card shadow-lg" style={{ marginBottom: 32, padding: '24px' }}>
-                <div className="filters-grid" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', gap: '24px', alignItems: 'flex-start' }}>
+            <div className="card polished-card filter-bar" style={{ marginBottom: 32, padding: 20 }}>
+                <div className="filters-grid" style={{ display: 'grid', gridTemplateColumns: 'minmax(300px, 2fr) 1fr 1fr 1fr', gap: 24 }}>
                     <div className="filter-group">
-                        <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--accent)', marginBottom: 12 }}>
-                            <Users size={14} /> EMPLOYEE SELECTION ({viewUserIds.length || 'ALL'})
+                        <label className="form-label" style={{ fontSize: 11, fontWeight: 700, color: 'var(--accent)', marginBottom: 12 }}>
+                            <Users size={12} style={{ marginRight: 6 }} /> EMPLOYEES ({viewUserIds.length || 'ALL'})
                         </label>
-                        <div className="employee-chips-container">
+                        <div className="employee-chips">
                             {allUsers.map(u => (
                                 <button
                                     key={u.id}
-                                    className={`employee-chip ${viewUserIds.includes(u.id) ? 'active' : ''}`}
+                                    className={`chip ${viewUserIds.includes(u.id) ? 'active' : ''}`}
                                     onClick={() => toggleUser(u.id)}
                                 >
                                     {u.full_name}
@@ -209,38 +322,30 @@ export default function AdminTimesheet() {
                     </div>
 
                     <div className="filter-group">
-                        <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--accent)', marginBottom: 12 }}>
-                            <Filter size={14} /> Project
-                        </label>
-                        <select className="form-select premium-select" value={selectedProjectId} onChange={e => setSelectedProjectId(e.target.value)}>
+                        <label className="form-label">Project</label>
+                        <select className="form-select" value={selectedProjectId} onChange={e => setSelectedProjectId(e.target.value)}>
                             <option value="">All Projects</option>
-                            {allProjects.map(p => (
-                                <option key={p.id} value={p.id}>{p.name}</option>
-                            ))}
+                            {allProjects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                         </select>
                     </div>
 
                     <div className="filter-group">
-                        <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--accent)', marginBottom: 12 }}>
-                            <Clock size={14} /> Status
-                        </label>
-                        <select className="form-select premium-select" value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
+                        <label className="form-label">Status</label>
+                        <select className="form-select" value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
                             <option value="">All Statuses</option>
                             {['todo', 'in_progress', 'done', 'blocked', 'verified', 'failed'].map(s => (
                                 <option key={s} value={s}>{s.toUpperCase().replace('_', ' ')}</option>
                             ))}
                             <option disabled>──────</option>
-                            <option value="completed">COMPLETED (All QA)</option>
-                            <option value="audited">AUDITED (Pass/Fail)</option>
+                            <option value="completed">COMPLETED</option>
+                            <option value="audited">AUDITED</option>
                             <option value="pending_qa">PENDING QA</option>
                         </select>
                     </div>
 
                     <div className="filter-group">
-                        <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--accent)', marginBottom: 12 }}>
-                            <ShieldCheck size={14} /> QA Filter
-                        </label>
-                        <select className="form-select premium-select" value={qaFilter} onChange={e => setQaFilter(e.target.value)}>
+                        <label className="form-label">QA Filter</label>
+                        <select className="form-select" value={qaFilter} onChange={e => setQaFilter(e.target.value)}>
                             <option value="">All QA Results</option>
                             <option value="passed">✅ PASSED</option>
                             <option value="failed">❌ FAILED</option>
@@ -250,234 +355,56 @@ export default function AdminTimesheet() {
                 </div>
             </div>
 
-            <div style={{ marginBottom: 40 }}>
-                {(() => {
-                    let filtered = allEntries;
-                    if (selectedProjectId) {
-                        filtered = filtered.filter(e =>
-                            e.project_id === selectedProjectId ||
-                            e.task?.project_id === selectedProjectId
-                        );
-                    }
-                    if (statusFilter) {
-                        if (statusFilter === 'completed') {
-                            filtered = filtered.filter(e => ['done', 'verified', 'failed'].includes(e.status));
-                        } else if (statusFilter === 'audited') {
-                            filtered = filtered.filter(e => ['verified', 'failed'].includes(e.status));
-                        } else if (statusFilter === 'pending_qa') {
-                            filtered = filtered.filter(e => e.status === 'done');
-                        } else {
-                            filtered = filtered.filter(e => e.status === statusFilter);
-                        }
-                    }
-                    if (qaFilter) {
-                        if (qaFilter === 'passed') {
-                            filtered = filtered.filter(e => e.status === 'verified');
-                        } else if (qaFilter === 'failed') {
-                            filtered = filtered.filter(e => e.status === 'failed');
-                        } else if (qaFilter === 'pending') {
-                            filtered = filtered.filter(e => !['verified', 'failed'].includes(e.status));
-                        }
-                    }
-
-                    return (
-                        <DataTable
-                            loading={loading}
-                            data={filtered}
-                            fileName={`admin_timesheet_${startDate}`}
-                            columns={[
-                                {
-                                    label: 'Date',
-                                    key: 'date',
-                                    width: '70px',
-                                    render: (val) => (
-                                        <div style={{ minWidth: 50 }}>
-                                            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{new Date(val).getDate()}</div>
-                                            <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-dim)', textTransform: 'uppercase' }}>{new Date(val).toLocaleDateString('en-IN', { month: 'short' })}</div>
-                                        </div>
-                                    ),
-                                    exportValue: (val) => val
-                                },
-                                {
-                                    label: 'Hrs',
-                                    key: 'hours_spent',
-                                    width: '60px',
-                                    render: (val) => (
-                                        <div style={{ background: 'var(--accent-transparent)', padding: '4px 8px', borderRadius: 6, display: 'inline-block' }}>
-                                            <span style={{ fontWeight: 800, color: 'var(--accent-light)', fontSize: 13 }}>{val}</span>
-                                            <span style={{ fontSize: 9, color: 'var(--accent-light)', opacity: 0.7, marginLeft: 1 }}>h</span>
-                                        </div>
-                                    )
-                                },
-                                {
-                                    label: 'Employee',
-                                    key: 'userName',
-                                    width: '120px',
-                                    render: (val) => <span style={{ fontSize: 12, fontWeight: 600 }}>{val}</span>
-                                },
-                                {
-                                    label: 'Project',
-                                    key: 'project.name',
-                                    width: '100px',
-                                    render: (val) => <span style={{ fontSize: 9, padding: '3px 8px', fontWeight: 800, background: 'var(--bg-header)', color: 'var(--accent-light)', borderRadius: 20, border: '1px solid var(--accent-transparent)' }}>{(val || 'In-House').toUpperCase()}</span>
-                                },
-                                {
-                                    label: 'Task Details',
-                                    key: 'title',
-                                    wrap: true,
-                                    render: (val, e) => (
-                                        <div style={{ minWidth: 250, whiteSpace: 'normal' }}>
-                                            <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--text)', lineHeight: 1.4 }}>{val}</div>
-                                            {e.notes && <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 4, fontStyle: 'italic' }}>{e.notes}</div>}
-                                            {e.developer_reply && <div style={{ fontSize: 10, color: '#10b981', marginTop: 6, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}><RotateCcw size={10} /> {e.developer_reply}</div>}
-                                        </div>
-                                    )
-                                },
-                                {
-                                    label: 'Submitted',
-                                    key: 'created_at',
-                                    width: '80px',
-                                    render: (val) => <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 600, textAlign: 'center' }}>{val ? new Date(val).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'}</div>
-                                },
-                                {
-                                    label: 'Status',
-                                    key: 'status',
-                                    width: '90px',
-                                    render: (val) => <span className={`badge-pill ${STATUS_BADGE[val]}`} style={{ fontSize: 10, padding: '3px 10px', fontWeight: 800, borderRadius: 6 }}>{val?.toUpperCase()}</span>
-                                },
-                                {
-                                    label: 'Verdict',
-                                    key: 'status',
-                                    width: '80px',
-                                    render: (val) => {
-                                        if (val === 'verified') return <div style={{ color: '#10b981', fontWeight: 900, fontSize: 10, textAlign: 'center' }}>✅ PASSED</div>;
-                                        if (val === 'failed') return <div style={{ color: '#ef4444', fontWeight: 900, fontSize: 10, textAlign: 'center' }}>❌ FAILED</div>;
-                                        return <div style={{ color: 'var(--text-dim)', fontSize: 10, textAlign: 'center' }}>—</div>;
-                                    }
-                                },
-                                {
-                                    label: 'QA Notes',
-                                    key: 'qa_notes',
-                                    width: '100px',
-                                    wrap: true,
-                                    render: (val, e) => (
-                                        <div style={{ fontSize: 10, color: e.status === 'verified' ? 'var(--text-muted)' : '#f87171', fontWeight: 600, background: 'rgba(0,0,0,0.1)', padding: '3px 6px', borderRadius: 4 }}>
-                                            {val || <span style={{ opacity: 0.3 }}>—</span>}
-                                        </div>
-                                    )
-                                },
-                                {
-                                    label: 'Feedback',
-                                    key: 'admin_feedback',
-                                    width: '130px',
-                                    render: (val, e) => (
-                                        <input
-                                            className="premium-input-sm"
-                                            placeholder="Feedback…"
-                                            defaultValue={val || ''}
-                                            onBlur={ev => handleUpdate(e.id, { admin_feedback: ev.target.value })}
-                                            style={{ height: '28px' }}
-                                        />
-                                    )
-                                },
-                                {
-                                    label: 'Actions',
-                                    key: 'id',
-                                    width: '80px',
-                                    render: (_, e) => (
-                                        <div style={{ display: 'flex', gap: 4, justifyContent: 'center' }}>
-                                            {(hasRole('Tester') || hasRole('super_admin') || hasRole('director') || hasRole('Director')) && (e.status === 'done' || e.status === 'verified' || e.status === 'failed') && (
-                                                <>
-                                                    <button className={`btn-action pass ${e.status === 'verified' ? 'active' : ''}`} style={{ padding: 6 }} onClick={() => openQaModal(e, 'verified')}><ShieldCheck size={14} /></button>
-                                                    <button className={`btn-action fail ${e.status === 'failed' ? 'active' : ''}`} style={{ padding: 6 }} onClick={() => openQaModal(e, 'failed')}><AlertCircle size={14} /></button>
-                                                </>
-                                            )}
-                                            {(hasRole('super_admin') || hasRole('director') || hasRole('Director')) && (
-                                                <button className="btn-action fail" style={{ padding: 6 }} onClick={() => handleDeleteEntry(e.id)} title="Delete Entry"><Trash2 size={14} /></button>
-                                            )}
-                                        </div>
-                                    )
-                                }
-                            ]}
-                        />
-                    );
-                })()}
+            <div className="card table-card">
+                <DataTable
+                    loading={loading}
+                    data={filtered}
+                    columns={columns}
+                    fileName={`team_timesheet_${startDate}`}
+                />
             </div>
 
-            {/* QA Report Modal */}
             {modal === 'qa_report' && selectedEntry && (
                 <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setModal(null)}>
-                    <div className="modal modal-lg" style={{ maxWidth: 900, display: 'flex', flexDirection: 'column', maxHeight: '90vh' }}>
+                    <div className="modal modal-lg" style={{ maxWidth: 900 }}>
                         <div className="modal-header">
                             <h2 className="modal-title">Verification Report: {qaReport.status === 'verified' ? 'Pass' : 'Fail'}</h2>
                             <button className="btn-icon" onClick={() => setModal(null)}><X size={18} /></button>
                         </div>
-                        <form onSubmit={handleQaReport} style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
-                            <div className="modal-body split-body">
-                                {/* Left Side: History */}
-                                <div className="history-panel" style={{ padding: '32px', background: 'rgba(0,0,0,0.1)', borderRight: '1px solid var(--border)', overflowY: 'auto', maxHeight: '60vh' }}>
-                                    <h4 className="modal-subtitle">Communication Logs</h4>
-                                    <div className="data-item full" style={{ marginBottom: 20 }}>
-                                        <p className="emphasis-text" style={{ fontSize: '16px', marginBottom: 8 }}>{selectedEntry.title}</p>
-                                        <div style={{ display: 'flex', gap: 16, fontSize: 11, color: 'var(--text-dim)', marginBottom: 12 }}>
+                        <form onSubmit={handleQaReport}>
+                            <div className="modal-body split-body" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', padding: 0 }}>
+                                <div style={{ padding: 32, background: 'rgba(0,0,0,0.05)', borderRight: '1px solid var(--border)' }}>
+                                    <h4 className="modal-subtitle">Details</h4>
+                                    <div style={{ marginBottom: 24 }}>
+                                        <p style={{ fontSize: 16, fontWeight: 700, marginBottom: 8 }}>{selectedEntry.title}</p>
+                                        <div style={{ display: 'flex', gap: 16, fontSize: 11, color: 'var(--text-dim)' }}>
                                             <span><strong>Dev:</strong> {selectedEntry.userName}</span>
                                             <span><strong>Project:</strong> {selectedEntry.project?.name || 'In-House'}</span>
                                         </div>
-                                        {selectedEntry.notes && (
-                                            <div style={{ fontSize: '13px', color: 'var(--text-muted)', background: 'rgba(255,255,255,0.03)', padding: '16px', borderRadius: '8px', border: '1px solid var(--border)', fontStyle: 'italic', marginBottom: 12, lineHeight: '1.5' }}>
-                                                <strong style={{ display: 'block', fontSize: '10px', textTransform: 'uppercase', color: 'var(--accent)', marginBottom: 4, fontStyle: 'normal' }}>Developer Note:</strong>
-                                                {selectedEntry.notes}
-                                            </div>
-                                        )}
-                                        {selectedEntry.developer_reply && (
-                                            <div style={{ fontSize: '13px', color: 'var(--accent-light)', background: 'rgba(59, 130, 246, 0.05)', padding: '16px', borderRadius: '8px', border: '1px solid rgba(59, 130, 246, 0.2)', marginBottom: 12, lineHeight: '1.5' }}>
-                                                <strong style={{ display: 'block', fontSize: '10px', textTransform: 'uppercase', color: 'var(--accent)', marginBottom: 4, fontStyle: 'normal' }}>Resubmit Reply:</strong>
-                                                {selectedEntry.developer_reply}
-                                            </div>
-                                        )}
-                                        {selectedEntry.admin_feedback && (
-                                            <div style={{ fontSize: '13px', color: 'var(--warning)', background: 'rgba(245, 158, 11, 0.05)', padding: '16px', borderRadius: '8px', border: '1px solid rgba(245, 158, 11, 0.2)', lineHeight: '1.5' }}>
-                                                <strong style={{ display: 'block', fontSize: '10px', textTransform: 'uppercase', color: 'var(--warning)', marginBottom: 4, fontStyle: 'normal' }}>Admin Feedback:</strong>
-                                                {selectedEntry.admin_feedback}
-                                            </div>
-                                        )}
                                     </div>
                                     <QAFeedbackTrail type="todo" itemId={selectedEntry.id} />
                                 </div>
-
-                                {/* Right Side: Action */}
-                                <div className="action-panel" style={{ padding: '32px', background: 'var(--bg)' }}>
+                                <div style={{ padding: 32 }}>
                                     <h4 className="modal-subtitle">Assessment</h4>
                                     <div className="form-group">
                                         <label className="form-label">QA Notes / Feedback</label>
                                         <textarea
-                                            className="form-textarea"
-                                            rows={12}
+                                            className="form-control"
+                                            rows={10}
                                             value={qaReport.notes}
                                             onChange={e => setQaReport(p => ({ ...p, notes: e.target.value }))}
-                                            placeholder={qaReport.status === 'verified' ? 'Optional: Testing notes...' : 'Required: Why did it fail?'}
+                                            placeholder={qaReport.status === 'verified' ? 'Optional notes...' : 'Required: Why did it fail?'}
                                             required={qaReport.status === 'failed'}
                                         />
                                     </div>
                                 </div>
                             </div>
-                            <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, padding: '16px 24px', borderTop: '1px solid var(--border)' }}>
+                            <div className="modal-footer">
                                 <button type="button" className="btn btn-ghost" onClick={() => setModal(null)}>Cancel</button>
                                 <button
                                     type="submit"
-                                    className="btn"
+                                    className={`btn ${qaReport.status === 'verified' ? 'btn-success' : 'btn-danger'}`}
                                     disabled={savingId === selectedEntry.id}
-                                    style={{
-                                        padding: '10px 24px',
-                                        borderRadius: 8,
-                                        fontWeight: 800,
-                                        background: qaReport.status === 'verified' ? '#10b981' : '#ef4444',
-                                        color: '#fff',
-                                        border: 'none',
-                                        fontSize: 13,
-                                        textTransform: 'uppercase',
-                                        letterSpacing: '0.02em'
-                                    }}
                                 >
                                     {savingId === selectedEntry.id ? 'Saving...' : `Confirm ${qaReport.status === 'verified' ? 'Pass' : 'Fail'}`}
                                 </button>
@@ -488,130 +415,19 @@ export default function AdminTimesheet() {
             )}
 
             <style>{`
-                .employee-chips-container {
-                    display: flex;
-                    flex-wrap: wrap;
-                    gap: 10px;
-                    max-height: 150px;
-                    overflow-y: auto;
-                    padding: 4px;
-                }
-                .employee-chip {
-                    background: var(--bg-card);
-                    border: 1px solid var(--border);
-                    color: var(--text-muted);
-                    padding: 6px 16px;
-                    border-radius: 12px;
-                    font-size: 11px;
-                    font-weight: 700;
-                    cursor: pointer;
-                    transition: all 0.2s ease;
-                    white-space: nowrap;
-                    text-transform: uppercase;
-                    letter-spacing: 0.05em;
-                }
-                .employee-chip:hover {
-                    border-color: var(--accent);
-                    background: var(--accent-transparent);
-                    color: var(--text);
-                }
-                .employee-chip.active {
-                    background: var(--accent);
-                    border-color: var(--accent);
-                    color: white;
-                    box-shadow: 0 4px 12px var(--accent-transparent);
-                }
-
-                .premium-select {
-                    background: var(--bg-input);
-                    border: 1px solid var(--border);
-                    border-radius: 10px;
-                    padding: 8px 12px;
-                    font-weight: 600;
-                    color: var(--text);
-                    transition: all 0.2s;
-                    cursor: pointer;
-                }
-                .premium-select:hover { border-color: var(--accent); }
-
-                .premium-input-sm {
-                    width: 100%;
-                    background: rgba(255,255,255,0.03);
-                    border: 1px solid var(--border);
-                    border-radius: 6px;
-                    padding: 6px 10px;
-                    font-size: 11px;
-                    color: var(--text);
-                    outline: none;
+                .admin-timesheet { padding: 8px; }
+                .employee-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+                .chip { 
+                    padding: 6px 12px; border-radius: 100px; border: 1px solid var(--border); 
+                    background: var(--bg-card); font-size: 11px; font-weight: 600; cursor: pointer;
                     transition: all 0.2s;
                 }
-                .premium-input-sm:focus { border-color: var(--accent); background: rgba(255,255,255,0.05); }
-
-                .btn-action {
-                    background: rgba(255,255,255,0.03);
-                    border: 1px solid var(--border);
-                    color: var(--text-dim);
-                    padding: 8px;
-                    border-radius: 8px;
-                    cursor: pointer;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    transition: all 0.2s;
-                }
-                .btn-action:hover { background: rgba(255, 255, 255, 0.08); color: var(--text); }
-                .btn-action.pass.active { background: #10b98120; color: #10b981; border-color: #10b981; }
-                .btn-action.fail.active { background: #ef444420; color: #ef4444; border-color: #ef4444; }
-
-                .badge-pill {
-                    display: inline-flex;
-                    align-items: center;
-                    justify-content: center;
-                    white-space: nowrap;
-                    border-radius: 100px;
-                }
-
-                .spinner-sm { width: 12px; height: 12px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; }
-                @keyframes spin { to { transform: rotate(360deg); } }
-
-                .modal-overlay {
-                    position: fixed;
-                    top: 0; left: 0; right: 0; bottom: 0;
-                    background: rgba(0, 0, 0, 0.75);
-                    backdrop-filter: blur(4px);
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    z-index: 1000;
-                }
-                .modal {
-                    background: #1a1635;
-                    border: 1px solid var(--border);
-                    border-radius: 16px;
-                    width: 100%;
-                    max-width: 500px;
-                    overflow: hidden;
-                }
-                .modal-header {
-                    padding: 16px 24px;
-                    border-bottom: 1px solid var(--border);
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                }
-                .modal-body { padding: 24px; }
-                .modal-body.split-body, .split-body { display: grid; grid-template-columns: 1fr 1fr; gap: 0; padding: 0 !important; }
-                .history-panel { padding: 32px; border-right: 1px solid var(--border); background: rgba(0,0,0,0.1); }
-                .action-panel { padding: 32px; background: var(--bg); }
-                
-                .modal-subtitle { font-size: 11px; font-weight: 800; text-transform: uppercase; color: var(--accent-light); margin-bottom: 24px; letter-spacing: 0.1em; border-left: 3px solid var(--accent); padding-left: 12px; }
-                .emphasis-text { font-size: 18px !important; font-weight: 800 !important; color: var(--accent-light) !important; line-height: 1.4; }
-                .data-item.full { grid-column: 1 / -1; margin-top: 12px; }
-                .btn-icon { background: none; border: none; color: var(--text-dim); cursor: pointer; }
-                .btn-icon:hover { color: var(--text); }
+                .chip:hover { border-color: var(--accent); }
+                .chip.active { background: var(--accent); color: white; border-color: var(--accent); }
+                .badge-purple { background: rgba(139, 92, 246, 0.1); color: #8b5cf6; }
+                .modal-subtitle { font-size: 10px; font-weight: 800; text-transform: uppercase; color: var(--accent); margin-bottom: 20px; letter-spacing: 0.1em; }
+                .btn-danger-ghost:hover { background: rgba(239, 68, 68, 0.1); color: var(--danger); }
             `}</style>
         </div>
     )
 }
-
-

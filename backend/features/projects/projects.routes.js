@@ -6,14 +6,16 @@ import {
 import projectMembersRouter from '../project-members/project-members.routes.js';
 import { authMiddleware } from '../../middleware/auth.middleware.js';
 import { requirePermission } from '../../middleware/permission.middleware.js';
+import { validateRequest } from '../../middleware/validate.middleware.js';
+import { createProjectSchema, updateProjectSchema } from './projects.validation.js';
 
 const router = Router();
 router.use(authMiddleware);
 
-router.post('/', requirePermission('create_project', ['tester']), createProject);
+router.post('/', requirePermission('create_project', ['tester']), validateRequest(createProjectSchema), createProject);
 router.get('/', requirePermission('view_projects', ['tester']), getAllProjects);
 router.get('/:id', requirePermission('view_projects', ['tester']), getProjectById);
-router.patch('/:id', requirePermission('edit_project'), updateProject);
+router.patch('/:id', requirePermission('edit_project'), validateRequest(updateProjectSchema), updateProject);
 router.delete('/:id', requirePermission('delete_project'), deleteProject);
 
 // Nested: /projects/:id/members

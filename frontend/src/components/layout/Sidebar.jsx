@@ -6,7 +6,7 @@ import {
     Users, ShieldCheck, Key, Building2, Briefcase,
     FolderKanban, ListTodo, BarChart3, LogOut,
     UserCircle, Clock, Calendar, FileText, Sparkles, TrendingUp, Vote, Shield, Star, Award,
-    PieChart, CircleDollarSign, CreditCard, ChevronRight, ChevronLeft
+    PieChart, CircleDollarSign, CreditCard, ChevronRight, ChevronLeft, Calculator, Layers
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 const NAV = [
@@ -30,9 +30,9 @@ const NAV = [
             { to: '/my-projects', label: 'My Projects', icon: FolderKanban },
             { to: '/tasks', label: 'Tasks by PM', perm: 'view_tasks', roles: ['Tester'], icon: ListTodo },
             { to: '/timesheet', label: 'Timesheet', perm: 'view_timesheet', icon: Clock },
-            { to: '/developer-performance', label: 'Dev Performance', icon: TrendingUp },
-            { to: '/leaderboard', label: 'Leaderboard', icon: Award },
-            { to: '/admin-dev-calendar', label: 'Developer Calendar', perm: 'view_employees', icon: Calendar },
+            { to: '/developer-performance', label: 'Dev Performance', icon: TrendingUp, hideIfRole: ['Video Editor'] },
+            { to: '/leaderboard', label: 'Leaderboard', icon: Award, roles: ['admin', 'super_admin', 'director', 'Director', 'Admin'] },
+            { to: '/admin-dev-calendar', label: 'Developer Calendar', perm: 'view_employees', icon: Calendar, hideIfRole: ['Video Editor'] },
         ]
     },
     {
@@ -50,13 +50,13 @@ const NAV = [
         icon: Users,
         items: [
             { to: '/hr-dashboard', icon: Clock, label: 'My HR', hideIfRole: ['super_admin', 'director', 'Director'] },
-            { to: '/hr-admin', icon: Briefcase, label: 'HR Admin', perm: 'view_employees' },
+            { to: '/hr-admin', icon: Briefcase, label: 'HR Admin', perm: 'view_employees', hideIfRole: ['Video Editor'] },
             { to: '/leave-tracker', icon: Calendar, label: 'Leave Tracker' },
             { to: '/attendance-report', icon: FileText, label: 'Attendance Report' },
-            { to: '/departments', icon: Building2, label: 'Departments', perm: 'view_departments' },
-            { to: '/designations', icon: Briefcase, label: 'Designations', perm: 'manage_designations' },
-            { to: '/users', icon: Users, label: 'Employees', perm: 'view_employees' },
-            { to: '/hr-payroll', icon: CreditCard, label: 'Manage Payroll', perm: 'view_employees', roles: ['super_admin', 'director', 'Admin', 'HR Manager'] },
+            { to: '/departments', icon: Building2, label: 'Departments', perm: 'view_departments', hideIfRole: ['Video Editor'] },
+            { to: '/designations', icon: Briefcase, label: 'Designations', perm: 'manage_designations', hideIfRole: ['Video Editor'] },
+            { to: '/users', icon: Users, label: 'Employees', perm: 'view_employees', hideIfRole: ['Video Editor'] },
+            { to: '/hr-payroll', icon: CreditCard, label: 'Manage Payroll', perm: 'view_employees', roles: ['super_admin', 'director', 'Admin', 'HR Manager'], hideIfRole: ['Video Editor'] },
             { to: '/salary-slips', icon: FileText, label: 'Salary Slips' },
         ]
     },
@@ -87,6 +87,10 @@ const NAV = [
         icon: CircleDollarSign,
         items: [
             { to: '/finance/overview', label: 'Overview', roles: ['admin', 'super_admin', 'director', 'investor'], icon: LayoutDashboard },
+            { to: '/finance/transactions', label: 'Transactions', roles: ['admin', 'super_admin', 'director', 'investor'], icon: TrendingUp },
+            { to: '/finance/settlements', label: 'Settlements', roles: ['admin', 'super_admin', 'director', 'investor'], icon: Calculator },
+            { to: '/finance/assets', label: 'Assets', roles: ['admin', 'super_admin', 'director', 'investor'], icon: Briefcase },
+            { to: '/finance/categories', label: 'Categories', roles: ['admin', 'super_admin', 'director', 'investor'], icon: Layers },
         ]
     },
     {

@@ -199,133 +199,125 @@ export default function SalesDashboard() {
                 )}
             </div>
 
-            {/* Pending Follow-ups Section */}
-            {(overallMetrics?.pendingFollowUps?.length > 0) && (
-                <div style={{ marginBottom: '40px' }}>
+            {/* Dashboard Content Row: Callbacks & Interactions */}
+            <div className="dashboard-content-grid">
+                {/* Pending Follow-ups Section */}
+                {(overallMetrics?.pendingFollowUps?.length > 0) && (
+                    <div className="dashboard-column">
+                        <div className="section-header" style={{ marginBottom: '20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                <CalendarClock size={20} color="var(--warning)" />
+                                <h2 style={{ fontSize: '18px', fontWeight: 700 }}>Upcoming Callbacks</h2>
+                            </div>
+                            <button className="btn btn-ghost btn-sm" onClick={() => navigate('/follow-ups')} style={{ color: 'var(--accent)' }}>
+                                View All <ChevronRight size={14} />
+                            </button>
+                        </div>
+                        <div className="card polished-card" style={{ overflow: 'hidden', height: '100%' }}>
+                            <div className="followup-list">
+                                {overallMetrics.pendingFollowUps.slice(0, 6).map(fu => {
+                                    let Icon = FileText;
+                                    if (fu.type === 'Call' || fu.type === 'Callback') Icon = PhoneCall;
+                                    if (fu.type === 'Email') Icon = Mail;
+                                    if (fu.type === 'Meeting') Icon = Presentation;
+
+                                    const isOverdue = new Date(fu.scheduled_at) < new Date();
+
+                                    return (
+                                        <div
+                                            key={fu.id}
+                                            className="followup-item clickable-row"
+                                            onClick={() => setSelectedLeadId(fu.lead?.id)}
+                                            style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', padding: '12px 16px', borderBottom: '1px solid var(--border)' }}
+                                        >
+                                            <div style={{
+                                                width: 32, height: 32, borderRadius: '8px',
+                                                background: isOverdue ? 'rgba(239,68,68,0.1)' : 'rgba(245,158,11,0.1)',
+                                                color: isOverdue ? 'var(--danger)' : 'var(--warning)',
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
+                                            }}>
+                                                <Icon size={16} />
+                                            </div>
+                                            <div style={{ flex: 1 }}>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                                    <div style={{ fontWeight: 600, fontSize: '13px' }}>
+                                                        {fu.lead?.name}
+                                                    </div>
+                                                    <div style={{
+                                                        fontSize: '10px', fontWeight: 600,
+                                                        color: isOverdue ? 'var(--danger)' : 'var(--text-dim)'
+                                                    }}>
+                                                        {new Date(fu.scheduled_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
+                                                    </div>
+                                                </div>
+                                                <div style={{ fontSize: '12px', color: 'var(--text-dim)', marginTop: '2px' }} className="truncate-text">
+                                                    {fu.notes || `Scheduled ${fu.type.toLowerCase()}`}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Interaction Feeds Section */}
+                <div className="dashboard-column">
                     <div className="section-header" style={{ marginBottom: '20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                            <CalendarClock size={20} color="var(--warning)" />
-                            <h2 style={{ fontSize: '18px', fontWeight: 700 }}>Upcoming Callbacks & Follow-ups</h2>
+                            <ArrowUpRight size={20} color="var(--success)" />
+                            <h2 style={{ fontSize: '18px', fontWeight: 700 }}>Recent Interactions</h2>
                         </div>
-                        <button className="btn btn-ghost btn-sm" onClick={() => navigate('/follow-ups')} style={{ color: 'var(--accent)' }}>
-                            View All <ChevronRight size={14} />
+                        <button className="btn btn-ghost btn-sm" onClick={() => navigate('/interaction-history')} style={{ color: 'var(--accent)' }}>
+                            View Full <ChevronRight size={14} />
                         </button>
                     </div>
-                    <div className="card polished-card" style={{ overflow: 'hidden' }}>
-                        <div className="followup-list">
-                            {overallMetrics.pendingFollowUps.map(fu => {
+                    <div className="card polished-card" style={{ overflow: 'hidden', height: '100%' }}>
+                        <div className="interaction-feed-list">
+                            {overallMetrics?.recentInteractions?.length > 0 ? overallMetrics.recentInteractions.slice(0, 6).map(it => {
                                 let Icon = FileText;
-                                if (fu.type === 'Call' || fu.type === 'Callback') Icon = PhoneCall;
-                                if (fu.type === 'Email') Icon = Mail;
-                                if (fu.type === 'Meeting') Icon = Presentation;
-
-                                const isOverdue = new Date(fu.scheduled_at) < new Date();
+                                if (it.type === 'Call' || it.type === 'Callback') Icon = PhoneCall;
+                                if (it.type === 'Email') Icon = Mail;
+                                if (it.type === 'Meeting') Icon = Presentation;
+                                if (it.type === 'Note') Icon = FileText;
 
                                 return (
                                     <div
-                                        key={fu.id}
-                                        className="followup-item clickable-row"
-                                        onClick={() => setSelectedLeadId(fu.lead?.id)}
-                                        style={{ display: 'flex', alignItems: 'flex-start', gap: '16px', padding: '16px 20px', borderBottom: '1px solid var(--border)' }}
+                                        key={it.id}
+                                        className="interaction-feed-item clickable-row"
+                                        onClick={() => setSelectedLeadId(it.lead?.id)}
+                                        style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', padding: '12px 16px', borderBottom: '1px solid var(--border)' }}
                                     >
                                         <div style={{
-                                            width: 40, height: 40, borderRadius: '10px',
-                                            background: isOverdue ? 'rgba(239,68,68,0.1)' : 'rgba(245,158,11,0.1)',
-                                            color: isOverdue ? 'var(--danger)' : 'var(--warning)',
+                                            width: 32, height: 32, borderRadius: '8px',
+                                            background: 'rgba(124, 58, 237, 0.1)',
+                                            color: 'var(--accent)',
                                             display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
                                         }}>
-                                            <Icon size={20} />
+                                            <Icon size={16} />
                                         </div>
                                         <div style={{ flex: 1 }}>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '4px' }}>
-                                                <div style={{ fontWeight: 600, fontSize: '15px' }}>
-                                                    {fu.lead?.name}
-                                                    <span style={{ color: 'var(--text-dim)', fontWeight: 400 }}>{fu.lead?.company ? ` @ ${fu.lead.company}` : ''}</span>
-                                                    {fu.lead?.phone && <span style={{ color: 'var(--accent-light)', marginLeft: '8px', fontSize: '13px' }}>• {fu.lead.phone}</span>}
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                                <div style={{ fontWeight: 600, fontSize: '13px' }}>
+                                                    {it.lead?.name}
                                                 </div>
-                                                <div style={{
-                                                    fontSize: '12px', fontWeight: 600,
-                                                    color: isOverdue ? 'var(--danger)' : 'var(--text-dim)',
-                                                    background: isOverdue ? 'rgba(239,68,68,0.1)' : 'var(--bg-app)',
-                                                    padding: '4px 8px', borderRadius: '4px'
-                                                }}>
-                                                    {new Date(fu.scheduled_at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}
-                                                    {isOverdue && ' (Overdue)'}
+                                                <div style={{ fontSize: '10px', color: 'var(--text-dim)' }}>
+                                                    {new Date(it.completed_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
                                                 </div>
                                             </div>
-                                            <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
-                                                {fu.notes || `Scheduled ${fu.type.toLowerCase()}`}
+                                            <div style={{ fontSize: '12px', color: 'var(--text-dim)', marginTop: '2px' }} className="truncate-text">
+                                                {it.notes || `Interaction: ${it.type}`}
                                             </div>
                                         </div>
                                     </div>
                                 );
-                            })}
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Interaction Feeds Section */}
-            <div style={{ marginBottom: '40px' }}>
-                <div className="section-header" style={{ marginBottom: '20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        <ArrowUpRight size={20} color="var(--success)" />
-                        <h2 style={{ fontSize: '18px', fontWeight: 700 }}>Recent Interaction Logs</h2>
-                    </div>
-                    <button className="btn btn-ghost btn-sm" onClick={() => navigate('/interaction-history')} style={{ color: 'var(--accent)' }}>
-                        View Full History <ChevronRight size={14} />
-                    </button>
-                </div>
-                <div className="card polished-card" style={{ overflow: 'hidden' }}>
-                    <div className="interaction-feed-list">
-                        {overallMetrics?.recentInteractions?.length > 0 ? overallMetrics.recentInteractions.map(it => {
-                            let Icon = FileText;
-                            if (it.type === 'Call' || it.type === 'Callback') Icon = PhoneCall;
-                            if (it.type === 'Email') Icon = Mail;
-                            if (it.type === 'Meeting') Icon = Presentation;
-                            if (it.type === 'Note') Icon = FileText;
-
-                            return (
-                                <div
-                                    key={it.id}
-                                    className="interaction-feed-item clickable-row"
-                                    onClick={() => setSelectedLeadId(it.lead?.id)}
-                                    style={{ display: 'flex', alignItems: 'flex-start', gap: '16px', padding: '16px 20px', borderBottom: '1px solid var(--border)' }}
-                                >
-                                    <div style={{
-                                        width: 36, height: 36, borderRadius: '8px',
-                                        background: 'rgba(124, 58, 237, 0.1)',
-                                        color: 'var(--accent)',
-                                        display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
-                                    }}>
-                                        <Icon size={18} />
-                                    </div>
-                                    <div style={{ flex: 1 }}>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '4px' }}>
-                                            <div style={{ fontWeight: 600, fontSize: '14px' }}>
-                                                {it.lead?.name} <span style={{ color: 'var(--text-dim)', fontWeight: 400 }}>{it.lead?.company ? `@ ${it.lead.company}` : ''}</span>
-                                            </div>
-                                            <div style={{ fontSize: '11px', color: 'var(--text-dim)' }}>
-                                                {new Date(it.completed_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
-                                            </div>
-                                        </div>
-                                        <div style={{ fontSize: '12.5px', color: 'var(--text-muted)', marginBottom: '4px' }}>
-                                            {it.notes || `Interaction: ${it.type}`}
-                                        </div>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                            <div style={{ width: '16px', height: '16px', borderRadius: '50%', background: 'var(--accent)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '8px', fontWeight: 800 }}>
-                                                {it.agent?.full_name?.charAt(0)}
-                                            </div>
-                                            <span style={{ fontSize: '11px', color: 'var(--text-dim)' }}>Performed by <strong>{it.agent?.full_name}</strong></span>
-                                        </div>
-                                    </div>
+                            }) : (
+                                <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-dim)', fontSize: '14px' }}>
+                                    No recent interactions.
                                 </div>
-                            );
-                        }) : (
-                            <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-dim)', fontSize: '14px' }}>
-                                No recent interactions recorded.
-                            </div>
-                        )}
+                            )}
+                        </div>
                     </div>
                 </div>
             </div>
@@ -430,6 +422,28 @@ export default function SalesDashboard() {
                 }
                 .interaction-feed-item.clickable-row:hover {
                     background: var(--bg-hover);
+                }
+                .dashboard-content-grid {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+                    gap: 32px;
+                    margin-bottom: 40px;
+                }
+                .dashboard-column {
+                    display: flex;
+                    flex-direction: column;
+                }
+                .truncate-text {
+                    display: -webkit-box;
+                    -webkit-line-clamp: 2;
+                    -webkit-box-orient: vertical;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                }
+                @media (max-width: 768px) {
+                    .dashboard-content-grid {
+                        grid-template-columns: 1fr;
+                    }
                 }
             `}</style>
 

@@ -44,7 +44,12 @@ export const getDeveloperCalendar = async (req, res) => {
 
 export const getEmployeeOverview = async (req, res) => {
     const { startDate, endDate } = req.query;
-    const data = await reportsService.getEmployeeOverview({ startDate, endDate });
+    const data = await reportsService.getEmployeeOverview({ 
+        startDate, 
+        endDate,
+        userId: req.user.id,
+        roles: req.user.roles
+    });
     successResponse(res, data, 'Employee overview generated');
 };
 

@@ -14,7 +14,7 @@ const openai = new OpenAI({
  */
 export const generateQuotationJSON = async (data) => {
     const featuresHint = (data.keyFeatures || []).length > 0
-        ? `Key features discussed: ${data.keyFeatures.join(', ')}`
+        ? `CRITICAL REQUIREMENT: These specific features MUST be included in the quotation modules: ${data.keyFeatures.join(', ')}. Do not miss or omit any of them.`
         : '';
 
     const prompt = `You are a senior solution architect preparing a comprehensive, high-stakes client proposal.
@@ -96,6 +96,7 @@ RULES:
 7. NO GST INCLUDED: Mention "Exclusive of GST @ 18%".
 8. MERMAID: Use ID["Label Text"] syntax. graph TD or LR only.
 9. NO EXTRA TEXT: Return pure JSON.
+10. FEATURE ENFORCEMENT: Every single feature listed in the "Key features discussed" section above MUST be present in the JSON "features" array. Map them to appropriate modules and provide detailed bullet points for each. If a feature is complex, create a dedicated module for it.
 `;
 
 

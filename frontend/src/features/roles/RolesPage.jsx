@@ -112,14 +112,18 @@ export default function RolesPage() {
     const closeModal = () => { setModal(null); setSelected(null) }
 
     const handleCreate = async (e) => {
-        e.preventDefault(); setSaving(true)
+        e.preventDefault();
+        if (/^\d+$/.test(form.name)) return toast.error('Role name cannot be purely numeric');
+        setSaving(true)
         try { await api.post('/roles', form); toast.success('Role created'); load(); closeModal() }
         catch (err) { toast.error(err.message) }
         finally { setSaving(false) }
     }
 
     const handleEdit = async (e) => {
-        e.preventDefault(); setSaving(true)
+        e.preventDefault();
+        if (/^\d+$/.test(form.name)) return toast.error('Role name cannot be purely numeric');
+        setSaving(true)
         try { await api.patch(`/roles/${selected.id}`, form); toast.success('Role updated'); load(); closeModal() }
         catch (err) { toast.error(err.message) }
         finally { setSaving(false) }
@@ -134,7 +138,28 @@ export default function RolesPage() {
 
     const f = (k) => (e) => setForm(p => ({ ...p, [k]: e.target.value }))
 
-
+    const columns = [
+        { label: 'Role Name', key: 'name', sortable: true, render: (val) => <div style={{ fontWeight: 600 }}>{val}</div> },
+        { label: 'Description', key: 'description', sortable: true, render: (val) => <div style={{ color: 'var(--text-dim)', fontSize: '13px' }}>{val || '--'}</div> },
+        {
+            label: 'Permissions',
+            key: 'role_permissions',
+            render: (val) => (
+                <span className="badge badge-purple">{(val || []).length} permissions</span>
+            )
+        },
+        {
+            label: 'Actions',
+            key: 'id',
+            render: (_, r) => (
+                <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                    <button className="btn btn-ghost btn-sm btn-icon" onClick={() => openPerms(r)} title="Permissions"><Key size={14} /></button>
+                    <button className="btn btn-ghost btn-sm btn-icon" onClick={() => openEdit(r)}><Pencil size={14} /></button>
+                    <button className="btn btn-danger btn-sm btn-icon" onClick={() => openDelete(r)}><Trash2 size={14} /></button>
+                </div>
+            )
+        }
+    ];
 
     return (
         <div>
@@ -145,34 +170,14 @@ export default function RolesPage() {
                 </div>
             </div>
 
-            <div className="table-wrapper">
+            <div className="card polished-card" style={{ padding: 0 }}>
                 <DataTable
                     data={roles}
+                    columns={columns}
+                    fileName="roles-list"
                     loading={loading}
-                    fileName="roles"
-                    columns={[
-                        { label: 'Role', key: 'name' },
-                        { label: 'Description', key: 'description' },
-                        { label: 'Permissions', key: 'permissions_count', sortKey: 'role_permissions.length' },
-                        { label: 'Actions', key: 'actions' }
-                    ]}
-                    renderRow={(r, idx) => (
-                        <tr key={r.id}>
-                            <td style={{ padding: '12px 16px', color: 'var(--text-dim)', fontSize: 12 }}>{idx + 1}</td>
-                            <td style={{ padding: '12px 16px' }}><strong>{r.name}</strong></td>
-                            <td style={{ padding: '12px 16px', color: 'var(--text-muted)', fontSize: 13 }}>{r.description || '—'}</td>
-                            <td style={{ padding: '12px 16px' }}>
-                                <span className="badge badge-purple">{(r.role_permissions || []).length} permissions</span>
-                            </td>
-                            <td style={{ padding: '12px 16px' }}>
-                                <div className="actions-cell">
-                                    <button className="btn btn-ghost btn-sm" onClick={() => openPerms(r)}><Key size={14} />Permissions</button>
-                                    <button className="btn btn-ghost btn-sm btn-icon" onClick={() => openEdit(r)}><Pencil size={14} /></button>
-                                    <button className="btn btn-danger btn-sm btn-icon" onClick={() => openDelete(r)}><Trash2 size={14} /></button>
-                                </div>
-                            </td>
-                        </tr>
-                    )}
+                    emptyMessage="No roles found. Create the first one."
+                    onAdd={openCreate}
                 />
             </div>
 

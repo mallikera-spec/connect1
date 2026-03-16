@@ -390,13 +390,26 @@ export const getDeveloperCalendarSummary = async ({ startDate, endDate, projectI
     return result;
 };
 
-export const getEmployeeOverview = async ({ startDate, endDate } = {}) => {
-    const { data: profiles, error: profileError } = await supabaseAdmin
+export const getEmployeeOverview = async ({ startDate, endDate, userId, roles = [] } = {}) => {
+    const isPrivileged = roles.some(role => {
+        const r = String(role).toLowerCase();
+        return r.includes('admin') || r.includes('director') || r.includes('hr') || 
+               r.includes('manager') || r.includes('lead');
+    });
+
+    let profileQuery = supabaseAdmin
         .from('profiles')
         .select(`
             id, full_name, email, department, designation, avatar_url, ctc,
             user_roles(role:roles(name))
         `);
+
+    // Server-side filtering: If not privileged, only fetch the user's own profile
+    if (!isPrivileged) {
+        profileQuery = profileQuery.eq('id', userId);
+    }
+
+    const { data: profiles, error: profileError } = await profileQuery;
     if (profileError) throw profileError;
 
     const sDate = startDate ? startDate.slice(0, 10) : null;
@@ -412,6 +425,10 @@ export const getEmployeeOverview = async ({ startDate, endDate } = {}) => {
     let taskQuery = supabaseAdmin
         .from('tasks')
         .select('assigned_to, status, actual_hours, estimated_hours, created_at');
+
+    if (!isPrivileged) {
+        taskQuery = taskQuery.eq('assigned_to', userId);
+    }
 
     if (startDate) taskQuery = taskQuery.gte('created_at', startDate);
     if (endDate) {
@@ -436,6 +453,10 @@ export const getEmployeeOverview = async ({ startDate, endDate } = {}) => {
                 project:projects (id, name)
             )
         `);
+
+    if (!isPrivileged) {
+        tsQuery = tsQuery.eq('timesheet.user_id', userId);
+    }
 
     if (sDate) tsQuery = tsQuery.gte('timesheet.work_date', sDate);
     if (eDate) tsQuery = tsQuery.lte('timesheet.work_date', eDate);

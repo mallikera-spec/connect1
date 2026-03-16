@@ -14,7 +14,7 @@ const openai = new OpenAI({
  */
 export const generateQuotationJSONTemplate3 = async (data) => {
   const featuresHint = (data.keyFeatures || []).length > 0
-    ? `Key features discussed: ${data.keyFeatures.join(', ')}`
+    ? `CRITICAL REQUIREMENT: These specific features MUST be included in the 'features' section of the quotation: ${data.keyFeatures.join(', ')}. Do not miss or omit any of them.`
     : '';
 
   const prompt = `You are a Senior Technical Consultant at a top-tier consulting firm (like McKinsey, Deloitte, or BCG).
@@ -113,6 +113,7 @@ RULES:
 8. MERMAID: Use ID["Label Text"] syntax. graph TD or LR only.
 9. EXACT FEATURE FORMAT: Every item in the "items" array of a module MUST strictly be in the format "Feature Name: First line of explanation.\\nSecond line of explanation." Use a literal \\n newline character to separate the two lines.
 10. NO EXTRA TEXT: Return pure JSON.
+11. FEATURE ENFORCEMENT: Every single feature listed in the "Key features discussed" section above MUST be present in the JSON 'features' array. Map them to appropriate modules and provide professional descriptions for each. Ensure they strictly follow the "EXACT FEATURE FORMAT" specified in rule 9.
 `;
 
   try {

@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import api from '../../lib/api';
 import DataTable from '../../components/common/DataTable';
 import { CreditCard, Play, CheckCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { formatCurrency } from '../../utils/formatters';
 
 export default function HRAdminPayroll() {
     const [periods, setPeriods] = useState([]);
@@ -63,42 +64,55 @@ export default function HRAdminPayroll() {
         }
     };
 
-    const columns = [
-        { key: 'full_name', header: 'Employee', render: (val, row) => row.profile?.full_name, sortable: true },
-        { key: 'gross_salary', header: 'Gross (INR)', render: val => `₹${parseFloat(val).toLocaleString('en-IN')}`, sortable: true },
-        {
-            key: 'total_deductions',
-            header: 'Deductions',
-            render: val => <span className="text-error" style={{ fontWeight: 600 }}>₹{parseFloat(val).toLocaleString('en-IN')}</span>,
-            sortable: true
+    const columns = useMemo(() => [
+        { 
+            label: 'Employee', 
+            key: 'profile.full_name', 
+            width: '200px',
+            render: (_, row) => (
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    <span style={{ fontWeight: 600 }}>{row.profile?.full_name || 'Unknown'}</span>
+                    <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>{row.user?.email}</span>
+                </div>
+            )
+        },
+        { 
+            label: 'Gross Salary', 
+            key: 'gross_salary', 
+            type: 'currency', 
+            render: val => formatCurrency(val) 
         },
         {
+            label: 'Deductions',
+            key: 'total_deductions',
+            type: 'currency',
+            render: val => <span style={{ color: 'var(--danger)', fontWeight: 600 }}>{formatCurrency(val)}</span>
+        },
+        {
+            label: 'Net Payable',
             key: 'net_payable',
-            header: 'Net Payable',
-            render: val => <span className="text-success" style={{ fontWeight: 800 }}>₹{parseFloat(val).toLocaleString('en-IN')}</span>,
-            sortable: true
+            type: 'currency',
+            render: val => <span style={{ color: 'var(--success)', fontWeight: 800 }}>{formatCurrency(val)}</span>
         }
-    ];
+    ], []);
 
     return (
-        <div style={{ padding: '2px', maxWidth: '1200px', margin: '0 auto' }}>
-            <div className="page-header" style={{ marginBottom: 40, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div className="payroll-page">
+            <div className="page-header">
                 <div>
                     <h1 style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                         <CreditCard className="text-accent" />
-                        Admin Payroll Management
+                        Admin Payroll
                     </h1>
-                    <p style={{ color: 'var(--text-dim)', marginTop: 4 }}>
-                        Calculate monthly drafts, review deductions, and publish salary slips.
-                    </p>
+                    <p>Calculate monthly drafts, review deductions, and publish salary slips.</p>
                 </div>
             </div>
 
-            <div className="card polished-card" style={{ marginBottom: 24 }}>
-                <div style={{ display: 'flex', gap: 24, alignItems: 'flex-end', padding: 20 }}>
+            <div className="card polished-card filter-bar" style={{ marginBottom: 24 }}>
+                <div style={{ display: 'flex', gap: 24, alignItems: 'flex-end', padding: 8 }}>
                     <div className="form-group" style={{ margin: 0 }}>
                         <label className="form-label">Month</label>
-                        <select className="form-input" value={calcMonth} onChange={e => setCalcMonth(Number(e.target.value))}>
+                        <select className="form-select" value={calcMonth} onChange={e => setCalcMonth(Number(e.target.value))}>
                             {[...Array(12)].map((_, i) => (
                                 <option key={i + 1} value={i + 1}>{new Date(0, i).toLocaleString('en', { month: 'long' })}</option>
                             ))}
@@ -106,47 +120,37 @@ export default function HRAdminPayroll() {
                     </div>
                     <div className="form-group" style={{ margin: 0 }}>
                         <label className="form-label">Year</label>
-                        <input className="form-input" type="number" value={calcYear} onChange={e => setCalcYear(Number(e.target.value))} />
+                        <input className="form-input" type="number" value={calcYear} onChange={e => setCalcYear(Number(e.target.value))} style={{ width: 100 }} />
                     </div>
-                    <button className="btn btn-primary" onClick={handleCalculate} disabled={loading} style={{ height: 42 }}>
-                        <Play size={16} />
-                        Calculate Draft Payroll
+                    <button className="btn btn-primary" onClick={handleCalculate} disabled={loading}>
+                        <Play size={16} /> Calculate Draft
                     </button>
                 </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '300px 1fr', gap: 24, alignItems: 'start' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(250px, 300px) 1fr', gap: 24, alignItems: 'start' }}>
                 <div className="card polished-card" style={{ padding: 0 }}>
                     <div style={{ padding: 16, borderBottom: '1px solid var(--border)' }}>
-                        <h3 style={{ fontSize: 16, fontWeight: 700 }}>Payroll Periods</h3>
+                        <h3 style={{ fontSize: 14, fontWeight: 700, textTransform: 'uppercase', color: 'var(--accent)' }}>Payroll Periods</h3>
                     </div>
 
                     <div style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                        {periods.length === 0 && <div className="text-dim text-center" style={{ padding: 20 }}>No periods calculated yet.</div>}
+                        {periods.length === 0 && <div className="text-dim text-center" style={{ padding: 20 }}>No periods.</div>}
                         {periods.map(p => (
                             <div
                                 key={p.id}
                                 onClick={() => { setSelectedPeriod(p); loadSlips(p.id); }}
-                                style={{
-                                    padding: '12px 16px',
-                                    borderRadius: 8,
-                                    border: `1px solid ${selectedPeriod?.id === p.id ? 'var(--accent)' : 'var(--border)'}`,
-                                    background: selectedPeriod?.id === p.id ? 'var(--accent-transparent)' : 'var(--bg-card-hover)',
-                                    cursor: 'pointer',
-                                    display: 'flex',
-                                    justifyContent: 'space-between',
-                                    alignItems: 'center'
-                                }}
+                                className={`period-item ${selectedPeriod?.id === p.id ? 'active' : ''}`}
                             >
                                 <div>
                                     <div style={{ fontWeight: 700 }}>{new Date(0, p.month - 1).toLocaleString('en', { month: 'long' })} {p.year}</div>
-                                    <div style={{ fontSize: 12, color: 'var(--text-dim)' }}>{p.slipCount} slips generated</div>
+                                    <div style={{ fontSize: 11, color: 'var(--text-dim)' }}>{p.slipCount} slips</div>
                                 </div>
                                 <div>
                                     {p.status === 'published' ? (
-                                        <span className="badge badge-success"><CheckCircle size={12} /> Published</span>
+                                        <span className="badge badge-green"><CheckCircle size={10} /> Published</span>
                                     ) : (
-                                        <span className="badge badge-warning">Draft</span>
+                                        <span className="badge badge-orange">Draft</span>
                                     )}
                                 </div>
                             </div>
@@ -154,39 +158,53 @@ export default function HRAdminPayroll() {
                     </div>
                 </div>
 
-                <div className="card polished-card" style={{ padding: 0, minHeight: 400 }}>
+                <div className="card table-card" style={{ minHeight: 500 }}>
                     {selectedPeriod ? (
                         <>
-                            <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-card-hover)', borderRadius: '12px 12px 0 0' }}>
-                                <div>
-                                    <h3 style={{ fontSize: 18, fontWeight: 700 }}>
-                                        {new Date(0, selectedPeriod.month - 1).toLocaleString('en', { month: 'long' })} {selectedPeriod.year} Details
-                                    </h3>
-                                </div>
+                            <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <h3 style={{ fontSize: 16, fontWeight: 700 }}>
+                                    {new Date(0, selectedPeriod.month - 1).toLocaleString('en', { month: 'long' })} {selectedPeriod.year} Details
+                                </h3>
                                 {selectedPeriod.status !== 'published' && (
-                                    <button className="btn btn-success" onClick={() => handlePublish(selectedPeriod.id)} disabled={loading}>
-                                        <CheckCircle size={16} /> Publish Slips
+                                    <button className="btn btn-success btn-sm" onClick={() => handlePublish(selectedPeriod.id)} disabled={loading}>
+                                        <CheckCircle size={14} /> Publish Slips
                                     </button>
                                 )}
                             </div>
-                            <div style={{ padding: 24 }}>
-                                <DataTable
-                                    columns={columns}
-                                    data={slips}
-                                    searchPlaceholder="Search employees..."
-                                    searchKeys={['profile.full_name']}
-                                    title={`${slips.length} Employees`}
-                                    exportPdfTitle="Salary_Drafts"
-                                />
-                            </div>
+                            <DataTable
+                                columns={columns}
+                                data={slips}
+                                fileName={`payroll_${selectedPeriod.month}_${selectedPeriod.year}`}
+                                loading={loading}
+                            />
                         </>
                     ) : (
-                        <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-dim)', padding: 40 }}>
+                        <div style={{ height: 400, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-dim)' }}>
                             Select a payroll period to view details
                         </div>
                     )}
                 </div>
             </div>
+
+            <style>{`
+                .payroll-page { padding: 8px; }
+                .period-item {
+                    padding: 12px 16px;
+                    border-radius: 8px;
+                    border: 1px solid var(--border);
+                    background: var(--bg-card);
+                    cursor: pointer;
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    transition: all 0.2s;
+                }
+                .period-item:hover { background: var(--bg-card-hover); border-color: var(--accent); }
+                .period-item.active { background: var(--accent-transparent); border-color: var(--accent); }
+                .badge { padding: 3px 6px; border-radius: 4px; font-size: 10px; font-weight: 700; text-transform: uppercase; display: flex; alignItems: center; gap: 4px; }
+                .badge-green { background: rgba(16, 185, 129, 0.1); color: #10b981; }
+                .badge-orange { background: rgba(249, 115, 22, 0.1); color: #f97316; }
+            `}</style>
         </div>
     );
 }

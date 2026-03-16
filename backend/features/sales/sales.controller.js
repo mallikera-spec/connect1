@@ -299,3 +299,16 @@ export const bulkUploadLeads = async (req, res, next) => {
         next(error);
     }
 };
+
+/**
+ * Controller to check for duplicate leads by phone.
+ */
+export const checkDuplicateLead = async (req, res, next) => {
+    try {
+        const { phone, alt_phone } = req.body;
+        const duplicate = await salesService.checkDuplicateLead({ phone, alt_phone });
+        res.json({ success: true, duplicate });
+    } catch (error) {
+        next(error);
+    }
+};

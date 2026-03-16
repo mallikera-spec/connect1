@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { Plus, Pencil, Trash2, Search, UserPlus, ShieldPlus, X, Users, FileText, Calendar, Eye, EyeOff, Download } from 'lucide-react'
+import { Plus, Pencil, Trash2, Search, UserPlus, ShieldPlus, X, Users, FileText, Calendar, Eye, EyeOff } from 'lucide-react'
 import api from '../../lib/api'
 import toast from 'react-hot-toast'
 import { useAuth } from '../../context/AuthContext'
@@ -90,16 +90,16 @@ function RoleModal({ user, roles, onClose, onSaved }) {
                                 </div>
                         }
                     </div>
-                    <form onSubmit={handleAssign} style={{ display: 'flex', gap: 10, alignItems: 'flex-end' }}>
-                        <div className="form-group" style={{ flex: 1 }}>
+                    <form onSubmit={handleAssign} style={{ display: 'flex', gap: 10, alignItems: 'flex-end', marginTop: 20 }}>
+                        <div className="form-group" style={{ flex: 1, margin: 0 }}>
                             <label className="form-label">Add Role</label>
                             <select className="form-select" value={roleId} onChange={e => setRoleId(e.target.value)}>
                                 <option value="">{availableRoles.length === 0 ? 'All roles assigned' : 'Choose a role…'}</option>
                                 {availableRoles.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
                             </select>
                         </div>
-                        <button type="submit" className="btn btn-primary" disabled={assigning || !roleId} style={{ marginBottom: 1 }}>
-                            {assigning ? <span className="spinner" style={{ width: 16, height: 16 }} /> : 'Assign'}
+                        <button type="submit" className="btn btn-primary" disabled={assigning || !roleId}>
+                            {assigning ? 'Assigning...' : 'Assign'}
                         </button>
                     </form>
                 </div>
@@ -168,7 +168,7 @@ function UserPermissionsModal({ user, allPermissions, onClose }) {
                     <div className="modal-footer">
                         <button type="button" className="btn btn-ghost" onClick={onClose}>Cancel</button>
                         <button type="submit" className="btn btn-primary" disabled={saving}>
-                            {saving ? <span className="spinner" style={{ width: 16, height: 16 }} /> : 'Save Permissions'}
+                            {saving ? 'Saving...' : 'Save Permissions'}
                         </button>
                     </div>
                 </form>
@@ -221,22 +221,24 @@ export default function UsersPage() {
     useEffect(() => {
         if (location.state?.openCreateModal) {
             openCreate();
-            // Clear state to avoid reopening on refresh
             window.history.replaceState({}, document.title);
         }
     }, [location.state])
 
     const openCreate = () => { setForm(EMPTY); setShowPassword(false); setModal('create') }
-    const openEdit = (u) => navigate(`/profile/${u.id}`)
     const openRole = (u) => { setSelected(u); setModal('role') }
     const openPerms = (u) => { setSelected(u); setModal('perms') }
     const openDelete = (u) => { setSelected(u); setModal('delete') }
     const closeModal = () => { setModal(null); setSelected(null) }
 
     const handleCreate = async (e) => {
-        e.preventDefault(); setSaving(true)
+        e.preventDefault();
+        if (!/^[a-zA-Z\s]+$/.test(form.full_name)) {
+            return toast.error('Full name can only contain letters and spaces');
+        }
+        setSaving(true)
         try { await api.post('/users', form); toast.success('User created'); load(); closeModal() }
-        catch (err) { toast.error(err.message) }
+        catch (err) { toast.error(err.response?.data?.message || err.message) }
         finally { setSaving(false) }
     }
 
@@ -249,85 +251,95 @@ export default function UsersPage() {
 
     const f = (k) => (e) => setForm(p => ({ ...p, [k]: e.target.value }))
 
-    const filtered = users.filter(u =>
-        u.full_name?.toLowerCase().includes(search.toLowerCase()) ||
-        u.email?.toLowerCase().includes(search.toLowerCase())
-    )
 
-    const columns = [
-        { label: 'Name', key: 'full_name', sortable: true, render: (val) => <strong>{val}</strong> },
-        { label: 'Email', key: 'email', sortable: true, render: (val) => <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>{val}</span> },
-        { label: 'Department', key: 'department', sortable: true, render: (val) => <span style={{ fontSize: 13 }}>{val || <span style={{ color: 'var(--text-dim)' }}>—</span>}</span> },
-        { label: 'Designation', key: 'designation', sortable: true, render: (val) => <span style={{ fontSize: 13 }}>{val || <span style={{ color: 'var(--text-dim)' }}>—</span>}</span> },
+    const columns = useMemo(() => [
         {
-            label: 'Roles',
+            label: 'Name',
+            key: 'full_name',
+            width: '200px',
+            render: (val, u) => (
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    <span style={{ fontWeight: 700 }}>{val}</span>
+                    <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>{u.email}</span>
+                </div>
+            )
+        },
+        {
+            label: 'Organization',
+            key: 'department',
+            width: '180px',
+            render: (val, u) => (
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    <span style={{ fontWeight: 600, fontSize: 12 }}>{val || '—'}</span>
+                    <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>{u.designation || '—'}</span>
+                </div>
+            )
+        },
+        {
+            label: 'Access Roles',
             key: 'roles',
             render: (roles) => (
                 roles?.length > 0
-                    ? <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-                        {roles.map(r => <span key={r} className="badge badge-purple">{r}</span>)}
+                    ? <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                        {roles.map(r => <span key={r} className="badge badge-purple" style={{ fontSize: 10 }}>{r}</span>)}
                     </div>
-                    : <span style={{ color: 'var(--text-dim)', fontSize: 12 }}>No roles</span>
+                    : <span style={{ color: 'var(--text-dim)', fontSize: 11 }}>No roles</span>
             )
         },
         {
             label: 'Actions',
-            key: 'actions',
+            key: 'id',
+            width: '200px',
+            sticky: true,
             render: (_, u) => (
-                <div className="actions-cell">
+                <div style={{ display: 'flex', gap: 6 }}>
                     {hasPermission('assign_role') && (
-                        <button className="btn btn-ghost btn-sm btn-icon" onClick={() => openRole(u)} title="Manage Roles"><UserPlus size={14} /></button>
+                        <button className="btn btn-icon btn-sm btn-ghost" onClick={() => openRole(u)} title="Roles"><UserPlus size={14} /></button>
                     )}
                     {hasPermission('manage_user_permissions') && (
-                        <button className="btn btn-ghost btn-sm btn-icon" onClick={() => openPerms(u)} title="Manage Permissions"><ShieldPlus size={14} /></button>
+                        <button className="btn btn-icon btn-sm btn-ghost" onClick={() => openPerms(u)} title="Perms"><ShieldPlus size={14} /></button>
                     )}
-                    {hasPermission('view_reports') && (
-                        <button className="btn btn-ghost btn-sm btn-icon" onClick={() => navigate(`/profile/${u.id}`)} title="View Stats & Activity"><FileText size={14} /></button>
-                    )}
-                    {hasPermission('view_timesheets') && (
-                        <button className="btn btn-ghost btn-sm btn-icon" onClick={() => navigate(`/timesheet?userId=${u.id}`)} title="View Timesheets"><Calendar size={14} /></button>
-                    )}
-                    {hasPermission('edit_user') && (
-                        <button className="btn btn-ghost btn-sm btn-icon" onClick={() => openEdit(u)} title="Edit"><Pencil size={14} /></button>
-                    )}
+                    <button className="btn btn-icon btn-sm btn-ghost" onClick={() => navigate(`/profile/${u.id}`)} title="Profile"><FileText size={14} /></button>
+                    <button className="btn btn-icon btn-sm btn-ghost" onClick={() => navigate(`/timesheet`, { state: { viewUserId: u.id } })} title="Timesheets"><Calendar size={14} /></button>
                     {hasPermission('delete_user') && (
-                        <button className="btn btn-danger btn-sm btn-icon" onClick={() => openDelete(u)} title="Delete"><Trash2 size={14} /></button>
+                        <button className="btn btn-icon btn-sm btn-danger-ghost" onClick={() => openDelete(u)} title="Delete"><Trash2 size={14} /></button>
                     )}
                 </div>
             )
         }
-    ];
+    ], [hasPermission, navigate]);
 
     return (
-        <div>
+        <div className="users-page">
             <div className="page-header">
-                <div><h1>Employees</h1><p>Manage employees, roles and access</p></div>
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <div>
+                    <h1>Employee Management</h1>
+                    <p>Directory of all staff, roles, and system access.</p>
+                </div>
+                <div style={{ display: 'flex', gap: 12 }}>
                     {hasPermission('create_user') && (
-                        <button className="btn btn-primary" onClick={openCreate}><Plus size={16} />New Employee</button>
+                        <button className="btn btn-primary" onClick={openCreate}><Plus size={16} /> New Employee</button>
                     )}
                 </div>
             </div>
 
-            <div className="table-wrapper">
-                <div className="table-toolbar">
-                    <div className="search-input-wrap">
-                        <Search size={15} className="search-icon" />
-                        <input className="form-input" placeholder="Search employees…" value={search} onChange={e => setSearch(e.target.value)} style={{ paddingLeft: 34 }} />
-                    </div>
-                </div>
 
+            <div className="card table-card">
                 <DataTable
-                    data={filtered}
+                    data={users}
                     columns={columns}
+                    searchTerm={search}
+                    onSearchChange={setSearch}
                     fileName="employees-list"
                     loading={loading}
+                    onAdd={openCreate}
+                    canAdd={hasPermission('create_user')}
                 />
             </div>
 
             {modal === 'create' && (
                 <Modal title="New Employee" onClose={closeModal} onSubmit={handleCreate} loading={saving} saveLabel="Create">
-                    <div className="form-row">
+                    <div className="form-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                         <div className="form-group"><label className="form-label">Full Name</label><input className="form-input" value={form.full_name} onChange={f('full_name')} required /></div>
                         <div className="form-group"><label className="form-label">Email</label><input type="email" className="form-input" value={form.email} onChange={f('email')} required /></div>
                     </div>
@@ -338,11 +350,7 @@ export default function UsersPage() {
                             <button
                                 type="button"
                                 onClick={() => setShowPassword(!showPassword)}
-                                style={{
-                                    position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)',
-                                    background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer',
-                                    display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0
-                                }}
+                                className="show-password-btn"
                                 tabIndex="-1"
                             >
                                 {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -350,7 +358,7 @@ export default function UsersPage() {
                         </div>
                     </div>
                     <div className="form-group"><label className="form-label">Date of Joining</label><input type="date" className="form-input" value={form.date_of_joining} onChange={f('date_of_joining')} required /></div>
-                    <div className="form-row">
+                    <div className="form-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                         <div className="form-group">
                             <label className="form-label">Department</label>
                             <select className="form-select" value={form.department} onChange={e => { f('department')(e); setForm(p => ({ ...p, designation: '' })) }}>
@@ -375,8 +383,14 @@ export default function UsersPage() {
             {modal === 'delete' && selected && (
                 <div className="modal-overlay" onClick={e => e.target === e.currentTarget && closeModal()}>
                     <div className="modal" style={{ maxWidth: 400 }}>
-                        <div className="modal-header"><h2 className="modal-title">Delete Employee</h2><button className="btn-icon" onClick={closeModal}><X size={18} /></button></div>
-                        <div className="modal-body"><p style={{ fontSize: 14 }}>This will permanently delete <strong>{selected.full_name}</strong> and revoke all access.</p></div>
+                        <div className="modal-header">
+                            <h2 className="modal-title">Delete Employee</h2>
+                            <button className="btn-icon" onClick={closeModal}><X size={18} /></button>
+                        </div>
+                        <div className="modal-body">
+                            <p>This will permanently delete <strong>{selected.full_name}</strong> and revoke all system access.</p>
+                            <p style={{ color: 'var(--danger)', fontSize: 12, marginTop: 8 }}>Warning: This action cannot be undone.</p>
+                        </div>
                         <div className="modal-footer">
                             <button className="btn btn-ghost" onClick={closeModal}>Cancel</button>
                             <button className="btn btn-danger" onClick={handleDelete} disabled={saving}>{saving ? 'Deleting…' : 'Delete Employee'}</button>
@@ -384,6 +398,17 @@ export default function UsersPage() {
                     </div>
                 </div>
             )}
+
+            <style>{`
+                .users-page { padding: 8px; }
+                .show-password-btn {
+                    position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+                    background: none; border: none; color: var(--text-dim); cursor: pointer;
+                    display: flex; align-items: center; justify-content: center; padding: 0;
+                }
+                .btn-danger-ghost:hover { background: rgba(239, 68, 68, 0.1); color: var(--danger); }
+                .badge-purple { background: rgba(139, 92, 246, 0.1); color: #8b5cf6; padding: 3px 8px; border-radius: 6px; font-weight: 700; }
+            `}</style>
         </div>
     )
 }

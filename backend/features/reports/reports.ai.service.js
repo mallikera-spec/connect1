@@ -37,6 +37,18 @@ Columns: project_id, project_name, project_status, project_deal_value, due_date,
 Table: bi_project_health_detailed_view (Granular Project Risk Data)
 Columns: project_id, project_name, project_status, due_date, total_estimated_hours, total_actual_hours_tasks, total_hours_spent_timesheet, total_tasks, completed_tasks, days_until_deadline
 
+Table: finance_income (Payments Received)
+Columns: date, amount, currency (INR/USD), type (Domestic/International), entity_id, category, description
+
+Table: finance_expenses (Business Costs)
+Columns: date, amount, category, entity_id, description
+
+Table: finance_assets (Capital Expenditure)
+Columns: purchase_date, item_name, cost, entity_id, status
+
+Table: bi_finance_summary_view (P&L Snapshot)
+Columns: total_income, total_expenses, total_assets_value
+
 CRITICAL INSTRUCTIONS:
 1. You must respond with a JSON object specifying parameters for a Supabase query.
 2. JSON structure:
@@ -50,6 +62,8 @@ CRITICAL INSTRUCTIONS:
 5. Filter Usage: Use "gte" with YYYY-MM-DD for date ranges (e.g. for "last month", filter lead_created_at gte 2024-02-01).
 6. For forecasting, use "bi_active_sales_pipeline_view" and deal_value * baseline_probability.
 7. For project risk, compare total_estimated_hours vs total_hours_spent_timesheet in "bi_project_health_detailed_view".
+8. For P&L or Finance summaries, use "bi_finance_summary_view" or "finance_income" and "finance_expenses".
+9. For asset tracking or balance sheet snapshots, include "finance_assets".
 8. Focus on providing data that can be displayed in a table.
 9. ONLY return valid JSON. No markdown.
 `;

@@ -28,9 +28,10 @@ export default function LeaveTracker() {
     const isAdminOrHR = userRoles.some(r =>
         r.includes('admin') ||
         r.includes('hr') ||
-        r.includes('manager')
+        r.includes('manager') ||
+        r.includes('director') ||
+        r.includes('investor')
     );
-    const canViewAll = isAdminOrHR || userRoles.includes('super_admin') || userRoles.includes('director');
 
     useEffect(() => {
         if (isAdminOrHR) {

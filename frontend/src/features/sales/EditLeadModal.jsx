@@ -11,7 +11,7 @@ import { useAuth } from '../../context/AuthContext';
 export default function EditLeadModal({ leadId, onClose, onSaved }) {
     const { user: currentUser } = useAuth();
     const userRoles = currentUser?.roles?.map(r => typeof r === 'string' ? r.toLowerCase() : r.name?.toLowerCase()).filter(Boolean) || [];
-    const isAdmin = userRoles.some(r => r && (r.includes('admin') || r.includes('manager') || r.includes('lead')));
+    const isAdmin = userRoles.some(r => r && (r.includes('admin') || r.includes('manager') || r.includes('lead') || r.includes('director')));
     const isBDM = !isAdmin;
 
     const [formData, setFormData] = useState(null);
@@ -30,7 +30,7 @@ export default function EditLeadModal({ leadId, onClose, onSaved }) {
         try {
             const [leadRes, usersRes] = await Promise.all([
                 SalesService.getLead(leadId),
-                api.get('/users', { params: { role: 'BDM,Admin,Super Admin' } })
+                api.get('/users', { params: { role: 'BDM,Admin,Super Admin,Director' } })
             ]);
             setFormData(leadRes.data);
             setAgents(usersRes.data.data);
@@ -44,6 +44,10 @@ export default function EditLeadModal({ leadId, onClose, onSaved }) {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        if (!formData.name) return toast.error('Full Name is required');
+        if (/^\d+$/.test(formData.name)) return toast.error('Full Name cannot be purely numeric');
+        if (!formData.company) return toast.error('Company name is required');
+        if (/^\d+$/.test(formData.company)) return toast.error('Company name cannot be purely numeric');
         if (!formData.phone) return toast.error('Phone number is required');
 
         setIsSaving(true);

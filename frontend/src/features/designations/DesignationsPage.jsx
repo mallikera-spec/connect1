@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Plus, Pencil, Trash2, X, Briefcase } from 'lucide-react'
 import api from '../../lib/api'
 import toast from 'react-hot-toast'
+import DataTable from '../../components/common/DataTable'
 
 export default function DesignationsPage() {
     const [designations, setDesignations] = useState([])
@@ -42,7 +43,9 @@ export default function DesignationsPage() {
     const closeModal = () => { setModal(null); setSelected(null) }
 
     const handleCreate = async (e) => {
-        e.preventDefault(); setSaving(true)
+        e.preventDefault();
+        if (/^\d+$/.test(form.name)) return toast.error('Designation name cannot be purely numeric');
+        setSaving(true)
         try {
             await api.post('/designations', form);
             toast.success('Designation created');
@@ -54,7 +57,9 @@ export default function DesignationsPage() {
     }
 
     const handleEdit = async (e) => {
-        e.preventDefault(); setSaving(true)
+        e.preventDefault();
+        if (/^\d+$/.test(form.name)) return toast.error('Designation name cannot be purely numeric');
+        setSaving(true)
         try {
             await api.patch(`/designations/${selected.id}`, form);
             toast.success('Designation updated');
@@ -101,6 +106,29 @@ export default function DesignationsPage() {
         </>
     )
 
+    const columns = [
+        { label: 'Name', key: 'name', sortable: true, render: (val) => <div style={{ fontWeight: 600 }}>{val}</div> },
+        {
+            label: 'Department',
+            key: 'department.name',
+            sortable: true,
+            render: (val) => val ? (
+                <div className="badge badge-blue">{val}</div>
+            ) : <span style={{ opacity: 0.3 }}>--</span>
+        },
+        { label: 'Description', key: 'description', render: (val) => <div style={{ color: 'var(--text-dim)', fontSize: '13px' }}>{val || '--'}</div> },
+        {
+            label: 'Actions',
+            key: 'id',
+            render: (_, d) => (
+                <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                    <button className="btn btn-ghost btn-sm btn-icon" onClick={() => openEdit(d)}><Pencil size={14} /></button>
+                    <button className="btn btn-danger btn-sm btn-icon" onClick={() => openDelete(d)}><Trash2 size={14} /></button>
+                </div>
+            )
+        }
+    ];
+
     return (
         <div>
             <div className="page-header">
@@ -111,36 +139,16 @@ export default function DesignationsPage() {
                 <button className="btn btn-primary" onClick={openCreate}><Plus size={16} />New Designation</button>
             </div>
 
-            {loading ? <div className="page-loader"><div className="spinner" /></div> : (
-                <div className="dept-grid">
-                    {designations.length === 0 && (
-                        <div className="empty-state" style={{ gridColumn: '1/-1' }}>
-                            <Briefcase size={40} style={{ color: 'var(--text-muted)', marginBottom: 8 }} />
-                            <p>No designations yet. Create the first one.</p>
-                        </div>
-                    )}
-                    {designations.map(d => (
-                        <div key={d.id} className="card dept-card">
-                            <div className="dept-card-header">
-                                <div className="dept-icon"><Briefcase size={20} /></div>
-                                <div className="actions-cell">
-                                    <button className="btn btn-ghost btn-sm btn-icon" onClick={() => openEdit(d)}><Pencil size={14} /></button>
-                                    <button className="btn btn-danger btn-sm btn-icon" onClick={() => openDelete(d)}><Trash2 size={14} /></button>
-                                </div>
-                            </div>
-                            <h3 style={{ fontWeight: 600, marginBottom: 4 }}>{d.name}</h3>
-                            {d.department && (
-                                <div className="badge badge-blue" style={{ marginBottom: 8, display: 'inline-block' }}>
-                                    {d.department.name}
-                                </div>
-                            )}
-                            <p style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.5 }}>
-                                {d.description || 'No description provided'}
-                            </p>
-                        </div>
-                    ))}
-                </div>
-            )}
+            <div className="card polished-card" style={{ padding: 0 }}>
+                <DataTable
+                    data={designations}
+                    columns={columns}
+                    fileName="designations"
+                    loading={loading}
+                    emptyMessage="No designations found. Create the first one."
+                    onAdd={openCreate}
+                />
+            </div>
 
             {(modal === 'create' || modal === 'edit') && (
                 <div className="modal-overlay" onClick={e => e.target === e.currentTarget && closeModal()}>

@@ -11,16 +11,18 @@ import {
 import { addFeedback, getFeedback } from '../qa-feedback/qa-feedback.controller.js';
 import { authMiddleware } from '../../middleware/auth.middleware.js';
 import { requirePermission } from '../../middleware/permission.middleware.js';
+import { validateRequest } from '../../middleware/validate.middleware.js';
+import { createTaskSchema, updateTaskSchema } from './tasks.validation.js';
 
 const router = Router();
 
 router.use(authMiddleware);
 
-router.post('/', requirePermission('assign_task', ['tester']), createTask);
+router.post('/', requirePermission('assign_task', ['tester']), validateRequest(createTaskSchema), createTask);
 router.get('/', requirePermission('view_tasks', ['tester']), getAllTasks);
 router.get('/:id', requirePermission('view_tasks', ['tester']), getTaskById);
-router.patch('/:id', requirePermission('update_task', ['tester']), updateTask);
-router.delete('/:id', requirePermission('delete_task', ['tester']), deleteTask);
+router.patch('/:id', requirePermission('update_task', ['tester']), validateRequest(updateTaskSchema), updateTask);
+router.delete('/:id', requirePermission('delete_task'), deleteTask);
 
 // Time tracking — nested under tasks
 router.post('/:id/start', requirePermission('update_task_status'), startTaskTimer);

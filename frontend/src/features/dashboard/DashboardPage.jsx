@@ -7,6 +7,7 @@ import DeveloperDashboard from './DeveloperDashboard';
 import HRDashboard from './HRDashboard';
 import BDMDashboard from './BDMDashboard';
 import TesterDashboard from './TesterDashboard';
+import VideoEditorDashboard from './VideoEditorDashboard';
 
 export default function DashboardPage() {
     const { user, hasPermission } = useAuth();
@@ -24,6 +25,7 @@ export default function DashboardPage() {
     const isBDM = userRoles.includes('bdm');
     const isSalesManager = userRoles.includes('sales manager');
     const isTester = userRoles.includes('tester');
+    const isVideoEditor = userRoles.includes('video editor');
 
     let DashboardComponent = DeveloperDashboard;
     let greeting = `Welcome back, ${user?.full_name || 'Employee'}`;
@@ -48,6 +50,9 @@ export default function DashboardPage() {
     } else if (isTester) {
         DashboardComponent = TesterDashboard;
         greeting = "Welcome back — here is your QA testing overview";
+    } else if (isVideoEditor) {
+        DashboardComponent = VideoEditorDashboard;
+        greeting = "Welcome back — here is your video production overview";
     }
 
     return (

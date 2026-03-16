@@ -144,29 +144,8 @@ const ensureUserBalances = async (userId) => {
             }
         }
 
-        if (t.name === 'Earned Leave') {
-            // Probation rule: 1 leave/month for first 6 months, then normal rate (annual_limit/12)
-            const normalRate = t.annual_limit / 12;
-
-            // Iterate months in current FY and check their "service month index"
-            for (let i = 0; i < monthsToAccrue; i++) {
-                // Determine which month of service this is
-                const monthDate = new Date(accrualStartDate);
-                monthDate.setMonth(monthDate.getMonth() + i);
-
-                // total months from joining to this specific month
-                const serviceMonths = (monthDate.getFullYear() - joiningDate.getFullYear()) * 12 + (monthDate.getMonth() - joiningDate.getMonth()) + 1;
-
-                if (serviceMonths <= 6) {
-                    targetAccrued += 1.0;
-                } else {
-                    targetAccrued += normalRate;
-                }
-            }
-        } else {
-            const monthlyRate = t.annual_limit / 12;
-            targetAccrued = monthlyRate * monthsToAccrue;
-        }
+        const monthlyRate = 1.5;
+        targetAccrued = monthlyRate * monthsToAccrue;
 
         targetAccrued = parseFloat(targetAccrued.toFixed(2));
 

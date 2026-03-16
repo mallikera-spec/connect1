@@ -14,7 +14,7 @@ const openai = new OpenAI({
  */
 export const generateQuotationJSONTemplate2 = async (data) => {
     const featuresHint = (data.keyFeatures || []).length > 0
-        ? `Key features discussed: ${data.keyFeatures.join(', ')}`
+        ? `CRITICAL REQUIREMENT: These specific features MUST be included in the 'keyModules' section of the quotation: ${data.keyFeatures.join(', ')}. Do not miss or omit any of them.`
         : '';
 
     const prompt = `You are a Senior Technical Consultant at a top-tier consulting firm (like McKinsey, Deloitte, or BCG).
@@ -104,6 +104,7 @@ RULES:
 4. Ensure the SLA response and resolution times are realistic.
 5. Provide actual estimates in 'CostEstimation' if the budget is provided, otherwise formulate realistic consulting figures. Include standard Indian currency format (e.g. ₹15,00,000).
 6. Output raw JSON only with no markdown wrapping.
+7. FEATURE ENFORCEMENT: Every single feature listed in the "Key features discussed" section above MUST be present in the JSON 'keyModules' array. Map them to appropriate modules and provide professional descriptions for each. Do not omit any client-requested features.
 `;
 
     try {

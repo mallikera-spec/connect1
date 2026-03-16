@@ -1,13 +1,12 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { Plus, Pencil, Trash2, X, Users, UserPlus, UserMinus, Info, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Download, FileText } from 'lucide-react'
+import { Plus, Pencil, Trash2, X, Users, UserPlus, UserMinus, Info, Download, FileText, CheckCircle, Clock } from 'lucide-react'
 import api from '../../lib/api'
 import toast from 'react-hot-toast'
 import { useAuth } from '../../context/AuthContext'
 import DataTable from '../../components/common/DataTable'
 import ProjectDetailsModal from './ProjectDetailsModal'
-
-
+import { formatDate, formatCurrency } from '../../utils/formatters'
 
 export default function ProjectsPage() {
     const { user, hasPermission, hasRole } = useAuth()
@@ -128,8 +127,12 @@ export default function ProjectsPage() {
 
     const handleCreate = async (e) => {
         e.preventDefault(); setSaving(true)
-        try { await api.post('/projects', form); toast.success('Project created'); load(); closeModal() }
-        catch (err) { toast.error(err.message) }
+        try { 
+            if (/^\d+$/.test(form.name)) throw new Error('Project name cannot be purely numeric');
+            if (form.client_name && /^\d+$/.test(form.client_name)) throw new Error('Client name cannot be purely numeric');
+            await api.post('/projects', form); toast.success('Project created'); load(); closeModal() 
+        }
+        catch (err) { toast.error(err.response?.data?.message || err.message) }
         finally { setSaving(false) }
     }
 
@@ -137,8 +140,12 @@ export default function ProjectsPage() {
         e.preventDefault();
         if (!selected) return;
         setSaving(true)
-        try { await api.patch(`/projects/${selected.id}`, form); toast.success('Project updated'); load(); closeModal() }
-        catch (err) { toast.error(err.message) }
+        try { 
+            if (/^\d+$/.test(form.name)) throw new Error('Project name cannot be purely numeric');
+            if (form.client_name && /^\d+$/.test(form.client_name)) throw new Error('Client name cannot be purely numeric');
+            await api.patch(`/projects/${selected.id}`, form); toast.success('Project updated'); load(); closeModal() 
+        }
+        catch (err) { toast.error(err.response?.data?.message || err.message) }
         finally { setSaving(false) }
     }
 
@@ -154,11 +161,9 @@ export default function ProjectsPage() {
         const val = e.target.value;
         setForm(p => {
             const next = { ...p, [k]: val };
-            // Auto-calculate due date if acquisition_date or days_committed changes
             if (k === 'acquisition_date' || k === 'days_committed') {
                 const acq = k === 'acquisition_date' ? val : p.acquisition_date;
                 const days = k === 'days_committed' ? val : p.days_committed;
-
                 if (acq && days !== undefined && days !== '') {
                     try {
                         const date = new Date(acq);
@@ -166,123 +171,119 @@ export default function ProjectsPage() {
                             date.setDate(date.getDate() + parseInt(days));
                             next.due_date = date.toISOString().split('T')[0];
                         }
-                    } catch (err) {
-                        console.warn('Date calculation failed:', err);
-                    }
+                    } catch (err) { console.warn('Date calculation failed:', err); }
                 }
             }
             return next;
         });
     }
+
     const handleSubtypeChange = (type) => {
         setForm(p => {
             const sub_types = p.sub_types || [];
-            if (sub_types.includes(type)) {
-                return { ...p, sub_types: sub_types.filter(t => t !== type) };
-            } else {
-                return { ...p, sub_types: [...sub_types, type] };
-            }
+            return { ...p, sub_types: sub_types.includes(type) ? sub_types.filter(t => t !== type) : [...sub_types, type] };
         });
     }
-    const formatDate = (d) => d ? new Date(d).toLocaleDateString() : '—'
 
+    const columns = useMemo(() => [
+        { label: 'Date', key: 'acquisition_date', type: 'date', width: '120px', render: (val) => formatDate(val) },
+        { label: 'Name', key: 'name', width: '250px', copyable: true, render: (val) => <strong>{val}</strong> },
+        { label: 'Sub-types', key: 'sub_types', width: '180px', render: (val) => val?.join(', ') || '—' },
+        ...(canManage ? [
+            { label: 'Client', key: 'client_name', width: '150px' },
+            { label: 'Phone', key: 'client_phone', width: '130px' }
+        ] : []),
+        {
+            label: 'Status',
+            key: 'status',
+            type: 'status',
+            width: '120px',
+            render: (val) => {
+                const s = PROJECT_STATUS[val] || PROJECT_STATUS.active;
+                return (
+                    <span className="badge" style={{ background: s.color + '15', color: s.color, fontWeight: 700, padding: '4px 10px', borderRadius: '12px', fontSize: '11px', textTransform: 'uppercase' }}>
+                        {s.label}
+                    </span>
+                );
+            }
+        },
+        {
+            label: 'Due Date',
+            key: 'due_date',
+            type: 'date',
+            width: '140px',
+            render: (val) => {
+                if (!val) return '—';
+                const today = new Date(); today.setHours(0,0,0,0);
+                const due = new Date(val);
+                const diff = (due - today) / (1000 * 60 * 60 * 24);
+                let color = 'inherit';
+                if (diff < 0) color = 'var(--danger)';
+                else if (diff <= 7) color = 'var(--warning)';
+                return <span style={{ color, fontWeight: diff <= 7 ? 700 : 400 }}>{formatDate(val)}</span>;
+            }
+        },
+        {
+            label: 'Actions',
+            key: 'actions',
+            width: '140px',
+            render: (_, p) => (
+                <div className="actions-cell">
+                    <button className="btn btn-ghost btn-sm btn-icon" onClick={(e) => { e.stopPropagation(); openDetails(p); }} title="View Details"><Info size={14} /></button>
+                    {canManage && <button className="btn btn-ghost btn-sm btn-icon" onClick={(e) => { e.stopPropagation(); openEdit(p); }} title="Edit"><Pencil size={14} /></button>}
+                    {hasPermission('delete_project') && <button className="btn btn-danger btn-sm btn-icon" onClick={(e) => { e.stopPropagation(); openDelete(p); }} title="Delete"><Trash2 size={14} /></button>}
+                </div>
+            )
+        }
+    ], [canManage, hasPermission]);
 
+    const bulkActions = [
+        { 
+            label: 'Complete Selected', 
+            icon: <CheckCircle size={14} />, 
+            handler: async (rows) => {
+                if(window.confirm(`Mark ${rows.length} projects as completed?`)) {
+                    toast.promise(Promise.all(rows.map(r => api.patch(`/projects/${r.id}`, { status: 'completed' }))), {
+                        loading: 'Updating projects...',
+                        success: 'Projects updated!',
+                        error: 'Failed to update projects'
+                    }).then(() => load());
+                }
+            }
+        }
+    ];
 
     return (
-        <div>
+        <div className="page-layout">
             <div className="page-header print-hide">
-                <div><h1>Projects</h1><p>Manage all projects and their team members</p></div>
-                <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-
-                    <div style={{ minWidth: 150 }}>
-                        <select
-                            className="form-select"
-                            style={{ margin: 0, height: 38, fontSize: 13 }}
-                            value={filters.status}
-                            onChange={(e) => {
-                                const s = e.target.value;
-                                setFilters(prev => ({ ...prev, status: s }));
-                                load({ status: s });
-                            }}
-                        >
-                            <option value="">All Statuses</option>
-                            <option value="active">Active</option>
-                            <option value="on_hold">On Hold</option>
-                            <option value="completed">Completed</option>
-                            <option value="cancelled">Cancelled</option>
-                            <option value="planning">Planning</option>
-                        </select>
-                    </div>
+                <div className="header-titles">
+                    <h1>Projects</h1>
+                    <p>Standardized overview of all ongoing and planned projects</p>
+                </div>
+                <div className="header-actions">
+                    <select
+                        className="form-select filter-select"
+                        value={filters.status}
+                        onChange={(e) => { setFilters(p => ({ ...p, status: e.target.value })); load({ status: e.target.value }); }}
+                    >
+                        <option value="">All Statuses</option>
+                        {Object.entries(PROJECT_STATUS).map(([key, s]) => <option key={key} value={key}>{s.label}</option>)}
+                    </select>
                     {canManage && <button className="btn btn-primary" onClick={openCreate}><Plus size={16} />New Project</button>}
                 </div>
             </div>
 
-            <div className="card polished-card" style={{ padding: 0 }}>
+            <div className="card table-card">
                 <DataTable
                     data={projects}
-                    fileName="projects"
+                    columns={columns}
                     loading={loading}
-                    columns={[
-                        { label: 'Acquisition Date', key: 'acquisition_date', width: '100px', render: (val) => <div style={{ fontSize: 13, fontWeight: 700 }}>{formatDate(val)}</div> },
-                        { label: 'Name', key: 'name', width: '200px', wrap: true, render: (val) => <strong style={{ whiteSpace: 'normal', lineHeight: 1.4, display: 'block' }}>{val}</strong> },
-                        { label: 'Sub-type', key: 'sub_types', width: '120px', render: (val) => <span style={{ fontSize: 13, background: 'var(--bg-header)', padding: '2px 8px', borderRadius: 12, border: '1px solid var(--border)', display: 'inline-block' }}>{val?.join(', ') || '—'}</span> },
-                        { label: 'Description', key: 'description', wrap: true, render: (val) => <span style={{ color: 'var(--text-muted)', fontSize: 13, display: 'block', whiteSpace: 'normal', lineHeight: 1.4 }}>{val || '—'}</span> },
-                        ...(canManage ? [
-                            { label: 'Client Name', key: 'client_name', width: '120px', render: (val) => <span style={{ fontSize: 13, fontWeight: 600 }}>{val || '—'}</span> },
-                            { label: 'Client Phone', key: 'client_phone', width: '100px', render: (val) => <span style={{ fontSize: 12, fontFamily: 'monospace' }}>{val || '—'}</span> }
-                        ] : []),
-                        {
-                            label: 'Status',
-                            key: 'status',
-                            width: '90px',
-                            render: (val) => {
-                                const s = PROJECT_STATUS[val] || PROJECT_STATUS.active
-                                return (
-                                    <span style={{ background: s.color + '22', color: s.color, fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 99, whiteSpace: 'nowrap' }}>
-                                        {s.label}
-                                    </span>
-                                )
-                            }
-                        },
-                        {
-                            label: 'Due Date',
-                            key: 'due_date',
-                            width: '100px',
-                            render: (val) => {
-                                if (!val) return '—';
-                                const today = new Date();
-                                today.setHours(0, 0, 0, 0);
-                                const due = new Date(val);
-                                const diff = (due - today) / (1000 * 60 * 60 * 24);
-
-                                let color = 'var(--text-main)';
-                                let fontWeight = 400;
-
-                                if (diff < 0) { color = '#dc2626'; fontWeight = 700; }
-                                else if (diff <= 2) { color = '#dc2626'; fontWeight = 700; }
-                                else if (diff <= 7) { color = '#f59e0b'; fontWeight = 600; }
-
-                                return (
-                                    <div style={{ color, fontWeight, fontSize: 13 }}>
-                                        {formatDate(val)}
-                                        {diff < 0 && <span style={{ fontSize: 10, marginLeft: 4, display: 'block', color: 'var(--text-dim)' }}>(Overdue)</span>}
-                                    </div>
-                                )
-                            }
-                        },
-                        {
-                            label: 'Actions',
-                            key: 'id',
-                            width: '100px',
-                            render: (_, p) => (
-                                <div className="actions-cell">
-                                    <button className="btn btn-ghost btn-sm btn-icon" onClick={() => openDetails(p)} title="View Details, Files & Notes"><Info size={14} /></button>
-                                    {canManage && <button className="btn btn-ghost btn-sm btn-icon" onClick={() => openEdit(p)} title="Edit Project"><Pencil size={14} /></button>}
-                                    {hasPermission('delete_project') && <button className="btn btn-danger btn-sm btn-icon" onClick={() => openDelete(p)} title="Delete Project"><Trash2 size={14} /></button>}
-                                </div>
-                            )
-                        }
-                    ]}
+                    fileName="projects_report"
+                    selectable={true}
+                    bulkActions={bulkActions}
+                    onRowClick={(p) => openDetails(p)}
+                    onAdd={openCreate}
+                    canAdd={canManage}
                 />
             </div>
 
@@ -293,128 +294,114 @@ export default function ProjectsPage() {
                         <form id="create-project-form" onSubmit={handleCreate}>
                             <div className="modal-body">
                                 <div className="form-group"><label className="form-label">Project Name</label><input className="form-input" value={form.name} onChange={f('name')} required /></div>
-                                <div className="form-group"><label className="form-label">Description</label><textarea className="form-textarea" rows={5} value={form.description} onChange={f('description')} style={{ resize: 'vertical' }} /></div>
-
-                                <div className="form-group"><label className="form-label">Client Name</label><input className="form-input" value={form.client_name || ''} onChange={f('client_name')} /></div>
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                                <div className="form-group"><label className="form-label">Description</label><textarea className="form-textarea" rows={5} value={form.description} onChange={f('description')} /></div>
+                                <div className="form-row">
+                                    <div className="form-group"><label className="form-label">Client Name</label><input className="form-input" value={form.client_name || ''} onChange={f('client_name')} /></div>
+                                    <div className="form-group"><label className="form-label">Status</label>
+                                        <select className="form-select" value={form.status} onChange={f('status')}>
+                                            {Object.entries(PROJECT_STATUS).map(([key, s]) => <option key={key} value={key}>{s.label}</option>)}
+                                        </select>
+                                    </div>
+                                </div>
+                                <div className="form-row">
                                     <div className="form-group"><label className="form-label">Client Phone</label><input className="form-input" value={form.client_phone || ''} onChange={f('client_phone')} /></div>
-                                    <div className="form-group"><label className="form-label">Alt Phone</label><input className="form-input" value={form.client_alt_phone || ''} onChange={f('client_alt_phone')} /></div>
+                                    <div className="form-group"><label className="form-label">Client Email</label><input type="email" className="form-input" value={form.client_email || ''} onChange={f('client_email')} /></div>
                                 </div>
-                                <div className="form-group"><label className="form-label">Client Email</label><input type="email" className="form-input" value={form.client_email || ''} onChange={f('client_email')} /></div>
-                                <div className="form-group"><label className="form-label">Project Acquisition Date</label><input type="date" className="form-input" value={form.acquisition_date} onChange={f('acquisition_date')} /></div>
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                                <div className="form-row">
+                                    <div className="form-group"><label className="form-label">Acquisition Date</label><input type="date" className="form-input" value={form.acquisition_date} onChange={f('acquisition_date')} /></div>
                                     <div className="form-group"><label className="form-label">Committed Days</label><input type="number" className="form-input" value={form.days_committed} onChange={f('days_committed')} /></div>
-                                    <div className="form-group"><label className="form-label">Due Date</label><input type="date" className="form-input" value={form.due_date} onChange={f('due_date')} /></div>
                                 </div>
-
+                                <div className="form-group"><label className="form-label">Due Date</label><input type="date" className="form-input" value={form.due_date} onChange={f('due_date')} disabled /></div>
                                 <div className="form-group">
                                     <label className="form-label">Project Sub-types</label>
-                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 16px', background: 'var(--surface-light)', padding: 12, borderRadius: 8 }}>
+                                    <div className="subtype-grid">
                                         {SUB_TYPES.map(type => (
-                                            <label key={type} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer' }}>
+                                            <label key={type} className="checkbox-label">
                                                 <input type="checkbox" checked={form.sub_types?.includes(type)} onChange={() => handleSubtypeChange(type)} />
                                                 {type}
                                             </label>
                                         ))}
                                     </div>
                                 </div>
+                            </div>
+                        </form>
+                        <div className="modal-footer">
+                            <button type="button" className="btn btn-ghost" onClick={closeModal}>Cancel</button>
+                            <button type="submit" form="create-project-form" className="btn btn-primary" disabled={saving}>{saving ? 'Saving...' : 'Create Project'}</button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
+            {modal === 'edit' && (
+                <div className="modal-overlay" onClick={e => e.target === e.currentTarget && closeModal()}>
+                    <div className="modal">
+                        <div className="modal-header"><h2 className="modal-title">Edit Project</h2><button className="btn-icon" onClick={closeModal}><X size={18} /></button></div>
+                        <form id="edit-project-form" onSubmit={handleEdit}>
+                            <div className="modal-body">
+                                <div className="form-group"><label className="form-label">Project Name</label><input className="form-input" value={form.name} onChange={f('name')} required /></div>
+                                <div className="form-group"><label className="form-label">Description</label><textarea className="form-textarea" rows={5} value={form.description} onChange={f('description')} /></div>
+                                <div className="form-row">
+                                    <div className="form-group"><label className="form-label">Client Name</label><input className="form-input" value={form.client_name || ''} onChange={f('client_name')} /></div>
+                                    <div className="form-group"><label className="form-label">Status</label>
+                                        <select className="form-select" value={form.status} onChange={f('status')}>
+                                            {Object.entries(PROJECT_STATUS).map(([key, s]) => <option key={key} value={key}>{s.label}</option>)}
+                                        </select>
+                                    </div>
+                                </div>
+                                <div className="form-row">
+                                    <div className="form-group"><label className="form-label">Client Phone</label><input className="form-input" value={form.client_phone || ''} onChange={f('client_phone')} /></div>
+                                    <div className="form-group"><label className="form-label">Client Email</label><input type="email" className="form-input" value={form.client_email || ''} onChange={f('client_email')} /></div>
+                                </div>
+                                <div className="form-row">
+                                    <div className="form-group"><label className="form-label">Acquisition Date</label><input type="date" className="form-input" value={form.acquisition_date} onChange={f('acquisition_date')} /></div>
+                                    <div className="form-group"><label className="form-label">Committed Days</label><input type="number" className="form-input" value={form.days_committed} onChange={f('days_committed')} /></div>
+                                </div>
+                                <div className="form-group"><label className="form-label">Due Date</label><input type="date" className="form-input" value={form.due_date} onChange={f('due_date')} disabled /></div>
                                 <div className="form-group">
-                                    <label className="form-label">Status</label>
-                                    <select className="form-select" value={form.status} onChange={f('status')}>
-                                        <option value="planning">Planning</option>
-                                        <option value="active">Active</option>
-                                        <option value="on_hold">On Hold</option>
-                                        <option value="completed">Completed</option>
-                                        <option value="cancelled">Cancelled</option>
-                                    </select>
+                                    <label className="form-label">Project Sub-types</label>
+                                    <div className="subtype-grid">
+                                        {SUB_TYPES.map(type => (
+                                            <label key={type} className="checkbox-label">
+                                                <input type="checkbox" checked={form.sub_types?.includes(type)} onChange={() => handleSubtypeChange(type)} />
+                                                {type}
+                                            </label>
+                                        ))}
+                                    </div>
                                 </div>
                             </div>
                         </form>
                         <div className="modal-footer">
                             <button type="button" className="btn btn-ghost" onClick={closeModal}>Cancel</button>
-                            <button type="submit" form="create-project-form" className="btn btn-primary" disabled={saving}>{saving ? <span className="spinner" style={{ width: 16, height: 16 }} /> : 'Create'}</button>
+                            <button type="submit" form="edit-project-form" className="btn btn-primary" disabled={saving}>{saving ? 'Saving...' : 'Save Changes'}</button>
                         </div>
                     </div>
                 </div>
-            )
-            }
+            )}
 
-            {
-                modal === 'edit' && (
-                    <div className="modal-overlay" onClick={e => e.target === e.currentTarget && closeModal()}>
-                        <div className="modal">
-                            <div className="modal-header"><h2 className="modal-title">Edit Project</h2><button className="btn-icon" onClick={closeModal}><X size={18} /></button></div>
-                            <form id="edit-project-form" onSubmit={handleEdit}>
-                                <div className="modal-body">
-                                    <div className="form-group"><label className="form-label">Project Name</label><input className="form-input" value={form.name} onChange={f('name')} required /></div>
-                                    <div className="form-group"><label className="form-label">Description</label><textarea className="form-textarea" rows={5} value={form.description} onChange={f('description')} style={{ resize: 'vertical' }} /></div>
+            {modal === 'details' && selected && <ProjectDetailsModal project={selected} allUsers={allUsers} onClose={closeModal} onSaved={load} />}
 
-                                    <div className="form-group"><label className="form-label">Client Name</label><input className="form-input" value={form.client_name || ''} onChange={f('client_name')} /></div>
-                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                                        <div className="form-group"><label className="form-label">Client Phone</label><input className="form-input" value={form.client_phone || ''} onChange={f('client_phone')} /></div>
-                                        <div className="form-group"><label className="form-label">Alt Phone</label><input className="form-input" value={form.client_alt_phone || ''} onChange={f('client_alt_phone')} /></div>
-                                    </div>
-                                    <div className="form-group"><label className="form-label">Client Email</label><input type="email" className="form-input" value={form.client_email || ''} onChange={f('client_email')} /></div>
-                                    <div className="form-group"><label className="form-label">Project Acquisition Date</label><input type="date" className="form-input" value={form.acquisition_date} onChange={f('acquisition_date')} /></div>
-                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                                        <div className="form-group"><label className="form-label">Committed Days</label><input type="number" className="form-input" value={form.days_committed} onChange={f('days_committed')} /></div>
-                                        <div className="form-group"><label className="form-label">Due Date</label><input type="date" className="form-input" value={form.due_date} onChange={f('due_date')} /></div>
-                                    </div>
-
-                                    <div className="form-group">
-                                        <label className="form-label">Project Sub-types</label>
-                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 16px', background: 'var(--surface-light)', padding: 12, borderRadius: 8 }}>
-                                            {SUB_TYPES.map(type => (
-                                                <label key={type} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer' }}>
-                                                    <input type="checkbox" checked={form.sub_types?.includes(type)} onChange={() => handleSubtypeChange(type)} />
-                                                    {type}
-                                                </label>
-                                            ))}
-                                        </div>
-                                    </div>
-
-                                    <div className="form-group">
-                                        <label className="form-label">Status</label>
-                                        <select className="form-select" value={form.status} onChange={f('status')}>
-                                            <option value="planning">Planning</option>
-                                            <option value="active">Active</option>
-                                            <option value="on_hold">On Hold</option>
-                                            <option value="completed">Completed</option>
-                                            <option value="cancelled">Cancelled</option>
-                                        </select>
-                                    </div>
-                                </div>
-                            </form>
-                            <div className="modal-footer">
-                                <button type="button" className="btn btn-ghost" onClick={closeModal}>Cancel</button>
-                                <button type="submit" form="edit-project-form" className="btn btn-primary" disabled={saving}>{saving ? <span className="spinner" style={{ width: 16, height: 16 }} /> : 'Save'}</button>
-                            </div>
+            {modal === 'delete' && selected && (
+                <div className="modal-overlay" onClick={e => e.target === e.currentTarget && closeModal()}>
+                    <div className="modal" style={{ height: 'auto', minHeight: 'unset' }}>
+                        <div className="modal-header"><h2 className="modal-title">Delete Project</h2><button className="btn-icon" onClick={closeModal}><X size={18} /></button></div>
+                        <div className="modal-body"><p>Are you sure you want to delete <strong>{selected.name}</strong>? This action cannot be undone.</p></div>
+                        <div className="modal-footer">
+                            <button className="btn btn-ghost" onClick={closeModal}>Cancel</button>
+                            <button className="btn btn-danger" onClick={handleDelete} disabled={saving}>{saving ? 'Deleting...' : 'Delete Project'}</button>
                         </div>
                     </div>
-                )
-            }
+                </div>
+            )}
 
-            {
-                modal === 'details' && selected && (
-                    <ProjectDetailsModal project={selected} allUsers={allUsers} onClose={closeModal} onSaved={load} />
-                )
-            }
-
-            {
-                modal === 'delete' && selected && (
-                    <div className="modal-overlay" onClick={e => e.target === e.currentTarget && closeModal()}>
-                        <div className="modal">
-                            <div className="modal-header"><h2 className="modal-title">Delete Project</h2><button className="btn-icon" onClick={closeModal}><X size={18} /></button></div>
-                            <div className="modal-body"><p style={{ fontSize: 14 }}>Delete project <strong>{selected.name}</strong>? All associated tasks will also be removed.</p></div>
-                            <div className="modal-footer">
-                                <button className="btn btn-ghost" onClick={closeModal}>Cancel</button>
-                                <button className="btn btn-danger" onClick={handleDelete} disabled={saving}>{saving ? 'Deleting…' : 'Delete'}</button>
-                            </div>
-                        </div>
-                    </div>
-                )
-            }
-        </div >
+            <style>{`
+                .page-layout { padding: 8px; }
+                .header-actions { display: flex; gap: 12px; align-items: center; }
+                .filter-select { height: 38px; min-width: 150px; }
+                .subtype-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; background: rgba(255,255,255,0.03); padding: 12px; border-radius: 8px; }
+                .checkbox-label { display: flex; alignItems: center; gap: 8px; font-size: 13px; cursor: pointer; }
+                .badge { display: inline-block; }
+            `}</style>
+        </div>
     )
 }

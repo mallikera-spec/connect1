@@ -477,7 +477,7 @@ export function AttendanceWidget() {
             </div>
 
             <div style={{ textAlign: 'center', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                <div style={{ fontFamily: 'monospace', fontSize: 24, fontWeight: 700, color: 'var(--text)' }}>
+                <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--text)' }}>
                     {currentTime.toLocaleTimeString([], { hour12: true, hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                 </div>
                 <div style={{ fontSize: 11, color: 'var(--text-dim)', marginBottom: 12 }}>
