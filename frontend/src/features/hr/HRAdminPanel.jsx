@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useLocation, NavLink } from 'react-router-dom';
 import { HRService } from './HRService';
-import { Clock, Calendar, FileText, Check, X, Download } from 'lucide-react';
+import { Clock, Calendar, FileText, Check, X, Download, Wallet, Table } from 'lucide-react';
+import GlobalAttendanceCalendar from './components/GlobalAttendanceCalendar';
+import CalendarConfig from './components/CalendarConfig';
 import toast from 'react-hot-toast';
 import { useSortable, SortableHeader } from '../../hooks/useSortable';
 import DataTable from '../../components/common/DataTable';
@@ -13,6 +15,7 @@ export default function HRAdminPanel() {
 
     const [pendingAttendance, setPendingAttendance] = useState([]);
     const [pendingLeaves, setPendingLeaves] = useState([]);
+    const [leaveBalances, setLeaveBalances] = useState([]);
     const [salarySlips, setSalarySlips] = useState([]);
     const [employees, setEmployees] = useState([]);
     const [empSettings, setEmpSettings] = useState({}); // { [userId]: { joining_date, base_salary } }
@@ -31,6 +34,11 @@ export default function HRAdminPanel() {
     const [adminComment, setAdminComment] = useState('');
     const [approving, setApproving] = useState(false);
 
+    // Leave Balance Detail state
+    const [selectedBalance, setSelectedBalance] = useState(null);
+    const [balanceHistory, setBalanceHistory] = useState([]);
+    const [loadingHistory, setLoadingHistory] = useState(false);
+
     const now = new Date();
     const [payrollMonth, setPayrollMonth] = useState(now.getMonth() === 0 ? 12 : now.getMonth());
     const [payrollYear, setPayrollYear] = useState(now.getMonth() === 0 ? now.getFullYear() - 1 : now.getFullYear());
@@ -46,15 +54,17 @@ export default function HRAdminPanel() {
     const fetchAllData = async () => {
         setLoading(true);
         try {
-            const [attRes, leavesRes, empRes] = await Promise.all([
+            const [attRes, leavesRes, empRes, balRes] = await Promise.all([
                 HRService.getPendingAttendance().catch(() => ({ data: [] })),
                 HRService.getPendingLeaves().catch(() => ({ data: [] })),
                 fetch(`${import.meta.env.VITE_API_URL}/api/v1/users`, {
                     headers: { Authorization: `Bearer ${(await (await import('../../lib/supabase')).supabase.auth.getSession()).data.session?.access_token}` }
-                }).then(r => r.json()).catch(() => ({ data: [] }))
+                }).then(r => r.json()).catch(() => ({ data: [] })),
+                HRService.getAllLeaveBalances().catch(() => ({ data: [] }))
             ]);
             setPendingAttendance(attRes.data || []);
             setPendingLeaves(leavesRes.data || []);
+            setLeaveBalances(balRes.data || []);
 
             const empList = empRes.data || [];
             setEmployees(empList);
@@ -164,6 +174,19 @@ export default function HRAdminPanel() {
         }
     };
 
+    const handleBalanceRowClick = async (bal) => {
+        setSelectedBalance(bal);
+        setLoadingHistory(true);
+        try {
+            const res = await HRService.getLeaveBalanceHistory(bal.id);
+            setBalanceHistory(res.data?.history || []);
+        } catch (err) {
+            toast.error('Error fetching leave history');
+        } finally {
+            setLoadingHistory(false);
+        }
+    };
+
     const statusBadge = (status) => {
         const map = {
             Approved: 'badge badge-green',
@@ -212,6 +235,7 @@ export default function HRAdminPanel() {
     const { sorted: sortedAttendance, sortKey: attSK, sortDir: attSD, toggleSort: attSort } = useSortable(filteredAttendance, 'date', 'desc');
     const { sorted: sortedLeaves, sortKey: lvSK, sortDir: lvSD, toggleSort: lvSort } = useSortable(filteredLeaves, 'start_date', 'asc');
     const { sorted: sortedEmployees, sortKey: empSK, sortDir: empSD, toggleSort: empSort } = useSortable(filteredEmployees, 'full_name', 'asc');
+    const filteredBalances = leaveBalances.filter(r => filterByEmployee(r));
     const sortedSlips = filteredSlips; // Keep current order
 
     const handleExportAttendanceCSV = () => {
@@ -245,10 +269,28 @@ export default function HRAdminPanel() {
         const link = document.createElement('a'); link.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' })); link.download = `payroll_${payrollMonth}_${payrollYear}.csv`; link.click()
     }
 
+    const handleExportLeaveBalancesCSV = () => {
+        if (!filteredBalances.length) return
+        const headers = ['Employee', 'Leave Type', 'Accrued', 'Used', 'Balance', 'Last Accrual']
+        const rows = filteredBalances.map(bal => [
+            `"${bal.user?.full_name || ''}"`,
+            `"${bal.leave_type?.name || ''}"`,
+            bal.accrued,
+            bal.used,
+            bal.balance,
+            bal.last_accrual_date
+        ])
+        const csv = [headers, ...rows].map(r => r.join(',')).join('\n')
+        const link = document.createElement('a'); link.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' })); link.download = `leave_balances_${new Date().toISOString().split('T')[0]}.csv`; link.click()
+    }
+
     const tabs = [
         { key: 'attendance', label: 'Pending Attendance', icon: Clock, count: pendingAttendance.length },
         { key: 'leaves', label: 'Pending Leaves', icon: Calendar, count: pendingLeaves.length },
+        { key: 'global_calendar', label: 'Attendance Calendar', icon: Table },
+        { key: 'leave_bucket', label: 'Leave Bucket', icon: Wallet },
         { key: 'payroll', label: 'Payroll & Slips', icon: FileText },
+        { key: 'calendar_config', label: 'Calendar Settings', icon: Table },
         { key: 'employees', label: 'Employee Settings', icon: FileText },
     ];
 
@@ -413,8 +455,18 @@ export default function HRAdminPanel() {
                                 label: 'Type',
                                 key: 'type',
                                 render: (val, req) => (
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                                         <span className="badge badge-purple">{val}</span>
+                                        {req.is_half_day && (
+                                            <span style={{ 
+                                                fontSize: 10, fontWeight: 700, 
+                                                background: 'rgba(245,158,11,0.15)', color: '#f59e0b',
+                                                border: '1px solid rgba(245,158,11,0.3)',
+                                                borderRadius: 4, padding: '2px 6px', display: 'inline-block'
+                                            }}>
+                                                Half Day · {req.half_day_session || 'Morning'}
+                                            </span>
+                                        )}
                                         {req.leave_type && <span style={{ fontSize: 10, color: 'var(--text-dim)', fontWeight: 600 }}>Policy: {req.leave_type.name}</span>}
                                     </div>
                                 )
@@ -427,12 +479,20 @@ export default function HRAdminPanel() {
                             {
                                 label: 'To',
                                 key: 'end_date',
-                                render: (val) => <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>{new Date(val).toLocaleDateString()}</span>
+                                render: (val, req) => (
+                                    <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>
+                                        {req.is_half_day ? '—' : new Date(val).toLocaleDateString()}
+                                    </span>
+                                )
                             },
                             {
                                 label: 'Days',
                                 key: 'id',
-                                render: (_, req) => Math.ceil(Math.abs(new Date(req.end_date) - new Date(req.start_date)) / (1000 * 60 * 60 * 24)) + 1
+                                render: (_, req) => {
+                                    if (req.is_half_day) return <strong style={{ color: '#f59e0b' }}>0.5</strong>;
+                                    const days = Math.ceil(Math.abs(new Date(req.end_date) - new Date(req.start_date)) / (1000 * 60 * 60 * 24)) + 1;
+                                    return <strong>{days}</strong>;
+                                }
                             },
                             {
                                 label: 'Reason',
@@ -455,6 +515,77 @@ export default function HRAdminPanel() {
                                         </button>
                                     </div>
                                 )
+                            }
+                        ]}
+                    />
+                </div>
+            )}
+
+            {/* Attendance Calendar Tab */}
+            {activeTab === 'global_calendar' && (
+                <GlobalAttendanceCalendar />
+            )}
+
+            {/* Leave Bucket Tab */}
+            {activeTab === 'leave_bucket' && (
+                <div className="card polished-card" style={{ padding: 0 }}>
+                    <div className="table-toolbar" style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <h2 style={{ fontSize: 15, fontWeight: 600 }}>Employee Leave Balances</h2>
+                        <button className="btn btn-ghost btn-sm" onClick={handleExportLeaveBalancesCSV} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <Download size={14} /> Export CSV
+                        </button>
+                    </div>
+                    <DataTable
+                        data={filteredBalances}
+                        fileName="employee-leave-balances"
+                        loading={loading}
+                        onRowClick={(bal) => handleBalanceRowClick(bal)}
+                        columns={[
+                            {
+                                label: 'Employee',
+                                key: 'user.full_name',
+                                render: (_, rec) => (
+                                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                        <strong>{rec.user?.full_name || '—'}</strong>
+                                        <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>{rec.user?.email}</span>
+                                    </div>
+                                )
+                            },
+                            {
+                                label: 'Leave Type',
+                                key: 'leave_type.name',
+                                render: (_, rec) => <span className="badge badge-purple">{rec.leave_type?.name || '—'}</span>
+                            },
+                            {
+                                label: 'Accrued',
+                                key: 'accrued',
+                                align: 'center',
+                                render: (val) => <span style={{ fontWeight: 600 }}>{val}</span>
+                            },
+                            {
+                                label: 'Used',
+                                key: 'used',
+                                align: 'center',
+                                render: (val) => <span style={{ color: 'var(--danger)', fontWeight: 600 }}>{val}</span>
+                            },
+                            {
+                                label: 'Balance',
+                                key: 'balance',
+                                align: 'center',
+                                render: (val) => (
+                                    <span style={{ 
+                                        color: val > 0 ? 'var(--success)' : 'var(--danger)', 
+                                        fontWeight: 800,
+                                        fontSize: 15
+                                    }}>
+                                        {val}
+                                    </span>
+                                )
+                            },
+                            {
+                                label: 'Last Accrual',
+                                key: 'last_accrual_date',
+                                render: (val) => <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>{val ? new Date(val).toLocaleDateString() : '—'}</span>
                             }
                         ]}
                     />
@@ -527,6 +658,11 @@ export default function HRAdminPanel() {
                         ]}
                     />
                 </div>
+            )}
+
+            {/* Calendar Config Tab */}
+            {activeTab === 'calendar_config' && (
+                <CalendarConfig />
             )}
 
             {/* Employee Settings Tab */}
@@ -668,6 +804,80 @@ export default function HRAdminPanel() {
                                     : (approvalModal.type === 'attendance' ? `Mark ${approvalModal.action}` : approvalModal.action)
                                 }
                             </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Leave Balance Detail Modal */}
+            {selectedBalance && (
+                <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setSelectedBalance(null)}>
+                    <div className="modal" style={{ maxWidth: 700 }}>
+                        <div className="modal-header">
+                            <div>
+                                <h2 className="modal-title">Leave History: {selectedBalance.leave_type?.name}</h2>
+                                <p style={{ fontSize: 13, color: 'var(--text-dim)', marginTop: 2 }}>
+                                    {selectedBalance.user?.full_name} ({selectedBalance.user?.email})
+                                </p>
+                            </div>
+                            <button className="btn-icon" onClick={() => setSelectedBalance(null)}><X size={18} /></button>
+                        </div>
+                        <div className="modal-body">
+                            {/* Summary Stats */}
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 24 }}>
+                                <div className="card polished-card" style={{ padding: 12, textAlign: 'center' }}>
+                                    <div style={{ fontSize: 11, color: 'var(--text-dim)', textTransform: 'uppercase', marginBottom: 4 }}>Accrued</div>
+                                    <div style={{ fontSize: 20, fontWeight: 700 }}>{selectedBalance.accrued}</div>
+                                </div>
+                                <div className="card polished-card" style={{ padding: 12, textAlign: 'center' }}>
+                                    <div style={{ fontSize: 11, color: 'var(--text-dim)', textTransform: 'uppercase', marginBottom: 4 }}>Used</div>
+                                    <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--danger)' }}>{selectedBalance.used}</div>
+                                </div>
+                                <div className="card polished-card" style={{ padding: 12, textAlign: 'center' }}>
+                                    <div style={{ fontSize: 11, color: 'var(--text-dim)', textTransform: 'uppercase', marginBottom: 4 }}>Balance</div>
+                                    <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--success)' }}>{selectedBalance.balance}</div>
+                                </div>
+                            </div>
+
+                            <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 12 }}>Usage History (Approved Requests)</h3>
+                            
+                            {loadingHistory ? (
+                                <div style={{ padding: 40, textAlign: 'center' }}><div className="spinner" /></div>
+                            ) : balanceHistory.length === 0 ? (
+                                <div style={{ padding: 30, textAlign: 'center', color: 'var(--text-dim)', background: 'rgba(255,255,255,0.02)', borderRadius: 8, border: '1px dashed var(--border)' }}>
+                                    No usage history found for this leave type.
+                                </div>
+                            ) : (
+                                <div className="table-responsive-wrapper" style={{ maxHeight: 300, overflowY: 'auto', border: '1px solid var(--border)', borderRadius: 8 }}>
+                                    <table className="standard-data-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Dates</th>
+                                                <th>Days</th>
+                                                <th>Type</th>
+                                                <th>Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {balanceHistory.map(hist => (
+                                                <tr key={hist.id}>
+                                                    <td style={{ fontSize: 13 }}>
+                                                        {new Date(hist.start_date).toLocaleDateString()} - {new Date(hist.end_date).toLocaleDateString()}
+                                                    </td>
+                                                    <td style={{ fontWeight: 600 }}>
+                                                        {Math.ceil(Math.abs(new Date(hist.end_date) - new Date(hist.start_date)) / 86400000) + 1}
+                                                    </td>
+                                                    <td style={{ fontSize: 12, color: 'var(--text-dim)' }}>{hist.type}</td>
+                                                    <td>{statusBadge(hist.status)}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
+                        </div>
+                        <div className="modal-footer">
+                            <button className="btn btn-primary" onClick={() => setSelectedBalance(null)}>Close</button>
                         </div>
                     </div>
                 </div>

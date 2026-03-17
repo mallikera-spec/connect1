@@ -583,24 +583,43 @@ export const deleteFollowUp = async (id) => {
  * @returns {Promise<Object>} Lead status metrics.
  */
 export const getSalesMetrics = async (filters = {}) => {
-    let query = supabaseAdmin
+    // 1. Fetch Pipeline & Total metrics from leads based on creation date
+    let leadQuery = supabaseAdmin
         .from('leads')
         .select('status, deal_value, created_at')
         .limit(10000);
 
-    if (filters.assigned_agent_id) query = query.eq('assigned_agent_id', filters.assigned_agent_id);
-    if (filters.startDate) query = query.gte('created_at', filters.startDate);
+    if (filters.assigned_agent_id) leadQuery = leadQuery.eq('assigned_agent_id', filters.assigned_agent_id);
+    if (filters.startDate) leadQuery = leadQuery.gte('created_at', filters.startDate);
     if (filters.endDate) {
         const end = filters.endDate.includes('T') ? filters.endDate : `${filters.endDate} 23:59:59.999`;
-        query = query.lte('created_at', end);
+        leadQuery = leadQuery.lte('created_at', end);
     }
 
-    const { data, error } = await query;
-    if (error) throw error;
+    // 2. Fetch Won metrics from projects based on acquisition date
+    let projectQuery = supabaseAdmin
+        .from('projects')
+        .select(`
+            deal_value, 
+            acquisition_date,
+            client:clients!inner(lead_id, lead:leads!inner(assigned_agent_id))
+        `);
+
+    if (filters.assigned_agent_id) {
+        projectQuery = projectQuery.eq('client.lead.assigned_agent_id', filters.assigned_agent_id);
+    }
+    if (filters.startDate) projectQuery = projectQuery.gte('acquisition_date', filters.startDate);
+    if (filters.endDate) projectQuery = projectQuery.lte('acquisition_date', filters.endDate);
+
+    const [leadRes, projectRes] = await Promise.all([leadQuery, projectQuery]);
+    if (leadRes.error) throw leadRes.error;
+    if (projectRes.error) throw projectRes.error;
+
+    const leadsData = leadRes.data;
+    const projectsData = projectRes.data;
 
     let monthlyTarget = 0;
-    let variance = 0;
-
+    // ... Target calculation ...
     if (filters.assigned_agent_id) {
         const { data: profile } = await supabaseAdmin
             .from('profiles')
@@ -609,29 +628,24 @@ export const getSalesMetrics = async (filters = {}) => {
             .single();
 
         if (profile) {
-            // Calculate number of days in range for scaling target
-            let daysInRange = 30.4; // Default to a month
+            let daysInRange = 30.4;
             if (filters.startDate && filters.endDate) {
                 const s = new Date(filters.startDate);
                 const e = new Date(filters.endDate);
                 daysInRange = Math.max(1, (e - s) / (1000 * 60 * 60 * 24) + 1);
             }
-
             const monthlySalary = (profile.ctc || 0) / 12;
             const fullMonthlyTarget = monthlySalary * 15;
             monthlyTarget = Math.round((fullMonthlyTarget / 30.4) * daysInRange);
         }
     }
 
-    const stats = data.reduce((acc, lead) => {
+    // Aggregate Lead Stats (Pipeline & Total)
+    const stats = leadsData.reduce((acc, lead) => {
         const val = parseFloat(lead.deal_value || 0);
         const status = String(lead.status || '').toLowerCase();
 
-        // 1. Core Counters (Explicitly Tracked)
-        if (status === 'won') {
-            acc.wonValue += val;
-            acc.Won += 1;
-        } else if (['proposal', 'proposal sent', 'meeting', 'meeting scheduled', 'negotiation', 'qualified'].includes(status)) {
+        if (['proposal', 'proposal sent', 'meeting', 'meeting scheduled', 'negotiation', 'qualified'].includes(status)) {
             acc.pipelineValue += val;
             if (status.includes('proposal')) acc.Proposal += 1;
         }
@@ -640,7 +654,6 @@ export const getSalesMetrics = async (filters = {}) => {
             acc.quotationCount += 1;
         }
 
-        // 2. Status Breakdown (Dynamic Map)
         const capitalizedStatus = status.split(' ').map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(' ');
         if (!acc._breakdown) acc._breakdown = {};
         acc._breakdown[capitalizedStatus] = (acc._breakdown[capitalizedStatus] || 0) + 1;
@@ -657,6 +670,16 @@ export const getSalesMetrics = async (filters = {}) => {
         Won: 0,
         Proposal: 0,
         _breakdown: {}
+    });
+
+    // Overwrite Won stats with Project data (Acquisition-based)
+    projectsData.forEach(p => {
+        const val = parseFloat(p.deal_value || 0);
+        stats.wonValue += val;
+        stats.Won += 1;
+        
+        // Ensure "Won" shows up correctly in breakdown too
+        stats._breakdown['Won'] = (stats._breakdown['Won'] || 0) + 1;
     });
 
     // Calculate derived metrics

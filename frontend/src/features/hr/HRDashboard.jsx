@@ -4,12 +4,14 @@ import { useAuth } from '../../context/AuthContext';
 import { HRService } from './HRService';
 import { Clock, Calendar, FileText, AlertCircle, X } from 'lucide-react';
 import { AttendanceWidget } from '../dashboard/DashboardComponents';
+import PersonalAttendanceCalendar from './components/PersonalAttendanceCalendar';
 import DataTable from '../../components/common/DataTable';
 import toast from 'react-hot-toast';
 
 export default function HRDashboard() {
     const { user } = useAuth();
     const [loading, setLoading] = useState(true);
+    const [activeTab, setActiveTab] = useState('overview');
 
     const [leaveBalance, setLeaveBalance] = useState({ totalAccrued: 0, used: 0, balance: 0, breakdown: [] });
     const [leaveTypes, setLeaveTypes] = useState([]);
@@ -17,7 +19,15 @@ export default function HRDashboard() {
     const [mySlips, setMySlips] = useState([]);
 
     const [isLeaveModalOpen, setIsLeaveModalOpen] = useState(false);
-    const [leaveForm, setLeaveForm] = useState({ start_date: '', end_date: '', type: 'Earned Leave', leave_type_id: '', reason: '' });
+    const [leaveForm, setLeaveForm] = useState({ 
+        start_date: '', 
+        end_date: '', 
+        type: 'Earned Leave', 
+        leave_type_id: '', 
+        reason: '',
+        is_half_day: false,
+        half_day_session: 'Morning'
+    });
     const [submitting, setSubmitting] = useState(false);
 
     useEffect(() => {
@@ -69,7 +79,9 @@ export default function HRDashboard() {
                 end_date: '',
                 type: leaveTypes[0]?.name || 'Earned Leave',
                 leave_type_id: leaveTypes[0]?.id || '',
-                reason: ''
+                reason: '',
+                is_half_day: false,
+                half_day_session: 'Morning'
             });
             fetchDashboardData();
         } catch (err) {
@@ -174,30 +186,57 @@ export default function HRDashboard() {
                 </div>
             </div>
 
-            <div className="card polished-card" style={{ padding: 0 }}>
-                <DataTable
-                    data={myLeaves}
-                    loading={loading}
-                    fileName="my_leaves"
-                    columns={[
-                        { label: 'Type', key: 'type' },
-                        { label: 'Start', key: 'start_date' },
-                        { label: 'End', key: 'end_date' },
-                        { label: 'Reason', key: 'reason' },
-                        { label: 'Status', key: 'status' }
-                    ]}
-                    renderRow={(leave, idx) => (
-                        <tr key={leave.id}>
-                            <td style={{ padding: '12px 16px', color: 'var(--text-dim)', fontSize: 12 }}>{idx + 1}</td>
-                            <td style={{ padding: '12px 16px' }}><strong>{leave.type}</strong></td>
-                            <td style={{ padding: '12px 16px', color: 'var(--text-muted)', fontSize: 13 }}>{new Date(leave.start_date).toLocaleDateString()}</td>
-                            <td style={{ padding: '12px 16px', color: 'var(--text-muted)', fontSize: 13 }}>{new Date(leave.end_date).toLocaleDateString()}</td>
-                            <td style={{ padding: '12px 16px', color: 'var(--text-muted)', fontSize: 13 }}>{leave.reason}</td>
-                            <td style={{ padding: '12px 16px' }}>{statusBadge(leave.status)}</td>
-                        </tr>
-                    )}
-                />
+            <div style={{ display: 'flex', gap: 16, marginBottom: 16, borderBottom: '1px solid var(--border)', paddingBottom: 8 }}>
+                {['overview', 'calendar'].map(tab => (
+                    <button
+                        key={tab}
+                        onClick={() => setActiveTab(tab)}
+                        style={{
+                            padding: '8px 16px',
+                            background: 'none',
+                            border: 'none',
+                            color: activeTab === tab ? 'var(--accent)' : 'var(--text-dim)',
+                            fontWeight: activeTab === tab ? 700 : 500,
+                            cursor: 'pointer',
+                            position: 'relative'
+                        }}
+                    >
+                        {tab === 'overview' ? 'Leave History' : 'Attendance Calendar'}
+                        {activeTab === tab && (
+                            <div style={{ position: 'absolute', bottom: -9, left: 0, right: 0, height: 2, background: 'var(--accent)' }} />
+                        )}
+                    </button>
+                ))}
             </div>
+
+            {activeTab === 'overview' ? (
+                <div className="card polished-card" style={{ padding: 0 }}>
+                    <DataTable
+                        data={myLeaves}
+                        loading={loading}
+                        fileName="my_leaves"
+                        columns={[
+                            { label: 'Type', key: 'type' },
+                            { label: 'Start', key: 'start_date' },
+                            { label: 'End', key: 'end_date' },
+                            { label: 'Reason', key: 'reason' },
+                            { label: 'Status', key: 'status' }
+                        ]}
+                        renderRow={(leave, idx) => (
+                            <tr key={leave.id}>
+                                <td style={{ padding: '12px 16px', color: 'var(--text-dim)', fontSize: 12 }}>{idx + 1}</td>
+                                <td style={{ padding: '12px 16px' }}><strong>{leave.type}</strong></td>
+                                <td style={{ padding: '12px 16px', color: 'var(--text-muted)', fontSize: 13 }}>{new Date(leave.start_date).toLocaleDateString()}</td>
+                                <td style={{ padding: '12px 16px', color: 'var(--text-muted)', fontSize: 13 }}>{new Date(leave.end_date).toLocaleDateString()}</td>
+                                <td style={{ padding: '12px 16px', color: 'var(--text-muted)', fontSize: 13 }}>{leave.reason}</td>
+                                <td style={{ padding: '12px 16px' }}>{statusBadge(leave.status)}</td>
+                            </tr>
+                        )}
+                    />
+                </div>
+            ) : (
+                <PersonalAttendanceCalendar />
+            )}
 
             {/* Leave Modal */}
             {isLeaveModalOpen && (
@@ -214,15 +253,47 @@ export default function HRDashboard() {
                                         <label className="form-label">Start Date</label>
                                         <input type="date" className="form-input" required
                                             value={leaveForm.start_date}
-                                            onChange={e => setLeaveForm(p => ({ ...p, start_date: e.target.value }))} />
+                                            onChange={e => setLeaveForm(p => ({ ...p, start_date: e.target.value, end_date: p.is_half_day ? e.target.value : p.end_date }))} />
                                     </div>
-                                    <div className="form-group">
-                                        <label className="form-label">End Date</label>
-                                        <input type="date" className="form-input" required
-                                            value={leaveForm.end_date}
-                                            onChange={e => setLeaveForm(p => ({ ...p, end_date: e.target.value }))} />
-                                    </div>
+                                    {!leaveForm.is_half_day && (
+                                        <div className="form-group animate-in">
+                                            <label className="form-label">End Date</label>
+                                            <input type="date" className="form-input" required
+                                                value={leaveForm.end_date}
+                                                onChange={e => setLeaveForm(p => ({ ...p, end_date: e.target.value }))} />
+                                        </div>
+                                    )}
                                 </div>
+
+                                <div style={{ marginBottom: 16 }}>
+                                    <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                                        <input 
+                                            type="checkbox" 
+                                            checked={leaveForm.is_half_day}
+                                            onChange={e => {
+                                                const checked = e.target.checked;
+                                                setLeaveForm(p => ({ 
+                                                    ...p, 
+                                                    is_half_day: checked,
+                                                    end_date: checked ? p.start_date : p.end_date 
+                                                }));
+                                            }}
+                                        />
+                                        <span style={{ fontSize: 14 }}>Apply for Half Day</span>
+                                    </label>
+                                </div>
+
+                                {leaveForm.is_half_day && (
+                                    <div className="form-group animate-in" style={{ marginBottom: 16 }}>
+                                        <label className="form-label">Half-Day Session</label>
+                                        <select className="form-select"
+                                            value={leaveForm.half_day_session}
+                                            onChange={e => setLeaveForm(p => ({ ...p, half_day_session: e.target.value }))}>
+                                            <option value="Morning">Morning (9:30 AM - 1:30 PM)</option>
+                                            <option value="Afternoon">Afternoon (2:30 PM - 6:30 PM)</option>
+                                        </select>
+                                    </div>
+                                )}
                                 <div className="form-group">
                                     <label className="form-label">Leave Type</label>
                                     <select className="form-select"

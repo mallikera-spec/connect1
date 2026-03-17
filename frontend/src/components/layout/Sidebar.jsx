@@ -6,7 +6,7 @@ import {
     Users, ShieldCheck, Key, Building2, Briefcase,
     FolderKanban, ListTodo, BarChart3, LogOut,
     UserCircle, Clock, Calendar, FileText, Sparkles, TrendingUp, Vote, Shield, Star, Award,
-    PieChart, CircleDollarSign, CreditCard, ChevronRight, ChevronLeft, Calculator, Layers
+    PieChart, CircleDollarSign, CreditCard, ChevronRight, ChevronLeft, Calculator, Layers, Wallet
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 const NAV = [
@@ -65,7 +65,6 @@ const NAV = [
         icon: FileText,
         sectionPerm: 'view_leads',
         items: [
-            { to: '/our-projects', label: 'Our Projects', icon: Briefcase, perm: 'view_leads', hideIfRole: ['HR Manager', 'hr'] },
             { to: '/sales-dashboard', label: 'Dashboard', icon: LayoutDashboard, perm: 'view_leads', hideIfRole: ['bdm', 'sales manager', 'HR Manager', 'hr'] },
             { to: '/leads', label: 'Leads', icon: TrendingUp, perm: 'view_leads', hideIfRole: ['HR Manager', 'hr'] },
             { to: '/follow-ups', label: 'Follow-ups', icon: Clock, perm: 'view_leads', hideIfRole: ['HR Manager', 'hr'] },
@@ -73,6 +72,7 @@ const NAV = [
             { to: '/bdm-performance', label: 'BDM Performance', icon: BarChart3, perm: 'view_leads', hideIfRole: ['HR Manager', 'hr'] },
             { to: '/clients', label: 'Clients', perm: 'view_clients', icon: Building2, hideIfRole: ['HR Manager', 'hr'] },
             { to: '/quotations', label: 'Quotation Builder', icon: Sparkles, perm: 'generate_quotations', hideIfRole: ['HR Manager', 'hr'] },
+            { to: '/our-projects', label: 'Our Projects', icon: Briefcase, perm: 'view_leads', hideIfRole: ['HR Manager', 'hr'] },
         ]
     },
     {
@@ -87,10 +87,11 @@ const NAV = [
         icon: CircleDollarSign,
         items: [
             { to: '/finance/overview', label: 'Overview', roles: ['admin', 'super_admin', 'director', 'investor'], icon: LayoutDashboard },
-            { to: '/finance/transactions', label: 'Transactions', roles: ['admin', 'super_admin', 'director', 'investor'], icon: TrendingUp },
+            { to: '/finance/transactions', label: 'Ledger', roles: ['admin', 'super_admin', 'director', 'investor'], icon: TrendingUp },
             { to: '/finance/settlements', label: 'Settlements', roles: ['admin', 'super_admin', 'director', 'investor'], icon: Calculator },
             { to: '/finance/assets', label: 'Assets', roles: ['admin', 'super_admin', 'director', 'investor'], icon: Briefcase },
             { to: '/finance/categories', label: 'Categories', roles: ['admin', 'super_admin', 'director', 'investor'], icon: Layers },
+            { to: '/finance/balance-payment', label: 'Balance Payment', roles: ['admin', 'super_admin', 'director', 'investor'], icon: Wallet },
         ]
     },
     {

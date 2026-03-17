@@ -52,8 +52,10 @@ export const formatPhoneNumber = (phone) => {
  * Converts a Date object to a local YYYY-MM-DD string.
  * Prevents UTC shifting issues that arise from new Date().toISOString().
  */
-export const toLocalISOString = (date) => {
-    if (!date || isNaN(date.getTime())) return '';
+export const toLocalISOString = (dateInput) => {
+    if (!dateInput) return '';
+    const date = dateInput instanceof Date ? dateInput : new Date(dateInput);
+    if (isNaN(date.getTime())) return '';
     const tzOffset = date.getTimezoneOffset() * 60000;
     const localISOTime = new Date(date.getTime() - tzOffset).toISOString().slice(0, 10);
     return localISOTime;

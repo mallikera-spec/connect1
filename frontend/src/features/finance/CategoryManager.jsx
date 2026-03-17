@@ -6,8 +6,14 @@ import {
 import { financeService } from './financeService';
 import DataTable from '../../components/common/DataTable';
 import toast from 'react-hot-toast';
+import { useAuth } from '../../context/AuthContext';
+
+const CFO_EMAILS = ['admin@argosmob.com', 'chandan@argosmob.com'];
 
 export default function CategoryManager() {
+    const { user } = useAuth();
+    const isCFO = useMemo(() => user && CFO_EMAILS.includes(user.email.toLowerCase()), [user]);
+
     const [categories, setCategories] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
@@ -131,13 +137,19 @@ export default function CategoryManager() {
             type: 'actions',
             render: (_, row) => (
                 <div className="action-btns">
-                    <button onClick={() => handleOpenModal(row)} title="Edit">
-                        <Edit size={16} />
-                    </button>
-                    {!row.is_default && (
-                        <button onClick={() => handleDelete(row.id)} title="Delete" className="text-red">
-                            <Trash2 size={16} />
-                        </button>
+                    {isCFO ? (
+                        <>
+                            <button onClick={() => handleOpenModal(row)} title="Edit">
+                                <Edit size={16} />
+                            </button>
+                            {!row.is_default && (
+                                <button onClick={() => handleDelete(row.id)} title="Delete" className="text-red">
+                                    <Trash2 size={16} />
+                                </button>
+                            )}
+                        </>
+                    ) : (
+                        <span style={{ fontSize: '11px', color: 'var(--text-dim)' }}>System Category</span>
                     )}
                 </div>
             )
@@ -151,9 +163,11 @@ export default function CategoryManager() {
                     <h1>Expense Categories</h1>
                     <p>Manage classification tags for business expenditure</p>
                 </div>
-                <button className="btn-primary" onClick={() => handleOpenModal()}>
-                    <Plus size={18} /> Add Category
-                </button>
+                {isCFO && (
+                    <button className="btn-primary" onClick={() => handleOpenModal()}>
+                        <Plus size={18} /> Add Category
+                    </button>
+                )}
             </header>
 
             <DataTable
@@ -166,7 +180,15 @@ export default function CategoryManager() {
             />
 
             {showModal && (
-                <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && setShowModal(false)}>
+                <div 
+                    className="modal-overlay" 
+                    onMouseDown={(e) => { e.currentTarget.dataset.mouseDownTarget = e.target === e.currentTarget; }}
+                    onMouseUp={(e) => {
+                        if (e.target === e.currentTarget && e.currentTarget.dataset.mouseDownTarget === "true") {
+                            setShowModal(false);
+                        }
+                    }}
+                >
                     <div className="modal modal-sm" style={{ maxWidth: '450px' }}>
                         <div className="modal-header">
                             <div>

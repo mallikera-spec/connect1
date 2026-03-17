@@ -128,25 +128,40 @@ const ensureUserBalances = async (userId) => {
     if (monthsToAccrue < 1) monthsToAccrue = 1;
     if (monthsToAccrue > 12) monthsToAccrue = 12;
 
+    // 2. Fetch all approved leave requests for this user in current FY
+    const { data: approvedLeaves } = await supabaseAdmin
+        .from('leave_requests')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('status', 'Approved')
+        .gte('start_date', fyStartDate.toISOString());
+
+    // Map used leaves by type
+    const usedMap = {};
+    (approvedLeaves || []).forEach(req => {
+        if (!req.leave_type_id) return;
+        const sd = new Date(req.start_date);
+        const ed = new Date(req.end_date);
+        let days = Math.ceil(Math.abs(ed - sd) / (1000 * 60 * 60 * 24)) + 1;
+        
+        // Handle half-day
+        if (req.is_half_day) {
+            days = 0.5;
+        }
+        
+        usedMap[req.leave_type_id] = (usedMap[req.leave_type_id] || 0) + days;
+    });
+
     const toInsert = [];
     const updates = [];
 
     (types || []).forEach(t => {
         let targetAccrued = 0;
         const existingRecord = existingMap.get(t.id);
-
-        // Check if we need to reset 'used' leaves (FY change detection)
-        let resetUsed = false;
-        if (existingRecord?.last_accrual_date) {
-            const lastAccrual = new Date(existingRecord.last_accrual_date);
-            if (lastAccrual < fyStartDate) {
-                resetUsed = true;
-            }
-        }
+        const currentUsed = usedMap[t.id] || 0;
 
         const monthlyRate = 1.5;
         targetAccrued = monthlyRate * monthsToAccrue;
-
         targetAccrued = parseFloat(targetAccrued.toFixed(2));
 
         if (!existingRecord) {
@@ -154,16 +169,13 @@ const ensureUserBalances = async (userId) => {
                 user_id: userId,
                 leave_type_id: t.id,
                 accrued: targetAccrued,
-                used: 0,
-                balance: targetAccrued,
+                used: currentUsed,
+                balance: targetAccrued - currentUsed,
                 last_accrual_date: now.toISOString().split('T')[0]
             });
         } else {
-            // Update existing if accrued is out of sync or FY reset triggered
-            const currentUsed = resetUsed ? 0 : parseFloat(existingRecord.used || 0);
             const currentAccrued = parseFloat(existingRecord.accrued);
-
-            if (currentAccrued !== targetAccrued || resetUsed) {
+            if (currentAccrued !== targetAccrued || parseFloat(existingRecord.used) !== currentUsed) {
                 updates.push(
                     supabaseAdmin.from('user_leave_balances')
                         .update({
@@ -206,7 +218,7 @@ export const syncAllBalances = async () => {
 // --- Leave Requests ---
 
 export const submitLeaveRequest = async (userId, payload) => {
-    const { start_date, end_date, type, leave_type_id, reason } = payload;
+    const { start_date, end_date, type, leave_type_id, reason, is_half_day, half_day_session } = payload;
 
     // 1. Ensure balances are initialized
     await ensureUserBalances(userId);
@@ -222,7 +234,8 @@ export const submitLeaveRequest = async (userId, payload) => {
 
         const sd = new Date(start_date);
         const ed = new Date(end_date);
-        const days = Math.ceil(Math.abs(ed - sd) / (1000 * 60 * 60 * 24)) + 1;
+        let days = Math.ceil(Math.abs(ed - sd) / (1000 * 60 * 60 * 24)) + 1;
+        if (is_half_day) days = 0.5;
 
         if (bal && bal.balance < days) {
             throw new Error(`Insufficient leave balance. Required: ${days}, Available: ${bal.balance}`);
@@ -231,7 +244,17 @@ export const submitLeaveRequest = async (userId, payload) => {
 
     const { data, error } = await supabaseAdmin
         .from('leave_requests')
-        .insert({ user_id: userId, start_date, end_date, type, leave_type_id, reason, status: 'Pending' })
+        .insert({ 
+            user_id: userId, 
+            start_date, 
+            end_date, 
+            type, 
+            leave_type_id, 
+            reason, 
+            status: 'Pending',
+            is_half_day: is_half_day || false,
+            half_day_session: half_day_session || null
+        })
         .select()
         .single();
     if (error) throw error;
@@ -308,28 +331,8 @@ export const updateLeaveStatus = async (id, status, adminId, adminComment) => {
         .single();
     if (error) throw error;
 
-    if (status === 'Approved' && data.leave_type_id) {
-        const sd = new Date(data.start_date);
-        const ed = new Date(data.end_date);
-        const days = Math.ceil(Math.abs(ed - sd) / (1000 * 60 * 60 * 24)) + 1;
-
-        const { data: bal } = await supabaseAdmin
-            .from('user_leave_balances')
-            .select('used, balance')
-            .eq('user_id', data.user_id)
-            .eq('leave_type_id', data.leave_type_id)
-            .single();
-
-        if (bal) {
-            await supabaseAdmin
-                .from('user_leave_balances')
-                .update({
-                    used: parseFloat(bal.used) + days,
-                    balance: parseFloat(bal.balance) - days
-                })
-                .eq('user_id', data.user_id)
-                .eq('leave_type_id', data.leave_type_id);
-        }
+    if (status === 'Approved') {
+        await ensureUserBalances(data.user_id);
     }
 
     try {
@@ -368,6 +371,48 @@ export const calculateAvailableLeaves = async (userId) => {
         used: totalUsed,
         balance: totalBalance,
         breakdown: balances || []
+    };
+};
+
+export const getAllLeaveBalances = async () => {
+    const { data: balances, error } = await supabaseAdmin
+        .from('user_leave_balances')
+        .select(`
+            *,
+            user:profiles(id, full_name, email),
+            leave_type:leave_types(id, name, is_paid)
+        `)
+        .order('user_id');
+
+    if (error) throw error;
+    return balances || [];
+};
+
+export const getLeaveBalanceHistory = async (balanceId) => {
+    // 1. Fetch balance summary
+    const { data: balance, error: balError } = await supabaseAdmin
+        .from('user_leave_balances')
+        .select(`
+            *,
+            user:profiles(id, full_name, email),
+            leave_type:leave_types(id, name, is_paid)
+        `)
+        .eq('id', balanceId)
+        .single();
+    if (balError) throw balError;
+
+    // 2. Fetch leave requests history for this user and leave type
+    const { data: history, error: histError } = await supabaseAdmin
+        .from('leave_requests')
+        .select('*')
+        .eq('user_id', balance.user_id)
+        .eq('leave_type_id', balance.leave_type_id)
+        .order('start_date', { ascending: false });
+    if (histError) throw histError;
+
+    return {
+        balance,
+        history: history || []
     };
 };
 
@@ -424,7 +469,8 @@ export const generateSalarySlip = async (userId, month, year, adminId) => {
 
     if (dailyRecords) {
         dailyRecords.forEach(r => {
-            if (r.status === 'Absent' && r.is_approved === false) {
+            if (r.status === 'Absent') {
+                // All Absents are treated as Unpaid Leave (full day deduction)
                 deductions += dailyWage;
                 absentDays++;
             } else if (r.status === 'Half Day') {
@@ -436,7 +482,7 @@ export const generateSalarySlip = async (userId, month, year, adminId) => {
 
     const { data: leaves } = await supabaseAdmin
         .from('leave_requests')
-        .select('start_date, end_date')
+        .select('start_date, end_date, is_half_day')
         .eq('user_id', userId)
         .eq('status', 'Approved')
         .eq('type', 'Unpaid Leave')
@@ -448,7 +494,12 @@ export const generateSalarySlip = async (userId, month, year, adminId) => {
         leaves.forEach(l => {
             const sd = new Date(l.start_date);
             const ed = new Date(l.end_date);
-            const diffDays = Math.ceil(Math.abs(ed - sd) / (1000 * 60 * 60 * 24)) + 1;
+            let diffDays = Math.ceil(Math.abs(ed - sd) / (1000 * 60 * 60 * 24)) + 1;
+            
+            if (l.is_half_day) {
+                diffDays = 0.5;
+            }
+            
             unpaidLeaveDays += diffDays;
             deductions += (diffDays * dailyWage);
         });
@@ -578,6 +629,228 @@ export const getAttendanceReport = async ({ userId, startDate, endDate, status }
     const profileMap = Object.fromEntries((profiles || []).map(p => [p.id, p]));
     return data.map(r => ({ ...r, user: profileMap[r.user_id] || null }));
 };
+
+// --- Attendance & Leave Global Calendar ---
+const PUBLIC_HOLIDAYS_2026 = {
+    '2026-01-26': 'Republic Day',
+    '2026-02-15': 'Mahashivratri',
+    '2026-03-05': 'Holi',
+    '2026-08-28': 'Raksha Bandhan',
+    '2026-10-02': 'Mahatma Gandhi Jayanti',
+    '2026-10-20': 'Dussehra',
+    '2026-11-10': 'Diwali-Balipratipada'
+};
+
+export const getCalendarConfigs = async (month, year) => {
+    const startDate = new Date(year, month - 1, 1).toISOString();
+    const endDate = new Date(year, month, 0).toISOString();
+
+    const { data, error } = await supabaseAdmin
+        .from('calendar_configs')
+        .select('*')
+        .gte('date', startDate.split('T')[0])
+        .lte('date', endDate.split('T')[0]);
+
+    if (error) throw error;
+    return data;
+};
+
+export const updateCalendarConfig = async (config) => {
+    const { date, type, label, created_by } = config;
+    const { data, error } = await supabaseAdmin
+        .from('calendar_configs')
+        .upsert({ date, type, label, created_by }, { onConflict: 'date' })
+        .select()
+        .single();
+
+    if (error) throw error;
+    return data;
+};
+
+export const getGlobalAttendanceCalendar = async (month, year, userId = null) => {
+    const startDate = new Date(year, month - 1, 1).toISOString();
+    const endDate = new Date(year, month, 0).toISOString();
+
+    // 1. Fetch profiles
+    let query = supabaseAdmin
+        .from('profiles')
+        .select('id, full_name, email, roles:user_roles(role:roles(name))');
+    
+    if (userId) {
+        query = query.eq('id', userId);
+    }
+
+    const { data: profiles, error: pError } = await query;
+    if (pError) throw pError;
+
+    // 2. Fetch all approved leave requests for the month
+    const { data: leaves, error: lError } = await supabaseAdmin
+        .from('leave_requests')
+        .select('user_id, start_date, end_date, status, is_half_day, half_day_session, leave_type:leave_types(name)')
+        .eq('status', 'Approved')
+        .gte('end_date', startDate)
+        .lte('start_date', endDate);
+    if (lError) throw lError;
+
+    // 3. Fetch all attendance records for the month with timestamps
+    const { data: attendance, error: aError } = await supabaseAdmin
+        .from('attendance')
+        .select('user_id, date, status, is_approved, check_in_time, check_out_time')
+        .gte('date', startDate)
+        .lte('date', endDate);
+    if (aError) throw aError;
+
+    // 4. Fetch dynamic calendar configs
+    const configs = await getCalendarConfigs(month, year);
+    const configMap = configs.reduce((acc, c) => ({ ...acc, [c.date]: c }), {});
+
+    const daysInMonth = new Date(year, month, 0).getDate();
+    const calendar = profiles.map(profile => {
+        const userDays = {};
+
+        for (let d = 1; d <= daysInMonth; d++) {
+            const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+            
+            // Priority 1: Dynamic Database Config
+            const dbConfig = configMap[dateStr];
+            if (dbConfig) {
+                if (dbConfig.type === 'Working' || dbConfig.type === 'WFH') {
+                    // Fall through to occupancy check, but tag as WFH if no attendance record
+                    if (dbConfig.type === 'WFH') {
+                        // We'll let subsequent checks run, but store WFH as fallback
+                        // (handled after attendance check below)
+                    }
+                } else {
+                    userDays[d] = {
+                        type: 'Off',
+                        status: dbConfig.type,
+                        label: dbConfig.label
+                    };
+                    continue;
+                }
+            }
+
+            // Priority 2: Check Attendance Record
+            const att = attendance.find(a => a.user_id === profile.id && (typeof a.date === 'string' ? a.date.split('T')[0] : a.date) === dateStr);
+
+            // Priority 3: Check Approved Leaves
+            const leave = leaves.find(l => {
+                const start = new Date(l.start_date).toISOString().split('T')[0];
+                const end = new Date(l.end_date).toISOString().split('T')[0];
+                return l.user_id === profile.id && dateStr >= start && dateStr <= end;
+            });
+
+            // If half-day leave exists, it wins over or merges with attendance
+            if (leave && leave.is_half_day) {
+                userDays[d] = {
+                    type: att ? 'Attendance' : 'Leave',
+                    status: att ? 'Half Day' : 'Approved Leave',
+                    is_half_day: true,
+                    leave_type: leave.leave_type?.name,
+                    session: leave.half_day_session,
+                    check_in_time: att?.check_in_time || null,
+                    check_out_time: att?.check_out_time || null
+                };
+                continue;
+            }
+
+            if (att) {
+                userDays[d] = {
+                    type: 'Attendance',
+                    status: att.status,
+                    is_approved: att.is_approved,
+                    check_in_time: att.check_in_time,
+                    check_out_time: att.check_out_time
+                };
+                continue;
+            }
+
+            if (leave) {
+                userDays[d] = {
+                    type: 'Leave',
+                    status: 'Approved Leave',
+                    leave_type: leave.leave_type?.name,
+                    is_half_day: leave.is_half_day,
+                    session: leave.half_day_session
+                };
+                continue;
+            }
+
+            // Priority 4: Check for Default Holidays and Week Offs
+            const currentDayDate = new Date(year, month - 1, d);
+            const holidayName = PUBLIC_HOLIDAYS_2026[dateStr];
+            
+            if (holidayName) {
+                userDays[d] = {
+                    type: 'Off',
+                    status: 'Holiday',
+                    label: holidayName
+                };
+                continue;
+            }
+
+            const dayOfWeek = currentDayDate.getDay(); // 0 = Sunday, 6 = Saturday
+            if (dayOfWeek === 0) {
+                userDays[d] = {
+                    type: 'Off',
+                    status: 'Week Off',
+                    label: 'Sunday'
+                };
+                continue;
+            }
+
+            if (dayOfWeek === 6) {
+                // 2nd Saturday: 8-14, 4th Saturday: 22-28
+                const isSecondSat = d >= 8 && d <= 14;
+                const isFourthSat = d >= 22 && d <= 28;
+                if (isSecondSat || isFourthSat) {
+                    userDays[d] = {
+                        type: 'Off',
+                        status: 'Week Off',
+                        label: isSecondSat ? '2nd Saturday' : '4th Saturday'
+                    };
+                    continue;
+                }
+            }
+
+            // Priority 5: WFH fallback (if declared as WFH day but no attendance record)
+            if (dbConfig?.type === 'WFH') {
+                userDays[d] = {
+                    type: 'WFH',
+                    status: 'WFH',
+                    label: dbConfig.label || 'Work From Home'
+                };
+                continue;
+            }
+
+            // Priority 6: Default to Absent (only for past days)
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            if (currentDayDate < today) {
+                userDays[d] = {
+                    type: 'Absent',
+                    status: 'Absent'
+                };
+            } else {
+                userDays[d] = null; // Future or current day with no record yet
+            }
+        }
+
+        return {
+            user: {
+                id: profile.id,
+                full_name: profile.full_name,
+                email: profile.email,
+                role: profile.roles?.[0]?.role?.name || '---'
+            },
+            days: userDays
+        };
+    });
+
+    return calendar;
+};
+
 // --- Leave Report ---
 export const getLeaveReport = async ({ userId, startDate, endDate, status }) => {
     let query = supabaseAdmin

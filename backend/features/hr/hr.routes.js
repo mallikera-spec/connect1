@@ -12,6 +12,7 @@ router.use(authMiddleware);
 router.post('/attendance/clock-in', hrController.clockIn);
 router.post('/attendance/clock-out', hrController.clockOut);
 router.get('/attendance/my', hrController.getMyAttendance);
+router.get('/attendance/my-calendar', hrController.getMyAttendanceCalendar);
 router.get('/attendance/report', hrController.getAttendanceReport);
 
 // Admin / Manager Attendance Management
@@ -23,6 +24,10 @@ router.post('/leaves', hrController.submitLeaveRequest);
 router.get('/leaves/my', hrController.getMyLeaves);
 router.get('/leaves/types', hrController.getLeaveTypes);
 router.get('/leaves/balance', hrController.getLeaveBalance);
+router.get('/leaves/balances', requirePermission('view_employees'), hrController.getAllLeaveBalances);
+router.post('/leaves/sync', requirePermission('view_employees'), hrController.syncAllLeaveBalances);
+router.get('/leaves/balances/:id/history', requirePermission('view_employees'), hrController.getLeaveBalanceHistory);
+router.get('/attendance/calendar', requirePermission('view_employees'), hrController.getGlobalAttendanceCalendar);
 router.get('/leaves/report', hrController.getLeaveReport);
 
 // Admin / Manager Leaves Management
@@ -35,5 +40,9 @@ router.get('/payroll/my', hrController.getMySalarySlips);
 // Admin Payroll Management
 router.post('/payroll/generate', requirePermission('view_employees'), hrController.generateSalarySlips);
 router.get('/payroll/all', requirePermission('view_employees'), hrController.getAllSalarySlips);
+
+// Calendar Config
+router.get('/calendar-config', hrController.getCalendarConfigs);
+router.post('/calendar-config', requirePermission('view_employees'), hrController.updateCalendarConfig);
 
 export default router;

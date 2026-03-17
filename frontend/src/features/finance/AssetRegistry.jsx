@@ -8,8 +8,14 @@ import DataTable from '../../components/common/DataTable';
 import DateRangeFilter from '../../components/common/DateRangeFilter';
 import { formatDate, formatCurrency, toLocalISOString } from '../../utils/formatters';
 import toast from 'react-hot-toast';
+import { useAuth } from '../../context/AuthContext';
+
+const CFO_EMAILS = ['admin@argosmob.com', 'chandan@argosmob.com'];
 
 export default function AssetRegistry() {
+    const { user } = useAuth();
+    const isCFO = useMemo(() => user && CFO_EMAILS.includes(user.email.toLowerCase()), [user]);
+
     const [assets, setAssets] = useState([]);
     const [entities, setEntities] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -63,9 +69,13 @@ export default function AssetRegistry() {
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-            const { success } = await financeService.createAsset(modalData);
-            if (success) {
-                toast.success('Asset registered');
+            const isEdit = !!modalData.id;
+            const res = isEdit 
+                ? await financeService.updateAsset(modalData.id, modalData)
+                : await financeService.createAsset(modalData);
+                
+            if (res.success) {
+                toast.success(isEdit ? 'Asset updated' : 'Asset registered');
                 setShowModal(false);
                 fetchAssets();
                 setModalData({
@@ -80,6 +90,19 @@ export default function AssetRegistry() {
             }
         } catch (err) {
             toast.error('Failed to save asset');
+        }
+    };
+
+    const handleDelete = async (id) => {
+        if (!window.confirm('Are you sure you want to delete this asset?')) return;
+        try {
+            const { success } = await financeService.deleteAsset(id);
+            if (success) {
+                toast.success('Asset deleted');
+                fetchAssets();
+            }
+        } catch (err) {
+            toast.error('Failed to delete asset');
         }
     };
 
@@ -120,8 +143,30 @@ export default function AssetRegistry() {
                     {val}
                 </span>
             )
+        },
+        {
+            key: 'actions',
+            label: 'Actions',
+            align: 'center',
+            width: '140px',
+            render: (_, row) => (
+                <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+                    {isCFO ? (
+                        <>
+                            <button className="btn-icon btn-sm" title="Edit" onClick={(e) => { e.stopPropagation(); setModalData(row); setShowModal(true); }}>
+                                <Edit size={14} />
+                            </button>
+                            <button className="btn-icon btn-sm" title="Delete" onClick={(e) => { e.stopPropagation(); handleDelete(row.id); }}>
+                                <Trash2 size={14} style={{ color: 'var(--danger)' }} />
+                            </button>
+                        </>
+                    ) : (
+                        <span style={{ fontSize: '11px', color: 'var(--text-dim)' }}>View Only</span>
+                    )}
+                </div>
+            )
         }
-    ], []);
+    ], [isCFO]);
 
     return (
         <div className="asset-registry">
@@ -136,9 +181,22 @@ export default function AssetRegistry() {
                         onChange={setDateRange} 
                         onApply={handleApplyFilter} 
                     />
-                    <button className="btn-primary" onClick={() => setShowModal(true)}>
-                        <Plus size={18} /> Register Asset
-                    </button>
+                    {isCFO && (
+                        <button className="btn-primary" onClick={() => {
+                            setModalData({
+                                name: '',
+                                type: 'Equipment',
+                                cost: '',
+                                purchase_date: toLocalISOString(new Date()),
+                                entity_id: '',
+                                description: '',
+                                status: 'Active'
+                            });
+                            setShowModal(true);
+                        }}>
+                            <Plus size={18} /> Register Asset
+                        </button>
+                    )}
                 </div>
             </header>
 
@@ -152,13 +210,21 @@ export default function AssetRegistry() {
             />
 
             {showModal && (
-                <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && setShowModal(false)}>
+                <div 
+                    className="modal-overlay" 
+                    onMouseDown={(e) => { e.currentTarget.dataset.mouseDownTarget = e.target === e.currentTarget; }}
+                    onMouseUp={(e) => {
+                        if (e.target === e.currentTarget && e.currentTarget.dataset.mouseDownTarget === "true") {
+                            setShowModal(false);
+                        }
+                    }}
+                >
                     <div className="modal modal-md slideUpSheet">
                         <div className="modal-header">
                             <div>
-                                <h2 className="modal-title">Register New Asset</h2>
+                                <h2 className="modal-title">{modalData.id ? 'Edit Asset' : 'Register New Asset'}</h2>
                                 <p style={{ fontSize: '12px', color: 'var(--text-dim)' }}>
-                                    Record a new capital asset or equipment purchase.
+                                    {modalData.id ? 'Modify details of this capital asset.' : 'Record a new capital asset or equipment purchase.'}
                                 </p>
                             </div>
                             <button className="btn-icon" onClick={() => setShowModal(false)}>
@@ -263,7 +329,7 @@ export default function AssetRegistry() {
                                     Cancel
                                 </button>
                                 <button type="submit" className="btn btn-primary">
-                                    <Save size={18} /> Register Asset
+                                    <Save size={18} /> {modalData.id ? 'Save Changes' : 'Register Asset'}
                                 </button>
                             </div>
                         </form>

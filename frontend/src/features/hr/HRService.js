@@ -48,6 +48,22 @@ export const HRService = {
         const response = await hrApi.get('/hr/attendance/report', { params });
         return response.data;
     },
+    getGlobalAttendanceCalendar: async (month, year) => {
+        const response = await hrApi.get('/hr/attendance/calendar', { params: { month, year } });
+        return response.data;
+    },
+    getMyAttendanceCalendar: async (month, year) => {
+        const response = await hrApi.get('/hr/attendance/my-calendar', { params: { month, year } });
+        return response.data;
+    },
+    getCalendarConfigs: async (month, year) => {
+        const response = await hrApi.get('/hr/calendar-config', { params: { month, year } });
+        return response.data;
+    },
+    updateCalendarConfig: async (data) => {
+        const response = await hrApi.post('/hr/calendar-config', data);
+        return response.data;
+    },
 
     // --- Leaves ---
     submitLeaveRequest: async (data) => {
@@ -76,6 +92,14 @@ export const HRService = {
     },
     getLeaveReport: async (params) => {
         const response = await hrApi.get('/hr/leaves/report', { params });
+        return response.data;
+    },
+    getAllLeaveBalances: async () => {
+        const response = await hrApi.get('/hr/leaves/balances');
+        return response.data;
+    },
+    getLeaveBalanceHistory: async (id) => {
+        const response = await hrApi.get(`/hr/leaves/balances/${id}/history`);
         return response.data;
     },
     syncAllLeaveBalances: async () => {

@@ -73,6 +73,16 @@ export const financeService = {
         const response = await api.post('/finance/assets', data);
         return response.data;
     },
+    
+    updateAsset: async (id, data) => {
+        const response = await api.put(`/finance/assets/${id}`, data);
+        return response.data;
+    },
+    
+    deleteAsset: async (id) => {
+        const response = await api.delete(`/finance/assets/${id}`);
+        return response.data;
+    },
 
     calculateSettlement: async (startDate, endDate) => {
         const response = await api.get('/finance/settlements/calculate', {
@@ -98,6 +108,11 @@ export const financeService = {
 
     deleteCategory: async (id) => {
         const response = await api.delete(`/finance/categories/${id}`);
+        return response.data;
+    },
+
+    getBalancePayments: async () => {
+        const response = await api.get('/finance/balance-payments');
         return response.data;
     }
 };

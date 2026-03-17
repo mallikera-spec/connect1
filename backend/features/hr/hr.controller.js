@@ -109,6 +109,53 @@ export const getLeaveBalance = async (req, res, next) => {
     }
 };
 
+export const getAllLeaveBalances = async (req, res, next) => {
+    try {
+        const data = await hrService.getAllLeaveBalances();
+        res.json({ success: true, data });
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const syncAllLeaveBalances = async (req, res, next) => {
+    try {
+        const data = await hrService.syncAllBalances();
+        res.json({ success: true, data });
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const getGlobalAttendanceCalendar = async (req, res, next) => {
+    try {
+        const { month, year } = req.query;
+        const data = await hrService.getGlobalAttendanceCalendar(parseInt(month), parseInt(year));
+        res.json({ success: true, data });
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const getMyAttendanceCalendar = async (req, res, next) => {
+    try {
+        const { month, year } = req.query;
+        const data = await hrService.getGlobalAttendanceCalendar(parseInt(month), parseInt(year), req.user.id);
+        res.json({ success: true, data });
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const getLeaveBalanceHistory = async (req, res, next) => {
+    try {
+        const data = await hrService.getLeaveBalanceHistory(req.params.id);
+        res.json({ success: true, data });
+    } catch (error) {
+        next(error);
+    }
+};
+
 // --- Payroll ---
 export const generateSalarySlips = async (req, res, next) => {
     try {
@@ -152,6 +199,24 @@ export const getLeaveReport = async (req, res, next) => {
     try {
         const { userId, startDate, endDate, status } = req.query;
         const data = await hrService.getLeaveReport({ userId, startDate, endDate, status });
+        res.json({ success: true, data });
+    } catch (error) {
+        next(error);
+    }
+};
+export const getCalendarConfigs = async (req, res, next) => {
+    try {
+        const { month, year } = req.query;
+        const data = await hrService.getCalendarConfigs(parseInt(month), parseInt(year));
+        res.json({ success: true, data });
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const updateCalendarConfig = async (req, res, next) => {
+    try {
+        const data = await hrService.updateCalendarConfig({ ...req.body, created_by: req.user.id });
         res.json({ success: true, data });
     } catch (error) {
         next(error);

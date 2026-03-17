@@ -139,42 +139,36 @@ const DateRangeFilter = ({ value, onChange, onApply }) => {
                 .premium-date-filter {
                     display: flex;
                     align-items: center;
-                    gap: 12px;
+                    gap: 8px;
                 }
-
                 .filter-inner {
                     display: flex;
                     align-items: center;
                     background: white;
                     border: 1.5px solid #e2e8f0;
-                    border-radius: 14px;
-                    padding: 4px 12px;
-                    height: 48px;
-                    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+                    border-radius: 12px;
+                    padding: 0 12px;
+                    height: 42px;
+                    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
                     transition: all 0.2s ease;
                 }
-
                 .filter-inner:hover {
                     border-color: #cbd5e1;
-                    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.08);
                 }
-
                 .main-icon {
                     display: flex;
                     align-items: center;
                     justify-content: center;
-                    margin-right: 12px;
-                    background: #f5f3ff;
-                    padding: 6px;
-                    border-radius: 8px;
+                    margin-right: 10px;
+                    color: #7c3aed;
                 }
-
                 .preset-selector {
                     position: relative;
-                    min-width: 140px;
+                    min-width: 120px;
                     cursor: pointer;
+                    display: flex;
+                    align-items: center;
                 }
-
                 .preset-selector select {
                     position: absolute;
                     inset: 0;
@@ -184,78 +178,88 @@ const DateRangeFilter = ({ value, onChange, onApply }) => {
                     cursor: pointer;
                     z-index: 2;
                 }
-
                 .preset-label {
                     display: flex;
                     align-items: center;
-                    gap: 8px;
-                    font-size: 14px;
+                    gap: 6px;
+                    font-size: 13px;
                     font-weight: 600;
-                    color: #1e293b;
+                    color: #475569;
+                    white-space: nowrap;
                 }
-
                 .divider {
                     width: 1px;
-                    height: 24px;
+                    height: 20px;
                     background: #e2e8f0;
-                    margin: 0 16px;
+                    margin: 0 12px;
                 }
-
                 .range-inputs {
                     display: flex;
                     align-items: center;
-                    gap: 12px;
+                    gap: 8px;
                 }
-
                 .date-input-wrap {
                     position: relative;
                     display: flex;
                     align-items: center;
                 }
-
                 .date-input-wrap input {
                     background: transparent;
                     border: none;
-                    font-size: 14px;
-                    font-weight: 500;
-                    color: #475569;
-                    padding: 4px 32px 4px 4px;
-                    width: 125px;
+                    font-size: 13px;
+                    font-weight: 600;
+                    color: #1e293b;
+                    padding: 4px 0;
+                    width: 105px;
                     cursor: pointer;
                     outline: none;
+                    font-family: inherit;
                 }
-
-                .field-icon {
+                /* Hide native calendar icon */
+                .date-input-wrap input::-webkit-calendar-picker-indicator {
                     position: absolute;
-                    right: 4px;
-                    color: #94a3b8;
-                    pointer-events: none;
+                    left: 0;
+                    top: 0;
+                    width: 100%;
+                    height: 100%;
+                    margin: 0;
+                    padding: 0;
+                    cursor: pointer;
+                    opacity: 0;
                 }
-
+                .field-icon {
+                    color: #94a3b8;
+                    margin-left: 4px;
+                }
                 .to-text {
                     font-size: 12px;
-                    font-weight: 700;
+                    font-weight: 600;
                     color: #94a3b8;
-                    text-transform: lowercase;
+                    margin: 0 4px;
                 }
-
                 .apply-action {
-                    height: 44px;
-                    padding: 0 20px !important;
-                    border-radius: 12px !important;
+                    height: 42px;
+                    padding: 0 16px !important;
+                    border-radius: 10px !important;
                     font-weight: 700 !important;
-                    text-transform: none !important;
-                    letter-spacing: 0 !important;
+                    font-size: 13px !important;
+                    background: #7c3aed !important;
+                    border: none !important;
+                    color: white !important;
+                    cursor: pointer;
+                }
+                .apply-action:hover {
+                    background: #6d28d9 !important;
                 }
 
-                /* Dark mode support logic (optional if used) */
                 [data-theme='dark'] .filter-inner {
                     background: #1e1e2d;
                     border-color: #2e2e42;
                 }
                 [data-theme='dark'] .preset-label { color: #e2e8f0; }
                 [data-theme='dark'] .divider { background: #2e2e42; }
-                [data-theme='dark'] .date-input-wrap input { color: #94a3b8; }
+                [data-theme='dark'] .date-input-wrap input { color: #f8fafc; }
+                [data-theme='dark'] .filter-inner:hover { border-color: #4b5563; }
             `}</style>
         </div>
     );

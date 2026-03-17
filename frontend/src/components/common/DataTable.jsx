@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
     Download, FileText, ChevronUp, ChevronDown,
     ChevronLeft, ChevronRight, Settings, Copy, Check, MoreVertical,
@@ -41,6 +41,7 @@ const DataTable = ({
     const [visibleColumns, setVisibleColumns] = useState(columns.map(c => c.key));
     const [showColumnToggle, setShowColumnToggle] = useState(false);
     const [copiedKey, setCopiedKey] = useState(null);
+    const columnToggleRef = useRef(null);
 
     const isServerSide = externalCurrentPage || onPageChange;
     const sortConfig = externalSortConfig || internalSortConfig;
@@ -52,6 +53,19 @@ const DataTable = ({
     useEffect(() => {
         setVisibleColumns(columns.map(c => c.key));
     }, [columns.length]);
+    
+    // Close column toggle on outside click
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (columnToggleRef.current && !columnToggleRef.current.contains(event.target)) {
+                setShowColumnToggle(false);
+            }
+        };
+        if (showColumnToggle) {
+            document.addEventListener('mousedown', handleClickOutside);
+        }
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [showColumnToggle]);
 
     // Synchronize local display search with external search term
     useEffect(() => {
@@ -251,7 +265,7 @@ const DataTable = ({
                     <button className="btn btn-outline btn-sm" onClick={handleExportPDF}>
                         <FileText size={14} /> PDF
                     </button>
-                    <div style={{ position: 'relative' }}>
+                    <div style={{ position: 'relative' }} ref={columnToggleRef}>
                         <button className="btn btn-ghost btn-sm" onClick={() => setShowColumnToggle(!showColumnToggle)}>
                             <Settings size={14} /> Columns
                         </button>
@@ -337,7 +351,7 @@ const DataTable = ({
                                                     className={col.key === 'actions' ? 'sticky-col sticky-right' : ''}
                                                     style={{ textAlign: getAlignment(col), width: col.width || 'auto' }}>
                                                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: getAlignment(col) === 'right' ? 'flex-end' : getAlignment(col) === 'center' ? 'center' : 'flex-start', gap: '8px' }}>
-                                                        <div className="cell-content" title={val}>
+                                                        <div className="cell-content" title={val != null && val !== false ? String(val) : undefined}>
                                                             {col.render ? col.render(val, item, realIndex) : (val || '--')}
                                                         </div>
                                                         {col.copyable && val && (

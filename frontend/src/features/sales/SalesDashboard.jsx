@@ -68,6 +68,18 @@ export default function SalesDashboard() {
     };
 
     const handleStatClick = (filterType, filterValue) => {
+        if (filterType === 'status' && (filterValue === 'Won' || filterValue === 'won')) {
+            // Navigate to projects page with acquisition date filters
+            navigate(`/projects`, { 
+                state: { 
+                    acquisitionStartDate: dateRange.startDate,
+                    acquisitionEndDate: dateRange.endDate,
+                    status: '' // We want to show all projects acquired in this period regardless of current internal status
+                } 
+            });
+            return;
+        }
+
         // Navigate to leads page with filters
         const params = new URLSearchParams();
         if (filterType === 'status') params.append('status', filterValue);

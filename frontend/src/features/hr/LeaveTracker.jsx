@@ -203,12 +203,29 @@ export default function LeaveTracker() {
                     {
                         label: 'To Date',
                         key: 'end_date',
-                        render: (val) => new Date(val).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })
+                        render: (val, record) => record.is_half_day ? '—' : new Date(val).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })
+                    },
+                    {
+                        label: 'Duration',
+                        key: 'is_half_day',
+                        sortable: false,
+                        render: (val, record) => val
+                            ? (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                    <span style={{ background: 'rgba(245,158,11,0.15)', color: '#f59e0b', border: '1px solid rgba(245,158,11,0.3)', borderRadius: 4, padding: '2px 8px', fontSize: 11, fontWeight: 700, display: 'inline-block' }}>
+                                        Half Day
+                                    </span>
+                                    {record.half_day_session && <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>{record.half_day_session}</span>}
+                                </div>
+                            )
+                            : <span style={{ background: 'rgba(16,185,129,0.1)', color: '#10b981', border: '1px solid rgba(16,185,129,0.2)', borderRadius: 4, padding: '2px 8px', fontSize: 11, fontWeight: 700, display: 'inline-block' }}>Full Day</span>
                     },
                     {
                         label: 'Days',
                         key: 'id',
-                        render: (_, record) => Math.ceil(Math.abs(new Date(record.end_date) - new Date(record.start_date)) / (1000 * 60 * 60 * 24)) + 1
+                        render: (_, record) => record.is_half_day
+                            ? <strong style={{ color: '#f59e0b' }}>0.5</strong>
+                            : <strong>{Math.ceil(Math.abs(new Date(record.end_date) - new Date(record.start_date)) / (1000 * 60 * 60 * 24)) + 1}</strong>
                     },
                     ...(isAdminOrHR ? [{
                         label: 'Employee',

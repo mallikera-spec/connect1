@@ -8,8 +8,14 @@ import { financeService } from './financeService';
 import DateRangeFilter from '../../components/common/DateRangeFilter';
 import { toLocalISOString } from '../../utils/formatters';
 import toast from 'react-hot-toast';
+import { useAuth } from '../../context/AuthContext';
+
+const CFO_EMAILS = ['admin@argosmob.com', 'chandan@argosmob.com'];
 
 export default function PartnerSettlements() {
+    const { user } = useAuth();
+    const isCFO = React.useMemo(() => user && CFO_EMAILS.includes(user.email.toLowerCase()), [user]);
+
     const [loading, setLoading] = useState(false);
     const [dateRange, setDateRange] = useState({
         start: toLocalISOString(new Date(new Date().getFullYear(), new Date().getMonth(), 1)),
@@ -104,9 +110,11 @@ export default function PartnerSettlements() {
                                         </div>
                                     ))}
                                 </div>
-                                <button className="btn-success">
-                                    <CheckCircle2 size={18} /> Commit Settlement
-                                </button>
+                                {isCFO && (
+                                    <button className="btn-success">
+                                        <CheckCircle2 size={18} /> Commit Settlement
+                                    </button>
+                                )}
                             </div>
                         </div>
                     ) : (

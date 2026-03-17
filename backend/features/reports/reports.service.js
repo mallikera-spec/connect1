@@ -620,9 +620,23 @@ export const getEmployeeOverview = async ({ startDate, endDate, userId, roles = 
             leadQuery = leadQuery.lte('created_at', end);
         }
 
-        const fetchLeads = async () => {
-            const { data: leadsData } = await leadQuery;
-            (leadsData || []).forEach(l => {
+        let projectQuery = supabaseAdmin
+            .from('projects')
+            .select(`
+                deal_value, 
+                acquisition_date,
+                client:clients!inner(lead:leads!inner(assigned_agent_id))
+            `);
+        
+        if (startDate) projectQuery = projectQuery.gte('acquisition_date', startDate);
+        if (endDate) projectQuery = projectQuery.lte('acquisition_date', endDate);
+
+        const fetchSalesData = async () => {
+            const [leadsRes, projectsRes] = await Promise.all([leadQuery, projectQuery]);
+            const leadsData = leadsRes.data || [];
+            const projectsData = projectsRes.data || [];
+
+            leadsData.forEach(l => {
                 if (l.assigned_agent_id && userMetrics[l.assigned_agent_id]) {
                     const m = userMetrics[l.assigned_agent_id];
                     const s = m.sales_stats;
@@ -630,10 +644,7 @@ export const getEmployeeOverview = async ({ startDate, endDate, userId, roles = 
                     const val = parseFloat(l.deal_value) || 0;
                     s.total_leads++;
                     const status = String(l.status || '').toLowerCase();
-                    if (status === 'won') {
-                        s.won_count++;
-                        s.won_value += val;
-                    } else if (['proposal', 'proposal sent', 'meeting', 'meeting scheduled', 'negotiation', 'qualified'].includes(status)) {
+                    if (['proposal', 'proposal sent', 'meeting', 'meeting scheduled', 'negotiation', 'qualified'].includes(status)) {
                         s.pipeline_value += val;
                     }
                     if (['proposal', 'proposal sent', 'meeting', 'meeting scheduled', 'negotiation', 'won'].includes(status)) {
@@ -641,8 +652,19 @@ export const getEmployeeOverview = async ({ startDate, endDate, userId, roles = 
                     }
                 }
             });
+
+            projectsData.forEach(p => {
+                const agentId = p.client?.lead?.assigned_agent_id;
+                if (agentId && userMetrics[agentId]) {
+                    const s = userMetrics[agentId].sales_stats;
+                    if (!s) return;
+                    const val = parseFloat(p.deal_value) || 0;
+                    s.won_count++;
+                    s.won_value += val;
+                }
+            });
         };
-        await fetchLeads();
+        await fetchSalesData();
     }
 
     Object.values(userMetrics).forEach(u => {

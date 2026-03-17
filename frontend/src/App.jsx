@@ -47,10 +47,12 @@ import DeviceGuard from './components/DeviceGuard'
 
 import SettingsPage from './features/settings/SettingsPage'
 import FinanceDashboard from './features/finance/FinanceDashboard'
+import FinanceOverview from './features/finance/FinanceOverview'
 import FinanceTransactions from './features/finance/FinanceTransactions'
 import PartnerSettlements from './features/finance/PartnerSettlements'
 import AssetRegistry from './features/finance/AssetRegistry'
 import CategoryManager from './features/finance/CategoryManager'
+import BalancePayment from './features/finance/BalancePayment'
 
 function AdminLayout({ children }) {
   return (
@@ -76,11 +78,12 @@ export default function App() {
       <Route path="/settings" element={<AdminLayout><SettingsPage /></AdminLayout>} />
 
       {/* Finance routes */}
-      <Route path="/finance/overview" element={<AdminLayout><FinanceDashboard /></AdminLayout>} />
+      <Route path="/finance/overview" element={<AdminLayout><FinanceOverview /></AdminLayout>} />
       <Route path="/finance/transactions" element={<AdminLayout><FinanceTransactions /></AdminLayout>} />
       <Route path="/finance/settlements" element={<AdminLayout><PartnerSettlements /></AdminLayout>} />
       <Route path="/finance/assets" element={<AdminLayout><AssetRegistry /></AdminLayout>} />
       <Route path="/finance/categories" element={<AdminLayout><CategoryManager /></AdminLayout>} />
+      <Route path="/finance/balance-payment" element={<AdminLayout><BalancePayment /></AdminLayout>} />
 
       <Route path="/profile/:userId?" element={<AdminLayout><ProfilePage /></AdminLayout>} />
       <Route path="/polls" element={<AdminLayout><PollsPage /></AdminLayout>} />

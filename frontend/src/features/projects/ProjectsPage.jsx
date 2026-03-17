@@ -6,7 +6,8 @@ import toast from 'react-hot-toast'
 import { useAuth } from '../../context/AuthContext'
 import DataTable from '../../components/common/DataTable'
 import ProjectDetailsModal from './ProjectDetailsModal'
-import { formatDate, formatCurrency } from '../../utils/formatters'
+import { formatDate, formatCurrency, toLocalISOString } from '../../utils/formatters'
+import DateRangeFilter from '../../components/common/DateRangeFilter'
 
 export default function ProjectsPage() {
     const { user, hasPermission, hasRole } = useAuth()
@@ -19,6 +20,10 @@ export default function ProjectsPage() {
     const [modal, setModal] = useState(null)
     const [selected, setSelected] = useState(null)
     const [filters, setFilters] = useState({ status: '' })
+    const [dateRange, setDateRange] = useState({
+        start: '2020-01-01',
+        end: toLocalISOString(new Date())
+    })
     const [form, setForm] = useState({
         name: '',
         description: '',
@@ -72,9 +77,23 @@ export default function ProjectsPage() {
     useEffect(() => {
         if (location.state) {
             const params = {}
-            if (location.state.startDate) params.startDate = location.state.startDate
-            if (location.state.endDate) params.endDate = location.state.endDate
-            if (location.state.status) {
+            if (location.state.acquisitionStartDate && location.state.acquisitionEndDate) {
+                params.acquisitionStartDate = location.state.acquisitionStartDate;
+                params.acquisitionEndDate = location.state.acquisitionEndDate;
+                setDateRange({
+                    start: location.state.acquisitionStartDate,
+                    end: location.state.acquisitionEndDate
+                });
+            } else if (location.state.startDate && location.state.endDate) {
+                // Fallback to startDate if acquisitionStartDate is not provided
+                params.acquisitionStartDate = location.state.startDate;
+                params.acquisitionEndDate = location.state.endDate;
+                setDateRange({
+                    start: location.state.startDate,
+                    end: location.state.endDate
+                });
+            }
+            if (location.state.status !== undefined) {
                 params.status = location.state.status
                 setFilters({ status: location.state.status })
             }
@@ -261,10 +280,27 @@ export default function ProjectsPage() {
                     <p>Standardized overview of all ongoing and planned projects</p>
                 </div>
                 <div className="header-actions">
+                    <DateRangeFilter 
+                        value={dateRange} 
+                        onChange={setDateRange} 
+                        onApply={() => load({ 
+                            ...filters, 
+                            acquisitionStartDate: dateRange.start, 
+                            acquisitionEndDate: dateRange.end 
+                        })} 
+                    />
                     <select
                         className="form-select filter-select"
                         value={filters.status}
-                        onChange={(e) => { setFilters(p => ({ ...p, status: e.target.value })); load({ status: e.target.value }); }}
+                        onChange={(e) => { 
+                            const newStatus = e.target.value;
+                            setFilters(p => ({ ...p, status: newStatus })); 
+                            load({ 
+                                status: newStatus,
+                                acquisitionStartDate: dateRange.start,
+                                acquisitionEndDate: dateRange.end
+                            }); 
+                        }}
                     >
                         <option value="">All Statuses</option>
                         {Object.entries(PROJECT_STATUS).map(([key, s]) => <option key={key} value={key}>{s.label}</option>)}

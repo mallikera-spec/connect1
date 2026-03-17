@@ -111,6 +111,24 @@ export const createAsset = async (req, res) => {
     }
 };
 
+export const updateAsset = async (req, res) => {
+    try {
+        const asset = await financeService.updateAsset(req.params.id, req.body);
+        res.json({ success: true, data: asset });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+};
+
+export const deleteAsset = async (req, res) => {
+    try {
+        await financeService.deleteAsset(req.params.id);
+        res.json({ success: true, message: 'Asset deleted successfully' });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+};
+
 export const listEntities = async (req, res) => {
     try {
         const entities = await financeService.getEntities();
@@ -174,6 +192,15 @@ export const deleteCategory = async (req, res) => {
     try {
         await financeService.deleteCategory(req.params.id);
         res.json({ success: true, message: 'Category deleted successfully' });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+};
+
+export const getProjectBalances = async (req, res) => {
+    try {
+        const balances = await financeService.getProjectBalancePayments();
+        res.json({ success: true, data: balances });
     } catch (err) {
         res.status(500).json({ success: false, message: err.message });
     }
