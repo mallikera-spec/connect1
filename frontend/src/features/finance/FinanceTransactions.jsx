@@ -91,12 +91,17 @@ export default function FinanceTransactions() {
                 ClientsService.getClients(),
                 api.get('/projects')
             ]);
+            
             if (entRes.success) setEntities(entRes.data);
             if (catRes.success) setCategories(catRes.data);
-            if (cliRes.data?.success) setClients(cliRes.data.data);
-            else if (cliRes.success) setClients(cliRes.data);
-            if (projRes.data?.success) setProjects(projRes.data.data);
-            else if (projRes.data) setProjects(projRes.data);
+            
+            // Robust handling for Clients
+            const clientList = cliRes.data?.data || (Array.isArray(cliRes.data) ? cliRes.data : []);
+            setClients(clientList);
+
+            // Robust handling for Projects
+            const projectList = projRes.data?.data || (Array.isArray(projRes.data) ? projRes.data : []);
+            setProjects(projectList);
         } catch (err) {
             console.error('Failed to load metadata', err);
         }
@@ -130,7 +135,13 @@ export default function FinanceTransactions() {
                 ? (isEdit ? financeService.updateIncome : financeService.createIncome)
                 : (isEdit ? financeService.updateExpense : financeService.createExpense);
 
-            const payload = { ...modalData };
+            const payload = { 
+                ...modalData,
+                client_id: modalData.client_id === '' ? null : modalData.client_id,
+                project_id: modalData.project_id === '' ? null : modalData.project_id,
+                entity_id: modalData.entity_id === '' ? null : modalData.entity_id,
+                category_id: modalData.category_id === '' ? null : modalData.category_id
+            };
             // Cleanup related fields before sending
             if (activeTab === 'expense') {
                 delete payload.client_id;
@@ -585,6 +596,22 @@ export default function FinanceTransactions() {
                                         <>
                                             <div className="form-row">
                                                 <div className="form-group">
+                                                    <label className="form-label">Client</label>
+                                                    <select
+                                                        className="form-control"
+                                                        required
+                                                        value={modalData.client_id}
+                                                        onChange={(e) => setModalData({ ...modalData, client_id: e.target.value })}
+                                                    >
+                                                        <option value="">Select Master Client</option>
+                                                        {clients.map(c => (
+                                                            <option key={c.id} value={c.id}>
+                                                                {c.company_name} {c.contact_name ? `(${c.contact_name})` : ''}
+                                                            </option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+                                                <div className="form-group">
                                                     <label className="form-label">Income Type</label>
                                                     <select
                                                         className="form-control"
@@ -593,18 +620,6 @@ export default function FinanceTransactions() {
                                                     >
                                                         <option value="Domestic">Domestic (INR)</option>
                                                         <option value="International">International (USD/Other)</option>
-                                                    </select>
-                                                </div>
-                                                <div className="form-group">
-                                                    <label className="form-label">Client</label>
-                                                    <select
-                                                        className="form-control"
-                                                        required
-                                                        value={modalData.client_id}
-                                                        onChange={(e) => setModalData({ ...modalData, client_id: e.target.value })}
-                                                    >
-                                                        <option value="">Select Client</option>
-                                                        {clients.map(c => <option key={c.id} value={c.id}>{c.company_name}</option>)}
                                                     </select>
                                                 </div>
                                             </div>

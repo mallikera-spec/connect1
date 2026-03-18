@@ -83,3 +83,19 @@ export const deleteEntry = async (req, res) => {
     const data = await svc.deleteEntry(req.params.entryId);
     successResponse(res, data, 'Entry deleted');
 };
+// POST /timesheets/batch-log-tasks
+export const batchLogTasks = async (req, res) => {
+    const schema = z.object({
+        tasks: z.array(z.object({
+            id: z.string().uuid(),
+            hours_spent: z.string().regex(/^([0-9]{1,2}):([0-5][0-9])$/)
+        })),
+        date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+        status: z.enum(['todo', 'in_progress', 'done']).optional(),
+        notes: z.string().optional()
+    });
+
+    const body = schema.parse(req.body);
+    const data = await svc.batchLogTasks(req.user.id, body);
+    successResponse(res, data, 'Tasks logged to timesheet');
+};

@@ -2,13 +2,16 @@ import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
     ArrowLeft, ListTodo, Users, CheckSquare, BookOpen, FileText, Flag,
-    Plus, Trash2, Check, Clock, AlertCircle, CheckCircle2, Save, Pencil, X, UserPlus, UserMinus, Calendar
+    Plus, Trash2, Check, Clock, AlertCircle, CheckCircle2, Save, Pencil, X, UserPlus, UserMinus, Calendar, Download
 } from 'lucide-react'
 import { getISTDate } from '../../lib/dateUtils'
 import api from '../../lib/api'
 import toast from 'react-hot-toast'
 import { useAuth } from '../../context/AuthContext'
 import DataTable from '../../components/common/DataTable'
+import TaskFormModal from '../tasks/components/TaskFormModal'
+import BulkTaskUploadModal from '../tasks/components/BulkTaskUploadModal'
+import MoveToTimesheetModal from '../tasks/components/MoveToTimesheetModal'
 
 const STATUS_BADGE = { pending: 'badge-gray', in_progress: 'badge-yellow', done: 'badge-green' }
 const PRIORITY_BADGE = { low: 'badge-blue', medium: 'badge-yellow', high: 'badge-red' }
@@ -54,7 +57,7 @@ function Section({ title, action, children }) {
 export default function ProjectDetailPage() {
     const { id } = useParams()
     const navigate = useNavigate()
-    const { hasPermission, hasRole } = useAuth()
+    const { hasPermission, hasRole, user } = useAuth()
     const canManage = hasPermission('manage_projects')
 
     const [tab, setTab] = useState('overview')
@@ -82,6 +85,15 @@ export default function ProjectDetailPage() {
     // Task edit
     const [editingTask, setEditingTask] = useState(null)
     const [taskForm, setTaskForm] = useState({})
+    
+    // New Modals
+    const [showTaskModal, setShowTaskModal] = useState(false)
+    const [showBulkModal, setShowBulkModal] = useState(false)
+    const [showReassignModal, setShowReassignModal] = useState(false)
+    const [showStatusModal, setShowStatusModal] = useState(false)
+    const [showMoveModal, setShowMoveModal] = useState(false)
+    const [selectedTaskIds, setSelectedTaskIds] = useState([])
+    const [selectedRows, setSelectedRows] = useState([])
 
     const PROJECT_STATUS = {
         active: { label: 'Active', color: '#10b981' },
@@ -267,33 +279,93 @@ export default function ProjectDetailPage() {
         catch (err) { toast.error(err.message) }
     }
 
+    const handleBulkDelete = async (selectedTasks) => {
+        if (!window.confirm(`Are you sure you want to delete ${selectedTasks.length} tasks?`)) return
+        try {
+            const ids = selectedTasks.map(t => t.id)
+            await api.delete('/tasks/bulk', { data: { ids } })
+            toast.success(`${ids.length} tasks deleted`)
+            load()
+        } catch (err) { toast.error(err.message) }
+    }
+
+    const handleBulkReassign = async (userId) => {
+        if (!userId) return
+        try {
+            await api.patch('/tasks/bulk', { 
+                ids: selectedTaskIds, 
+                updates: { assigned_to: userId } 
+            })
+            toast.success(`Tasks reassigned`)
+            setShowReassignModal(false)
+            load()
+        } catch (err) { toast.error(err.message) }
+    }
+
+    const handleBulkStatusUpdate = async (status) => {
+        if (!status) return
+        try {
+            await api.patch('/tasks/bulk', {
+                ids: selectedTaskIds,
+                updates: { status: status }
+            })
+            toast.success(`Tasks status updated to ${status.replace('_', ' ')}`)
+            setShowStatusModal(false)
+            load()
+        } catch (err) { toast.error(err.message) }
+    }
+
     const openEditTask = (t) => {
         setEditingTask(t)
         setTaskForm({
+            id: t.id,
+            project_id: t.project?.id || id,
             title: t.title || '',
             description: t.description || '',
             status: t.status || 'pending',
             priority: t.priority || 'medium',
             end_time: t.end_time ? t.end_time.slice(0, 10) : '',
             estimated_hours: t.estimated_hours || '',
+            assigned_to: t.assignee?.id || '',
         })
+        setShowTaskModal(true)
     }
 
-    const saveTask = async (e) => {
-        e.preventDefault(); setSaving(true)
+    const saveTask = async (formData) => {
+        setSaving(true)
         try {
-            const payload = {
-                title: taskForm.title,
-                description: taskForm.description,
-                status: taskForm.status,
-                priority: taskForm.priority,
-                estimated_hours: taskForm.estimated_hours ? Number(taskForm.estimated_hours) : undefined,
-                end_time: taskForm.end_time || null,
-            }
-            await api.patch(`/tasks/${editingTask.id}`, payload)
-            toast.success('Task updated'); setEditingTask(null); load()
+            await api.patch(`/tasks/${editingTask.id}`, formData)
+            toast.success('Task updated'); setEditingTask(null); load(); setShowTaskModal(false)
         } catch (err) { toast.error(err.message) }
         finally { setSaving(false) }
+    }
+
+    const openCreateTask = () => {
+        setTaskForm({
+            project_id: id,
+            title: '',
+            description: '',
+            status: 'pending',
+            priority: 'medium',
+            end_time: '',
+            estimated_hours: '',
+            assigned_to: ''
+        })
+        setShowTaskModal(true)
+    }
+
+    const handleCreateTask = async (formData) => {
+        setSaving(true)
+        try {
+            await api.post('/tasks', formData)
+            toast.success('Task created')
+            setShowTaskModal(false)
+            load()
+        } catch (err) {
+            toast.error(err.message)
+        } finally {
+            setSaving(false)
+        }
     }
 
     if (loading) return <div className="page-loader"><div className="spinner" /></div>
@@ -312,54 +384,95 @@ export default function ProjectDetailPage() {
     return (
         <div style={{ width: '100%' }}>
 
-            {/* ── Edit Task Modal ────── */}
-            {editingTask && (
-                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-                    <div className="card" style={{ width: '100%', maxWidth: 560, padding: 28, position: 'relative' }}>
-                        <button className="btn btn-ghost btn-sm btn-icon" style={{ position: 'absolute', top: 14, right: 14 }} onClick={() => setEditingTask(null)}><X size={16} /></button>
-                        <h3 style={{ margin: '0 0 20px', fontSize: 16, fontWeight: 700 }}>Edit Task</h3>
-                        <form onSubmit={saveTask}>
-                            <div className="form-group">
-                                <label className="form-label">Title *</label>
-                                <input className="form-input" value={taskForm.title} onChange={e => setTaskForm(p => ({ ...p, title: e.target.value }))} required />
-                            </div>
-                            <div className="form-group">
-                                <label className="form-label">Description</label>
-                                <textarea className="form-textarea" rows={3} value={taskForm.description} onChange={e => setTaskForm(p => ({ ...p, description: e.target.value }))} style={{ resize: 'vertical' }} />
-                            </div>
-                            <div className="form-row">
-                                <div className="form-group" style={{ flex: 1 }}>
-                                    <label className="form-label">Status</label>
-                                    <select className="form-select" value={taskForm.status} onChange={e => setTaskForm(p => ({ ...p, status: e.target.value }))}>
-                                        <option value="pending">Pending</option>
-                                        <option value="in_progress">In Progress</option>
-                                        <option value="done">Done</option>
-                                    </select>
-                                </div>
-                                <div className="form-group" style={{ flex: 1 }}>
-                                    <label className="form-label">Priority</label>
-                                    <select className="form-select" value={taskForm.priority} onChange={e => setTaskForm(p => ({ ...p, priority: e.target.value }))}>
-                                        <option value="low">Low</option>
-                                        <option value="medium">Medium</option>
-                                        <option value="high">High</option>
-                                    </select>
-                                </div>
-                                <div className="form-group" style={{ flex: 1 }}>
-                                    <label className="form-label">Due Date</label>
-                                    <input type="date" className="form-input" value={taskForm.end_time} onChange={e => setTaskForm(p => ({ ...p, end_time: e.target.value }))} />
-                                </div>
-                                <div className="form-group" style={{ flex: 1 }}>
-                                    <label className="form-label">Est. Hours</label>
-                                    <input type="number" className="form-input" min="0" step="0.5" value={taskForm.estimated_hours} onChange={e => setTaskForm(p => ({ ...p, estimated_hours: e.target.value }))} placeholder="e.g. 8" />
-                                </div>
-                            </div>
-                            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 8 }}>
-                                <button type="button" className="btn btn-ghost" onClick={() => setEditingTask(null)}>Cancel</button>
-                                <button type="submit" className="btn btn-primary" disabled={saving}><Save size={14} /> {saving ? 'Saving…' : 'Save Changes'}</button>
-                            </div>
-                        </form>
+            {/* Bulk Upload Modal */}
+            <BulkTaskUploadModal
+                isOpen={showBulkModal}
+                onClose={() => setShowBulkModal(false)}
+                projectId={id}
+                projectMembers={members}
+                onSuccess={load}
+            />
+
+            {/* Bulk Reassign Modal */}
+            {showReassignModal && (
+                <div className="modal-overlay" onClick={() => setShowReassignModal(false)}>
+                    <div className="modal" style={{ maxWidth: 400 }} onClick={e => e.stopPropagation()}>
+                        <div className="modal-header">
+                            <h2>Bulk Reassign</h2>
+                            <button onClick={() => setShowReassignModal(false)}><X size={18} /></button>
+                        </div>
+                        <div className="modal-body">
+                            <p style={{ marginBottom: 16, fontSize: 13, color: 'var(--text-muted)' }}>
+                                Reassign {selectedTaskIds.length} tasks to:
+                            </p>
+                            <select 
+                                className="form-select" 
+                                onChange={(e) => handleBulkReassign(e.target.value)}
+                                defaultValue=""
+                            >
+                                <option value="" disabled>Select Developer...</option>
+                                {members.filter(m => m.user).map(m => (
+                                    <option key={m.user.id} value={m.user.id}>{m.user.full_name}</option>
+                                ))}
+                            </select>
+                        </div>
+                        <div className="modal-footer">
+                            <button className="btn btn-ghost" onClick={() => setShowReassignModal(false)}>Cancel</button>
+                        </div>
                     </div>
                 </div>
+            )}
+
+            {/* Bulk Status Update Modal */}
+            {showStatusModal && (
+                <div className="modal-overlay" onClick={() => setShowStatusModal(false)}>
+                    <div className="modal" style={{ maxWidth: 400 }} onClick={e => e.stopPropagation()}>
+                        <div className="modal-header">
+                            <h2>Bulk Status Update</h2>
+                            <button onClick={() => setShowStatusModal(false)}><X size={18} /></button>
+                        </div>
+                        <div className="modal-body">
+                            <p style={{ marginBottom: 16, fontSize: 13, color: 'var(--text-muted)' }}>
+                                Update status for {selectedTaskIds.length} tasks to:
+                            </p>
+                            <select
+                                className="form-select"
+                                onChange={(e) => handleBulkStatusUpdate(e.target.value)}
+                                defaultValue=""
+                            >
+                                <option value="" disabled>Select Status...</option>
+                                <option value="pending">Pending</option>
+                                <option value="in_progress">In Progress</option>
+                                <option value="done">Done</option>
+                            </select>
+                        </div>
+                        <div className="modal-footer">
+                            <button className="btn btn-ghost" onClick={() => setShowStatusModal(false)}>Cancel</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Task Form Modal (Create/Edit) */}
+            <TaskFormModal
+                isOpen={showTaskModal}
+                onClose={() => setShowTaskModal(false)}
+                initialData={taskForm}
+                onSubmit={editingTask ? saveTask : handleCreateTask}
+                projects={[project]} // Only this project is allowed
+                users={members.map(m => m.user).filter(Boolean)}
+                isManager={canManage}
+                currentUser={user}
+                saving={saving}
+            />
+
+            {/* Move to Timesheet Modal */}
+            {showMoveModal && (
+                <MoveToTimesheetModal 
+                    tasks={selectedRows}
+                    onClose={() => setShowMoveModal(false)}
+                    onSaved={load}
+                />
             )}
 
             {/* Header */}
@@ -436,7 +549,7 @@ export default function ProjectDetailPage() {
                                             <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>{project.client_name}</div>
                                             <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 2 }}>
                                                 {project.client_email} {project.client_phone ? ` • ${project.client_phone}` : ''} {project.client_alt_phone ? ` • ${project.client_alt_phone}` : ''}
-                                            </div>
+                                            </div >
                                             {project.acquisition_date && (
                                                 <div style={{ fontSize: 11, color: 'var(--accent)', marginTop: 4, fontWeight: 700 }}>
                                                     Acquired on: {new Date(project.acquisition_date).toLocaleDateString()}
@@ -558,11 +671,52 @@ export default function ProjectDetailPage() {
                                         <span style={{ color: 'var(--text-dim)' }}>-</span>
                                         <input type="date" className="form-input" style={{ padding: '4px 8px', fontSize: 12, width: 120 }} value={taskDateRange.endDate} onChange={e => setTaskDateRange(p => ({ ...p, endDate: e.target.value }))} />
                                     </div>
-                                    {canManage && <button className="btn btn-primary btn-sm" onClick={() => navigate('/tasks', { state: { openCreateModal: true, project_id: id } })}><Plus size={13} strokeWidth={3} fill="currentColor" /> Add Task</button>}
+                                    {canManage && (
+                                        <div style={{ display: 'flex', gap: 8 }}>
+                                            <button className="btn btn-secondary btn-sm" onClick={() => setShowBulkModal(true)}>
+                                                <Download size={13} strokeWidth={3} /> Bulk Upload
+                                            </button>
+                                            <button className="btn btn-primary btn-sm" onClick={openCreateTask}>
+                                                <Plus size={13} strokeWidth={3} fill="currentColor" /> Add Task
+                                            </button>
+                                        </div>
+                                    )}
                                 </div>
                             }
                         >
                             <DataTable
+                                selectable={true}
+                                onSelectionChange={(selected) => {
+                                    setSelectedTaskIds(selected.map(t => t.id));
+                                    setSelectedRows(selected);
+                                }}
+                                bulkActions={[
+                                    ...(canManage ? [
+                                        { 
+                                            label: 'Reassign', 
+                                            icon: <Users size={14} />, 
+                                            handler: () => setShowReassignModal(true) 
+                                        },
+                                        { 
+                                            label: 'Status', 
+                                            icon: <Clock size={14} />, 
+                                            handler: () => setShowStatusModal(true) 
+                                        },
+                                        { 
+                                            label: 'Delete', 
+                                            icon: <Trash2 size={14} />, 
+                                            handler: handleBulkDelete 
+                                        }
+                                    ] : []),
+                                    { 
+                                        label: 'Move to Timesheet', 
+                                        icon: <Clock size={14} />, 
+                                        handler: (rows) => {
+                                            setSelectedRows(rows);
+                                            setShowMoveModal(true);
+                                        } 
+                                    }
+                                ]}
                                 data={tasks
                                     .filter(t => !taskUserFilter || t.assignee?.id === taskUserFilter)
                                     .filter(t => {
@@ -976,6 +1130,13 @@ export default function ProjectDetailPage() {
                 </div>
 
             </div > {/* end two-column grid */}
+            {showMoveModal && (
+                <MoveToTimesheetModal
+                    tasks={selectedRows}
+                    onClose={() => setShowMoveModal(false)}
+                    onSaved={load}
+                />
+            )}
         </div >
     )
 }

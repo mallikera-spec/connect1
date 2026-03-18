@@ -3,6 +3,7 @@ import * as tasksService from './tasks.service.js';
 import { startTimer, stopTimer } from '../time-tracking/time-tracking.service.js';
 import { successResponse } from '../../utils/apiResponse.js';
 import { StatusCodes } from 'http-status-codes';
+import { z } from 'zod';
 
 export const createTask = async (req, res) => {
     const isAdmin = req.user.roles?.some(r => ['super_admin', 'director', 'project_manager', 'hr', 'tester'].includes(r.toLowerCase()));
@@ -16,6 +17,35 @@ export const createTask = async (req, res) => {
 
     const data = await tasksService.createTask(body);
     successResponse(res, data, 'Task created', StatusCodes.CREATED);
+};
+
+export const bulkCreateTasks = async (req, res) => {
+    const tasksArraySchema = z.array(createTaskSchema);
+    const body = tasksArraySchema.parse(req.body);
+
+    const data = await tasksService.bulkCreateTasks(body);
+    successResponse(res, data, `${data.length} tasks created`, StatusCodes.CREATED);
+};
+
+export const bulkUpdateTasks = async (req, res) => {
+    const bulkUpdateSchema = z.object({
+        ids: z.array(z.string().uuid()),
+        updates: updateTaskSchema
+    });
+    const { ids, updates } = bulkUpdateSchema.parse(req.body);
+
+    const data = await tasksService.bulkUpdateTasks(ids, updates, req.user);
+    successResponse(res, data, `${data.length} tasks updated`);
+};
+
+export const bulkDeleteTasks = async (req, res) => {
+    const bulkDeleteSchema = z.object({
+        ids: z.array(z.string().uuid())
+    });
+    const { ids } = bulkDeleteSchema.parse(req.body);
+
+    const data = await tasksService.bulkDeleteTasks(ids);
+    successResponse(res, data, `${ids.length} tasks deleted`);
 };
 
 export const getAllTasks = async (req, res) => {

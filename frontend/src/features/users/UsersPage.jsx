@@ -281,7 +281,7 @@ export default function UsersPage() {
             render: (roles) => (
                 roles?.length > 0
                     ? <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                        {roles.map(r => <span key={r} className="badge badge-purple" style={{ fontSize: 10 }}>{r}</span>)}
+                        {roles.map(r => <span key={r} className="badge badge-purple">{r}</span>)}
                     </div>
                     : <span style={{ color: 'var(--text-dim)', fontSize: 11 }}>No roles</span>
             )
@@ -324,7 +324,7 @@ export default function UsersPage() {
             </div>
 
 
-            <div className="card table-card">
+            <div className="card polished-card table-card animate-fade-in">
                 <DataTable
                     data={users}
                     columns={columns}
@@ -407,7 +407,6 @@ export default function UsersPage() {
                     display: flex; align-items: center; justify-content: center; padding: 0;
                 }
                 .btn-danger-ghost:hover { background: rgba(239, 68, 68, 0.1); color: var(--danger); }
-                .badge-purple { background: rgba(139, 92, 246, 0.1); color: #8b5cf6; padding: 3px 8px; border-radius: 6px; font-weight: 700; }
             `}</style>
         </div>
     )

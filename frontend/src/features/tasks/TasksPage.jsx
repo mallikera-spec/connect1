@@ -8,11 +8,13 @@ import DataTable from '../../components/common/DataTable'
 import QAFeedbackTrail from '../../components/common/QAFeedbackTrail'
 import { formatDate, formatDateTime } from '../../utils/formatters'
 import DateRangePicker from '../../components/DateRangePicker'
+import TaskFormModal from './components/TaskFormModal'
+import MoveToTimesheetModal from './components/MoveToTimesheetModal'
 
 const PRIORITY_BADGE = { low: 'badge-blue', medium: 'badge-yellow', high: 'badge-red' }
 const STATUS_BADGE = { pending: 'badge-gray', in_progress: 'badge-yellow', done: 'badge-green', verified: 'badge-purple', failed: 'badge-red' }
 
-const EMPTY_FORM = { project_id: '', title: '', description: '', assigned_to: '', status: 'pending', priority: 'medium', estimated_hours: '', actual_hours: '', end_time: '', qa_notes: '' }
+const EMPTY_FORM = { id: '', project_id: '', title: '', description: '', assigned_to: '', status: 'pending', priority: 'medium', estimated_hours: '', actual_hours: '', end_time: '', qa_notes: '' }
 
 export default function TasksPage() {
     const { hasPermission, hasRole, user } = useAuth()
@@ -39,6 +41,8 @@ export default function TasksPage() {
         endDate: location.state?.endDate || ''
     })
     const [qaReport, setQaReport] = useState({ status: '', notes: '' })
+    const [selectedRows, setSelectedRows] = useState([])
+    const [showMoveModal, setShowMoveModal] = useState(false)
 
     const load = useCallback(() => {
         setLoading(true)
@@ -73,6 +77,7 @@ export default function TasksPage() {
     const openEdit = (t) => {
         setSelected(t)
         setForm({
+            id: t.id,
             project_id: t.project?.id || '',
             title: t.title,
             description: t.description || '',
@@ -89,38 +94,35 @@ export default function TasksPage() {
     }
     const closeModal = () => { setModal(null); setSelected(null) }
 
-    const handleCreate = async (e) => {
-        e.preventDefault();
-        if (/^\d+$/.test(form.title)) return toast.error('Task title cannot be purely numeric');
+    const handleCreate = async (formData) => {
+        if (/^\d+$/.test(formData.title)) return toast.error('Task title cannot be purely numeric');
         setSaving(true)
         const payload = { 
-            ...form,
-            estimated_hours: form.estimated_hours ? parseFloat(form.estimated_hours) : undefined,
-            actual_hours: form.actual_hours ? parseFloat(form.actual_hours) : undefined
+            ...formData,
+            estimated_hours: formData.estimated_hours ? parseFloat(formData.estimated_hours) : undefined,
+            actual_hours: formData.actual_hours ? parseFloat(formData.actual_hours) : undefined
         }
         try { await api.post('/tasks', payload); toast.success('Task created'); load(); closeModal() }
         catch (err) { toast.error(err.message) }
         finally { setSaving(false) }
     }
 
-    const handleEdit = async (e) => {
-        e.preventDefault();
-        if (/^\d+$/.test(form.title)) return toast.error('Task title cannot be purely numeric');
+    const handleEdit = async (formData) => {
+        if (/^\d+$/.test(formData.title)) return toast.error('Task title cannot be purely numeric');
         setSaving(true)
         const payload = { 
-            ...form,
-            estimated_hours: form.estimated_hours ? parseFloat(form.estimated_hours) : undefined,
-            actual_hours: form.actual_hours ? parseFloat(form.actual_hours) : undefined
+            ...formData,
+            estimated_hours: formData.estimated_hours ? parseFloat(formData.estimated_hours) : undefined,
+            actual_hours: formData.actual_hours ? parseFloat(formData.actual_hours) : undefined
         }
-        const isResubmitting = selected?.status === 'failed' && form.developer_reply?.trim();
-        // REMOVED: Auto-update status to 'done'. Let the user choose.
+        const isResubmitting = selected?.status === 'failed' && formData.developer_reply?.trim();
 
         try {
             await api.patch(`/tasks/${selected.id}`, payload);
             if (isResubmitting) {
                 await api.post(`/tasks/${selected.id}/feedback`, {
-                    content: form.developer_reply,
-                    new_status: form.status
+                    content: formData.developer_reply,
+                    new_status: formData.status
                 });
             }
             toast.success('Task updated');
@@ -232,83 +234,29 @@ export default function TasksPage() {
                     } catch (err) { toast.error(err.message); }
                 }
             }
+        },
+        {
+            label: 'Move to Timesheet',
+            icon: <Clock size={14} />,
+            handler: (rows) => {
+                setSelectedRows(rows);
+                setShowMoveModal(true);
+            }
         }
     ], [load]);
 
+    const filteredBulkActions = useMemo(() => {
+        const actions = [];
+        if (canUpdate) actions.push(bulkActions[0]); // Complete Selected
+        if (canDelete) actions.push(bulkActions[1]); // Delete Selected
+        
+        // Move to Timesheet (Only for tasks assigned to the current user, or if admin)
+        actions.push(bulkActions[2]); 
+        
+        return actions;
+    }, [bulkActions, canUpdate, canDelete, user]);
+
     const openDelete = (t) => { setSelected(t); setModal('delete') }
-
-    const formBody = () => {
-        const isLocked = !isManager && ['done', 'ready_for_qa', 'verified', 'failed'].includes(selected?.status);
-        const isFailed = selected?.status === 'failed';
-
-        return (
-            <div className="split-body" style={{ display: 'grid', gridTemplateColumns: 'minmax(300px, 1.2fr) 1fr', minHeight: '500px' }}>
-                <div className="history-pane" style={{ padding: '24px', background: 'rgba(0,0,0,0.1)', borderRight: '1px solid var(--border)', overflowY: 'auto' }}>
-                    <h4 style={{ fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', color: 'var(--accent)', marginBottom: '16px', letterSpacing: '0.05em' }}>Communication Logs</h4>
-                    {selected ? <QAFeedbackTrail type="task" itemId={selected.id} /> : <div style={{ textAlign: 'center', color: 'var(--text-dim)', padding: '40px 0' }}>History will appear after task creation.</div>}
-                </div>
-                <div className="form-pane" style={{ padding: '24px', overflowY: 'auto' }}>
-                    <h4 style={{ fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', color: 'var(--accent)', marginBottom: '16px', letterSpacing: '0.05em' }}>Task Information</h4>
-                    <div className="form-group">
-                        <label className="form-label">Project</label>
-                        <select className="form-select" value={form.project_id} onChange={e => setForm(p => ({ ...p, project_id: e.target.value }))} required disabled={isLocked}>
-                            <option value="">Select project…</option>
-                            {(projects || []).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                        </select>
-                    </div>
-                    <div className="form-group">
-                        <label className="form-label">Task Title</label>
-                        <input className="form-input" value={form.title} onChange={e => setForm(p => ({ ...p, title: e.target.value }))} required disabled={isLocked} />
-                    </div>
-                    <div className="form-group">
-                        <label className="form-label">Description</label>
-                        <textarea className="form-textarea" rows={6} value={form.description} onChange={e => setForm(p => ({ ...p, description: e.target.value }))} style={{ resize: 'vertical' }} disabled={isLocked} />
-                    </div>
-                    <div className="form-row">
-                        <div className="form-group">
-                            <label className="form-label">Assigned To</label>
-                            <select className="form-select" value={form.assigned_to} onChange={e => setForm(p => ({ ...p, assigned_to: e.target.value }))} disabled={!isManager || isLocked}>
-                                {isManager ? (
-                                    <><option value="">Unassigned</option>{(users || []).map(u => <option key={u.id} value={u.id}>{u.full_name}</option>)}</>
-                                ) : <option value={user?.id}>{user?.full_name}</option>}
-                            </select>
-                        </div>
-                        <div className="form-group">
-                            <label className="form-label">Estimated Hours</label>
-                            <input type="number" step="0.5" min="0" className="form-input" value={form.estimated_hours} onChange={e => setForm(p => ({ ...p, estimated_hours: e.target.value }))} disabled={isLocked} />
-                        </div>
-                    </div>
-                    <div className="form-row">
-                        <div className="form-group">
-                            <label className="form-label">Status</label>
-                            <select className="form-select" value={form.status} onChange={e => setForm(p => ({ ...p, status: e.target.value }))} disabled={isLocked && !isFailed}>
-                                <option value="pending">Pending</option>
-                                <option value="in_progress">In Progress</option>
-                                <option value="done">Done (Submit for QA)</option>
-                                {isManager && <><option value="verified">Verified</option><option value="failed">Failed</option></>}
-                            </select>
-                        </div>
-                        <div className="form-group">
-                            <label className="form-label">Priority</label>
-                            <select className="form-select" value={form.priority} onChange={e => setForm(p => ({ ...p, priority: e.target.value }))} disabled={isLocked}>
-                                <option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div className="form-group" style={{ marginTop: '14px' }}>
-                        <label className="form-label">Due Date</label>
-                        <input type="date" className="form-input" value={form.end_time} onChange={e => setForm(p => ({ ...p, end_time: e.target.value }))} disabled={isLocked} />
-                    </div>
-                    {isFailed && (
-                        <div className="form-group" style={{ background: 'rgba(59, 130, 246, 0.05)', padding: 16, borderRadius: 12, marginTop: 20, border: '1px solid rgba(59, 130, 246, 0.2)' }}>
-                            <label className="form-label" style={{ color: 'var(--accent)', display: 'flex', alignItems: 'center', gap: 6 }}><RotateCcw size={14} /> Resubmit Notes</label>
-                            <textarea className="form-textarea" rows={4} value={form.developer_reply} onChange={e => setForm(p => ({ ...p, developer_reply: e.target.value }))} placeholder="Explain the fix..." style={{ marginTop: 8 }} />
-                        </div>
-                    )}
-                </div>
-            </div>
-        )
-    }
 
     return (
         <div className="tasks-page">
@@ -320,7 +268,7 @@ export default function TasksPage() {
                 </div>
             </div>
 
-            <div className="card polished-card filter-bar">
+            <div className="card polished-card filter-bar animate-fade-in">
                 <div className="filter-row">
                     <select className="form-select" style={{ width: 180 }} value={filters.project_id} onChange={e => setFilters(p => ({ ...p, project_id: e.target.value }))}>
                         <option value="">All Projects</option>
@@ -347,35 +295,39 @@ export default function TasksPage() {
                     columns={columns}
                     loading={loading}
                     fileName="tasks_export"
-                    selectable={canUpdate}
-                    bulkActions={canUpdate ? bulkActions : []}
+                    selectable={true}
+                    bulkActions={filteredBulkActions}
                     onRowClick={(t) => openEdit(t)}
                     onAdd={openCreate}
                 />
             </div>
 
             {modal === 'create' && (
-                <div className="modal-overlay" onClick={e => e.target === e.currentTarget && closeModal()}>
-                    <div className="modal modal-lg">
-                        <div className="modal-header"><h2>New Task</h2><button onClick={closeModal}><X size={18} /></button></div>
-                        <form onSubmit={handleCreate}>
-                            <div className="modal-body">{formBody()}</div>
-                            <div className="modal-footer"><button type="button" className="btn btn-ghost" onClick={closeModal}>Cancel</button><button type="submit" className="btn btn-primary" disabled={saving}>Create Task</button></div>
-                        </form>
-                    </div>
-                </div>
+                <TaskFormModal
+                    isOpen={true}
+                    onClose={closeModal}
+                    initialData={form}
+                    onSubmit={handleCreate}
+                    projects={projects}
+                    users={users}
+                    isManager={isManager}
+                    currentUser={user}
+                    saving={saving}
+                />
             )}
 
             {modal === 'edit' && (
-                <div className="modal-overlay" onClick={e => e.target === e.currentTarget && closeModal()}>
-                    <div className="modal modal-lg">
-                        <div className="modal-header"><h2>Edit Task</h2><button onClick={closeModal}><X size={18} /></button></div>
-                        <form onSubmit={handleEdit}>
-                            <div className="modal-body">{formBody()}</div>
-                            <div className="modal-footer"><button type="button" className="btn btn-ghost" onClick={closeModal}>Cancel</button><button type="submit" className="btn btn-primary" disabled={saving}>Save Changes</button></div>
-                        </form>
-                    </div>
-                </div>
+                <TaskFormModal
+                    isOpen={true}
+                    onClose={closeModal}
+                    initialData={form}
+                    onSubmit={handleEdit}
+                    projects={projects}
+                    users={users}
+                    isManager={isManager}
+                    currentUser={user}
+                    saving={saving}
+                />
             )}
 
             {modal === 'delete' && selected && (
@@ -388,18 +340,19 @@ export default function TasksPage() {
                 </div>
             )}
 
+            {showMoveModal && (
+                <MoveToTimesheetModal 
+                    tasks={selectedRows}
+                    onClose={() => setShowMoveModal(false)}
+                    onSaved={load}
+                />
+            )}
+
             <style>{`
                 .tasks-page { padding: 8px; }
                 .header-actions { display: flex; gap: 12px; align-items: center; }
-                .filter-bar { margin-bottom: 20px; padding: 12px; }
+                .filter-bar { margin-bottom: 20px; padding: 16px; border-radius: 16px; }
                 .filter-row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
-                .badge { padding: 3px 8px; border-radius: 4px; font-size: 10px; font-weight: 700; text-transform: uppercase; }
-                .badge-gray { background: rgba(107, 114, 128, 0.1); color: #6b7280; }
-                .badge-yellow { background: rgba(245, 158, 11, 0.1); color: #f59e0b; }
-                .badge-green { background: rgba(16, 185, 129, 0.1); color: #10b981; }
-                .badge-blue { background: rgba(59, 130, 246, 0.1); color: #3b82f6; }
-                .badge-purple { background: rgba(139, 92, 246, 0.1); color: #8b5cf6; }
-                .badge-red { background: rgba(239, 68, 68, 0.1); color: #ef4444; }
                 .actions-cell { display: flex; gap: 4px; justify-content: center; }
                 .split-body { min-height: 500px; }
             `}</style>

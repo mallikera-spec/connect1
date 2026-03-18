@@ -130,6 +130,11 @@ export const updateEntry = async (entryId, updates, user) => {
     const allowed = ['title', 'status', 'hours_spent', 'notes', 'task_id', 'admin_feedback', 'project_id', 'developer_reply', 'qa_notes'];
     const filtered = Object.fromEntries(Object.entries(updates).filter(([k]) => allowed.includes(k)));
 
+    // If no allowed fields are updated, return current state to avoid .update({}) which can error or do nothing
+    if (Object.keys(filtered).length === 0) {
+        return currentEntry;
+    }
+
     const { data, error } = await supabaseAdmin
         .from('timesheet_entries')
         .update(filtered)
@@ -139,8 +144,11 @@ export const updateEntry = async (entryId, updates, user) => {
             project:projects(id, name),
             task:tasks(id, title, project:projects(id, name))
         `)
-        .single();
+        .maybeSingle(); // Use maybeSingle to avoid crashes if 0 rows matched (though 1 match is expected)
+
     if (error) throw error;
+    if (!data) throw new Error('Failed to update entry - row not found or update returned no data');
+    
     return data;
 };
 
@@ -188,4 +196,54 @@ export const getEntriesByProject = async (projectId) => {
         user: e.timesheet?.user,
         work_date: e.timesheet?.work_date
     }));
+};
+export const batchLogTasks = async (userId, { tasks: taskData, date, status, notes }) => {
+    // 1. Get or create timesheet for the user and date
+    const timesheet = await getOrCreateTimesheet(userId, date);
+
+    // 2. Fetch tasks to get their project_ids and titles
+    const taskIds = taskData.map(td => td.id);
+    const { data: tasks, error: taskError } = await supabaseAdmin
+        .from('tasks')
+        .select('id, title, project_id, status')
+        .in('id', taskIds);
+
+    if (taskError) throw taskError;
+
+    // 3. Prepare entries
+    const entries = tasks.map(t => {
+        const individualTask = taskData.find(td => td.id === t.id);
+        return {
+            timesheet_id: timesheet.id,
+            task_id: t.id,
+            project_id: t.project_id,
+            title: t.title,
+            hours_spent: individualTask?.hours_spent || '01:00',
+            status: status || 'in_progress',
+            notes: notes || `Direct log from task: ${t.title}`
+        };
+    });
+
+    // 4. Batch insert entries
+    const { data, error: insertError } = await supabaseAdmin
+        .from('timesheet_entries')
+        .insert(entries)
+        .select(`
+            *,
+            project:projects(id, name),
+            task:tasks(id, title, project:projects(id, name))
+        `);
+
+    if (insertError) throw insertError;
+
+    // 5. Update task statuses to 'in_progress' if they were 'pending'
+    const pendingTaskIds = tasks.filter(t => t.status === 'pending').map(t => t.id);
+    if (pendingTaskIds.length > 0) {
+        await supabaseAdmin
+            .from('tasks')
+            .update({ status: 'in_progress' })
+            .in('id', pendingTaskIds);
+    }
+
+    return data;
 };

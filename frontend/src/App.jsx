@@ -53,6 +53,7 @@ import PartnerSettlements from './features/finance/PartnerSettlements'
 import AssetRegistry from './features/finance/AssetRegistry'
 import CategoryManager from './features/finance/CategoryManager'
 import BalancePayment from './features/finance/BalancePayment'
+import InvoiceManager from './features/finance/InvoiceManager'
 
 function AdminLayout({ children }) {
   return (
@@ -84,6 +85,7 @@ export default function App() {
       <Route path="/finance/assets" element={<AdminLayout><AssetRegistry /></AdminLayout>} />
       <Route path="/finance/categories" element={<AdminLayout><CategoryManager /></AdminLayout>} />
       <Route path="/finance/balance-payment" element={<AdminLayout><BalancePayment /></AdminLayout>} />
+      <Route path="/finance/invoices" element={<AdminLayout><InvoiceManager /></AdminLayout>} />
 
       <Route path="/profile/:userId?" element={<AdminLayout><ProfilePage /></AdminLayout>} />
       <Route path="/polls" element={<AdminLayout><PollsPage /></AdminLayout>} />
@@ -109,7 +111,7 @@ export default function App() {
         <AdminLayout><PermissionGate perm="view_clients"><ClientsList /></PermissionGate></AdminLayout>
       } />
       <Route path="/tasks" element={
-        <AdminLayout><PermissionGate perm="view_tasks" allowedRoles={['Tester']}><TasksPage /></PermissionGate></AdminLayout>
+        <AdminLayout><PermissionGate perm="view_tasks" allowedRoles={['Tester', 'Developer']}><TasksPage /></PermissionGate></AdminLayout>
       } />
       <Route path="/reports" element={
         <AdminLayout><PermissionGate perm="view_reports"><ReportsPage /></PermissionGate></AdminLayout>

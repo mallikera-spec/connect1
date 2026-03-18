@@ -6,10 +6,11 @@ import { z } from 'zod';
 const feedbackSchema = z.object({
     content: z.string().min(1),
     new_status: z.string().optional(),
+    role_type: z.string().optional(),
 });
 
 export const addFeedback = (item_type) => async (req, res) => {
-    const { content, new_status } = feedbackSchema.parse(req.body);
+    const { content, new_status, role_type } = feedbackSchema.parse(req.body);
     const itemId = req.params.itemId || req.params.id || req.params.entryId;
 
     const data = await svc.createFeedback({
@@ -17,7 +18,8 @@ export const addFeedback = (item_type) => async (req, res) => {
         item_id: itemId,
         author_id: req.user.id,
         content,
-        new_status
+        new_status,
+        role_type
     });
 
     successResponse(res, data, 'Feedback added', StatusCodes.CREATED);

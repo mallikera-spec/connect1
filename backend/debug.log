@@ -1,3 +1,56 @@
 [2026-03-11T04:49:27.615Z] UPDATE TASK 8545de24-a10a-4b39-b8ab-6796745f3812: {"project_id":"bcdaab61-88d4-4f65-be9d-8a4ea3e82e03","title":"Video 1","description":"video 1 desc,\n\ndone","assigned_to":"481e2232-64d2-4d37-8a8d-d34fcfa09494","status":"done","priority":"medium","estimated_hours":1,"end_time":"2026-03-11","developer_reply":"","qa_notes":""}
 [2026-03-11T04:50:52.482Z] UPDATE TASK 8545de24-a10a-4b39-b8ab-6796745f3812: {"status":"failed","qa_notes":"rework"}
 [2026-03-11T04:52:57.753Z] UPDATE TASK 8545de24-a10a-4b39-b8ab-6796745f3812: {"project_id":"bcdaab61-88d4-4f65-be9d-8a4ea3e82e03","title":"Video 1","description":"video 1 desc,\n\ndone","assigned_to":"481e2232-64d2-4d37-8a8d-d34fcfa09494","status":"failed","priority":"medium","estimated_hours":1,"end_time":"2026-03-11","developer_reply":"","qa_notes":"rework"}
+[2026-03-17T19:06:53.043Z] UPDATE TASK 77e600e2-0f8c-4eb8-a5e0-af889bc0a8fe: {"status":"done"}
+[2026-03-17T19:06:53.056Z] UPDATE TASK 00968405-019e-4d89-a565-a5a2cc40998a: {"status":"done"}
+[2026-03-17T19:06:53.310Z] UPDATE TASK 8228f5e4-2e6c-417e-87ef-8560d39f481f: {"status":"done"}
+[2026-03-17T19:06:53.317Z] UPDATE TASK dabf81dd-6109-4161-bce6-0ab2cf0bda3a: {"status":"done"}
+[2026-03-17T19:06:54.147Z] UPDATE TASK a17fd62f-fcca-41c5-bfbd-fea26c81df90: {"status":"done"}
+[2026-03-17T19:06:54.161Z] UPDATE TASK 96c78038-cc86-4552-a0b2-727d93c6fdc1: {"status":"done"}
+[2026-03-17T19:06:55.126Z] UPDATE TASK 412c2e8f-96e7-4440-8b61-440b6cca7522: {"status":"done"}
+[2026-03-17T19:06:55.138Z] UPDATE TASK 551e9015-e44c-4760-8224-98ce115a7835: {"status":"done"}
+[2026-03-17T19:06:55.305Z] UPDATE TASK ec390427-2521-4094-8cf8-84e6eb09cd1c: {"status":"done"}
+[2026-03-17T19:06:55.352Z] UPDATE TASK 751bbc8d-c578-43a5-b541-182925bf5d37: {"status":"done"}
+[2026-03-17T19:06:55.844Z] UPDATE TASK 85831f1f-246c-4363-976b-0e1a3fff73d4: {"status":"done"}
+[2026-03-17T19:06:55.864Z] UPDATE TASK 44f0a365-bcd7-4fdb-b291-0eb714737b84: {"status":"done"}
+[2026-03-17T19:06:56.822Z] UPDATE TASK 2c9ea5fe-c266-44a5-af5f-6f7544fe7b58: {"status":"done"}
+[2026-03-17T19:06:56.882Z] UPDATE TASK 730b191b-e16c-473a-b900-e9a04e8be545: {"status":"done"}
+[2026-03-17T19:06:57.004Z] UPDATE TASK 90767770-7cda-4a7a-bb34-f3d95bd270cb: {"status":"done"}
+[2026-03-17T19:06:57.089Z] UPDATE TASK 2dfea092-b4cb-463e-be76-8045bff5ad21: {"status":"done"}
+[2026-03-17T19:06:57.558Z] UPDATE TASK 1334ba1c-a411-45a2-a791-5e217b925b98: {"status":"done"}
+[2026-03-17T19:06:57.573Z] UPDATE TASK 7baf7d31-0dd4-4dcb-9f6c-5a5202aa7656: {"status":"done"}
+[2026-03-17T19:06:58.544Z] UPDATE TASK 56598fb7-6e64-4f69-9878-d515c3a7dc73: {"status":"done"}
+[2026-03-17T19:06:58.579Z] UPDATE TASK d7a1ad98-2695-41f1-bd80-444ec991da3d: {"status":"done"}
+[2026-03-17T19:07:36.786Z] UPDATE TASK 00968405-019e-4d89-a565-a5a2cc40998a: {"status":"done"}
+[2026-03-17T19:07:36.796Z] UPDATE TASK dabf81dd-6109-4161-bce6-0ab2cf0bda3a: {"status":"done"}
+[2026-03-17T19:07:36.987Z] UPDATE TASK 77e600e2-0f8c-4eb8-a5e0-af889bc0a8fe: {"status":"done"}
+[2026-03-17T19:07:37.623Z] UPDATE TASK 8228f5e4-2e6c-417e-87ef-8560d39f481f: {"status":"done"}
+[2026-03-17T19:07:37.641Z] UPDATE TASK 96c78038-cc86-4552-a0b2-727d93c6fdc1: {"status":"done"}
+[2026-03-17T19:07:38.530Z] UPDATE TASK 551e9015-e44c-4760-8224-98ce115a7835: {"status":"done"}
+[2026-03-17T19:07:38.545Z] UPDATE TASK 412c2e8f-96e7-4440-8b61-440b6cca7522: {"status":"done"}
+[2026-03-17T19:07:38.709Z] UPDATE TASK ec390427-2521-4094-8cf8-84e6eb09cd1c: {"status":"done"}
+[2026-03-17T19:07:38.727Z] UPDATE TASK a17fd62f-fcca-41c5-bfbd-fea26c81df90: {"status":"done"}
+[2026-03-17T19:07:39.319Z] UPDATE TASK 85831f1f-246c-4363-976b-0e1a3fff73d4: {"status":"done"}
+[2026-03-17T19:07:39.322Z] UPDATE TASK 751bbc8d-c578-43a5-b541-182925bf5d37: {"status":"done"}
+[2026-03-17T19:07:40.215Z] UPDATE TASK 44f0a365-bcd7-4fdb-b291-0eb714737b84: {"status":"done"}
+[2026-03-17T19:07:40.226Z] UPDATE TASK 2c9ea5fe-c266-44a5-af5f-6f7544fe7b58: {"status":"done"}
+[2026-03-17T19:07:40.369Z] UPDATE TASK 730b191b-e16c-473a-b900-e9a04e8be545: {"status":"done"}
+[2026-03-17T19:07:40.416Z] UPDATE TASK 90767770-7cda-4a7a-bb34-f3d95bd270cb: {"status":"done"}
+[2026-03-17T19:07:40.982Z] UPDATE TASK 2dfea092-b4cb-463e-be76-8045bff5ad21: {"status":"done"}
+[2026-03-17T19:07:40.991Z] UPDATE TASK 1334ba1c-a411-45a2-a791-5e217b925b98: {"status":"done"}
+[2026-03-17T19:07:41.864Z] UPDATE TASK 7baf7d31-0dd4-4dcb-9f6c-5a5202aa7656: {"status":"done"}
+[2026-03-17T19:07:41.882Z] UPDATE TASK 56598fb7-6e64-4f69-9878-d515c3a7dc73: {"status":"done"}
+[2026-03-17T19:07:42.033Z] UPDATE TASK d7a1ad98-2695-41f1-bd80-444ec991da3d: {"status":"done"}
+[2026-03-17T19:15:16.757Z] UPDATE TASK 7b5253c1-7c0e-4409-92a4-3b6a06e39d27: {"project_id":"b374cb16-4760-48b7-9d89-34336fb2f213","title":"Project Setup","description":"Initialize repo, folder structure, env setup","assigned_to":"d0368c4b-5dc4-4573-9255-86f241271ee4","status":"in_progress","priority":"high","estimated_hours":8,"end_time":"","developer_reply":"","qa_notes":""}
+[2026-03-17T19:15:27.865Z] UPDATE TASK 7b5253c1-7c0e-4409-92a4-3b6a06e39d27: {"project_id":"b374cb16-4760-48b7-9d89-34336fb2f213","title":"Project Setup","description":"Initialize repo, folder structure, env setup","assigned_to":"d0368c4b-5dc4-4573-9255-86f241271ee4","status":"in_progress","priority":"high","estimated_hours":8,"end_time":"2026-03-20","developer_reply":"","qa_notes":""}
+[2026-03-17T19:31:31.080Z] UPDATE TASK 12cdb0d8-28f9-4dc2-9593-2d82bd0bb013: {"project_id":"b374cb16-4760-48b7-9d89-34336fb2f213","title":"DB Schema","description":"Design tables for users, orders, restaurants.","assigned_to":"d0368c4b-5dc4-4573-9255-86f241271ee4","status":"pending","priority":"high","estimated_hours":12,"end_time":"2026-03-19","developer_reply":"","qa_notes":""}
+[2026-03-17T19:40:45.581Z] UPDATE TASK 74df1cec-19d5-4d32-9e81-b003db08b66b: {"id":"74df1cec-19d5-4d32-9e81-b003db08b66b","project_id":"b374cb16-4760-48b7-9d89-34336fb2f213","title":"User Roles","description":"workong","status":"in_progress","priority":"high","end_time":"2026-03-19","estimated_hours":8,"assigned_to":"d0368c4b-5dc4-4573-9255-86f241271ee4"}
+[2026-03-18T03:17:04.295Z] UPDATE TASK 7b5253c1-7c0e-4409-92a4-3b6a06e39d27: {"id":"7b5253c1-7c0e-4409-92a4-3b6a06e39d27","project_id":"b374cb16-4760-48b7-9d89-34336fb2f213","title":"Project Setup","description":"Initialize repo, folder structure, env setup","status":"in_progress","priority":"medium","end_time":"2026-03-20","estimated_hours":8,"assigned_to":"d0368c4b-5dc4-4573-9255-86f241271ee4","actual_hours":"5"}
+[2026-03-18T03:18:24.909Z] UPDATE TASK 74df1cec-19d5-4d32-9e81-b003db08b66b: {"id":"74df1cec-19d5-4d32-9e81-b003db08b66b","project_id":"b374cb16-4760-48b7-9d89-34336fb2f213","title":"User Roles","description":"Working.","status":"in_progress","priority":"high","end_time":"2026-03-19","estimated_hours":8,"assigned_to":"d0368c4b-5dc4-4573-9255-86f241271ee4"}
+[2026-03-18T03:39:56.724Z] UPDATE TASK 937cda7b-96c7-4f38-9c7b-802594b39c34: {"project_id":"b374cb16-4760-48b7-9d89-34336fb2f213","title":"test1","description":"test1","status":"pending","priority":"medium","end_time":"2026-03-19","estimated_hours":"2","assigned_to":"d0368c4b-5dc4-4573-9255-86f241271ee4"}
+[2026-03-18T04:01:36.541Z] UPDATE TASK 25b48627-6127-4299-9856-5d20b14dea8c: {"status":"verified","qa_notes":"check again"}
+[2026-03-18T04:03:22.605Z] UPDATE TASK b951e5ec-0bec-4738-ae15-594446655a8a: {"id":"b951e5ec-0bec-4738-ae15-594446655a8a","project_id":"b374cb16-4760-48b7-9d89-34336fb2f213","title":"Auth Setup","description":"Supabase auth integration (login/signup)","status":"done","priority":"high","end_time":"","estimated_hours":10,"assigned_to":"d0368c4b-5dc4-4573-9255-86f241271ee4"}
+[2026-03-18T04:03:28.489Z] UPDATE TASK b951e5ec-0bec-4738-ae15-594446655a8a: {"id":"b951e5ec-0bec-4738-ae15-594446655a8a","project_id":"b374cb16-4760-48b7-9d89-34336fb2f213","title":"Auth Setup","description":"Supabase auth integration (login/signup)","status":"done","priority":"high","end_time":"2026-03-19","estimated_hours":10,"assigned_to":"d0368c4b-5dc4-4573-9255-86f241271ee4"}
+[2026-03-18T04:03:50.386Z] UPDATE TASK b951e5ec-0bec-4738-ae15-594446655a8a: {"status":"verified","qa_notes":"check again pls"}
+[2026-03-18T04:23:38.808Z] UPDATE TASK 50fa8768-7b1d-486e-9dc5-ba0ba045757a: {"id":"50fa8768-7b1d-486e-9dc5-ba0ba045757a","project_id":"b374cb16-4760-48b7-9d89-34336fb2f213","title":"Deployment","description":"Deploy backend, frontend, mobile builds","status":"pending","priority":"high","end_time":"","estimated_hours":10,"assigned_to":"d0368c4b-5dc4-4573-9255-86f241271ee4"}
+[2026-03-18T06:43:20.756Z] UPDATE TASK 439c925e-8bdc-40dc-9a1f-92e685696484: {"id":"439c925e-8bdc-40dc-9a1f-92e685696484","project_id":"b374cb16-4760-48b7-9d89-34336fb2f213","title":"API Base Setup","description":"Setup Express server, middleware, routing","assigned_to":"d0368c4b-5dc4-4573-9255-86f241271ee4","status":"done","priority":"high","estimated_hours":10,"actual_hours":8,"end_time":"2026-03-19","developer_reply":"","qa_notes":""}

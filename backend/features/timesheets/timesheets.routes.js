@@ -2,7 +2,7 @@ import { Router } from 'express';
 import {
     getMyToday, getMyHistory, getAllTimesheets,
     addEntry, updateEntry, deleteEntry,
-    getProjectTimesheets
+    getProjectTimesheets, batchLogTasks
 } from './timesheets.controller.js';
 import { authMiddleware } from '../../middleware/auth.middleware.js';
 import { addFeedback, getFeedback } from '../qa-feedback/qa-feedback.controller.js';
@@ -14,6 +14,7 @@ router.use(authMiddleware);
 // Employee routes
 router.get('/me', getMyToday);                          // ?date=YYYY-MM-DD
 router.get('/my-history', getMyHistory);
+router.post('/batch-log-tasks', batchLogTasks);
 
 // Project timesheets (Any authenticated user can view)
 router.get('/project/:projectId', getProjectTimesheets);

@@ -114,5 +114,36 @@ export const financeService = {
     getBalancePayments: async () => {
         const response = await api.get('/finance/balance-payments');
         return response.data;
+    },
+
+    // Invoices
+    getInvoices: async (filters = {}) => {
+        const response = await api.get('/invoices', { params: filters });
+        return response.data;
+    },
+
+    getInvoiceById: async (id) => {
+        const response = await api.get(`/invoices/${id}`);
+        return response.data;
+    },
+
+    createInvoice: async (data) => {
+        const response = await api.post('/invoices', data);
+        return response.data;
+    },
+
+    updateInvoice: async (id, data) => {
+        const response = await api.patch(`/invoices/${id}`, data);
+        return response.data;
+    },
+
+    deleteInvoice: async (id) => {
+        const response = await api.delete(`/invoices/${id}`);
+        return response.data;
+    },
+
+    updateInvoiceStatus: async (id, status) => {
+        const response = await api.patch(`/invoices/${id}/status`, { status });
+        return response.data;
     }
 };

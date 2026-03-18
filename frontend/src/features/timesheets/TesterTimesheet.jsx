@@ -8,6 +8,7 @@ import api from '../../lib/api'
 import toast from 'react-hot-toast'
 import { useAuth } from '../../context/AuthContext'
 import EditEntryModal from './EditEntryModal'
+import TimesheetEntryDetailModal from './components/TimesheetEntryDetailModal'
 import QAFeedbackTrail from '../../components/common/QAFeedbackTrail'
 import DataTable from '../../components/common/DataTable'
 import { formatDate } from '../../utils/formatters'
@@ -64,6 +65,7 @@ export default function TesterTimesheet() {
     const [savingTeamId, setSavingTeamId] = useState(null)
     const [modal, setModal] = useState(null)
     const [selectedEntry, setSelectedEntry] = useState(null)
+    const [viewingEntry, setViewingEntry] = useState(null)
     const [qaReport, setQaReport] = useState({ status: '', notes: '' })
 
     // ── My Log: load ────────────────────────────────────────────────────────
@@ -251,7 +253,11 @@ export default function TesterTimesheet() {
         {
             label: 'Activity', key: 'title', wrap: true, copyable: true,
             render: (val, e) => (
-                <div style={{ minWidth: 220 }}>
+                <div 
+                    style={{ minWidth: 220, cursor: 'pointer' }} 
+                    onClick={() => setViewingEntry(e)}
+                    className="activity-title-cell"
+                >
                     <div style={{ fontWeight: 600 }}>{val}</div>
                     {e.notes && <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 4, fontStyle: 'italic' }}>{e.notes}</div>}
                 </div>
@@ -285,8 +291,21 @@ export default function TesterTimesheet() {
         {
             label: 'Actions', key: 'id', width: '80px', sticky: true,
             render: (_, e) => (
-                <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
-                    <button className="btn btn-icon btn-sm" onClick={ev => { ev.stopPropagation(); setEditingEntry(e) }}><Edit size={14} /></button>
+                <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
+                    <button 
+                        className="btn btn-icon btn-sm action-btn-view" 
+                        onClick={ev => { ev.stopPropagation(); setViewingEntry(e) }} 
+                        title="View Details"
+                    >
+                        <Clock size={15} />
+                    </button>
+                    <button 
+                        className="btn btn-icon btn-sm action-btn-edit" 
+                        onClick={ev => { ev.stopPropagation(); setEditingEntry(e) }} 
+                        title="Edit"
+                    >
+                        <Edit size={15} />
+                    </button>
                 </div>
             )
         }
@@ -556,7 +575,10 @@ export default function TesterTimesheet() {
                                         <span><strong>Project:</strong> {selectedEntry.project?.name || 'In-House'}</span>
                                     </div>
                                     <div style={{ marginTop: 16 }}>
-                                        <QAFeedbackTrail type="todo" itemId={selectedEntry.id} />
+                                        <QAFeedbackTrail 
+                                            type={selectedEntry.task_id ? "task" : "todo"} 
+                                            itemId={selectedEntry.task_id || selectedEntry.id} 
+                                        />
                                     </div>
                                 </div>
                                 <div style={{ padding: 32 }}>
@@ -584,6 +606,17 @@ export default function TesterTimesheet() {
                     </div>
                 </div>
             )}
+            {/* Detail View Modal */}
+            {viewingEntry && (
+                <TimesheetEntryDetailModal
+                    entry={viewingEntry}
+                    onClose={() => setViewingEntry(null)}
+                    onUpdateFeedback={async (id, updates) => {
+                        await handleMyUpdate(id, updates)
+                        setViewingEntry(null)
+                    }}
+                />
+            )}
 
             <style>{`
                 .stat-value { font-size: 24px; font-weight: 800; }
@@ -595,6 +628,10 @@ export default function TesterTimesheet() {
                 .modal-subtitle { font-size: 10px; font-weight: 800; text-transform: uppercase; color: var(--accent); margin-bottom: 20px; letter-spacing: 0.1em; }
                 .form-select-badge { width: 100%; border: none; background: transparent; color: inherit; font-size: 10px; font-weight: 800; cursor: pointer; text-align: center; }
                 .badge-purple { background: rgba(139,92,246,0.1); color: #8b5cf6; }
+                .action-btn-view { background: rgba(124, 58, 237, 0.05); color: var(--accent); border: 1px solid rgba(124, 58, 237, 0.1); }
+                .action-btn-view:hover { background: var(--accent); color: white; border-color: var(--accent); box-shadow: 0 4px 12px rgba(124, 58, 237, 0.3); }
+                .action-btn-edit { background: rgba(255, 255, 255, 0.05); color: var(--text-dim); border: 1px solid var(--border); }
+                .action-btn-edit:hover { background: rgba(255, 255, 255, 0.1); color: var(--text); border-color: var(--text-muted); }
             `}</style>
         </div>
     )

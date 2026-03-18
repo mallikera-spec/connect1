@@ -28,7 +28,7 @@ const NAV = [
         items: [
             { to: '/projects', label: 'All Projects', perm: 'manage_projects', icon: FolderKanban },
             { to: '/my-projects', label: 'My Projects', icon: FolderKanban },
-            { to: '/tasks', label: 'Tasks by PM', perm: 'view_tasks', roles: ['Tester'], icon: ListTodo },
+            { to: '/tasks', label: 'Tasks by PM', perm: 'view_tasks', roles: ['Tester', 'Developer'], icon: ListTodo },
             { to: '/timesheet', label: 'Timesheet', perm: 'view_timesheet', icon: Clock },
             { to: '/developer-performance', label: 'Dev Performance', icon: TrendingUp, hideIfRole: ['Video Editor'] },
             { to: '/leaderboard', label: 'Leaderboard', icon: Award, roles: ['admin', 'super_admin', 'director', 'Director', 'Admin'] },
@@ -36,28 +36,16 @@ const NAV = [
         ]
     },
     {
-        section: 'Testing Module',
-        icon: ShieldCheck,
+        section: 'Finance',
+        icon: CircleDollarSign,
         items: [
-            { to: '/tester-dashboard', label: 'Tester Dashboard', roles: ['Tester', 'super_admin', 'director'], icon: LayoutDashboard },
-            { to: '/testing-reports', label: 'Testing Reports', roles: ['Tester', 'super_admin', 'director'], icon: BarChart3 },
-            { to: '/testing-todos', label: 'Testing Todos', roles: ['Tester', 'super_admin', 'director'], icon: ShieldCheck },
-            { to: '/testing-tasks', label: 'Testing Tasks', roles: ['Tester', 'super_admin', 'director'], icon: ListTodo },
-        ]
-    },
-    {
-        section: 'HR & Operations',
-        icon: Users,
-        items: [
-            { to: '/hr-dashboard', icon: Clock, label: 'My HR', hideIfRole: ['super_admin', 'director', 'Director'] },
-            { to: '/hr-admin', icon: Briefcase, label: 'HR Admin', perm: 'view_employees', hideIfRole: ['Video Editor'] },
-            { to: '/leave-tracker', icon: Calendar, label: 'Leave Tracker' },
-            { to: '/attendance-report', icon: FileText, label: 'Attendance Report' },
-            { to: '/departments', icon: Building2, label: 'Departments', perm: 'view_departments', hideIfRole: ['Video Editor'] },
-            { to: '/designations', icon: Briefcase, label: 'Designations', perm: 'manage_designations', hideIfRole: ['Video Editor'] },
-            { to: '/users', icon: Users, label: 'Employees', perm: 'view_employees', hideIfRole: ['Video Editor'] },
-            { to: '/hr-payroll', icon: CreditCard, label: 'Manage Payroll', perm: 'view_employees', roles: ['super_admin', 'director', 'Admin', 'HR Manager'], hideIfRole: ['Video Editor'] },
-            { to: '/salary-slips', icon: FileText, label: 'Salary Slips' },
+            { to: '/finance/overview', label: 'Overview', roles: ['admin', 'super_admin', 'director', 'investor'], icon: LayoutDashboard },
+            { to: '/finance/transactions', label: 'Ledger', roles: ['admin', 'super_admin', 'director', 'investor'], icon: TrendingUp },
+            { to: '/finance/settlements', label: 'Settlements', roles: ['admin', 'super_admin', 'director', 'investor'], icon: Calculator },
+            { to: '/finance/assets', label: 'Assets', roles: ['admin', 'super_admin', 'director', 'investor'], icon: Briefcase },
+            { to: '/finance/categories', label: 'Categories', roles: ['admin', 'super_admin', 'director', 'investor'], icon: Layers },
+            { to: '/finance/balance-payment', label: 'Balance Payment', roles: ['admin', 'super_admin', 'director', 'investor'], icon: Wallet },
+            { to: '/finance/invoices', label: 'Invoices', roles: ['admin', 'super_admin', 'director', 'investor'], icon: FileText },
         ]
     },
     {
@@ -76,22 +64,36 @@ const NAV = [
         ]
     },
     {
+        section: 'HR & Operations',
+        icon: Users,
+        items: [
+            { to: '/hr-dashboard', icon: Clock, label: 'My HR', hideIfRole: ['super_admin', 'director', 'Director'] },
+            { to: '/hr-admin', icon: Briefcase, label: 'HR Admin', perm: 'view_employees', hideIfRole: ['Video Editor'] },
+            { to: '/leave-tracker', icon: Calendar, label: 'Leave Tracker' },
+            { to: '/attendance-report', icon: FileText, label: 'Attendance Report' },
+            { to: '/departments', icon: Building2, label: 'Departments', perm: 'view_departments', hideIfRole: ['Video Editor'] },
+            { to: '/designations', icon: Briefcase, label: 'Designations', perm: 'manage_designations', hideIfRole: ['Video Editor'] },
+            { to: '/users', icon: Users, label: 'Employees', perm: 'view_employees', hideIfRole: ['Video Editor'] },
+            { to: '/hr-payroll', icon: CreditCard, label: 'Manage Payroll', perm: 'view_employees', roles: ['super_admin', 'director', 'Admin', 'HR Manager'], hideIfRole: ['Video Editor'] },
+            { to: '/salary-slips', icon: FileText, label: 'Salary Slips' },
+        ]
+    },
+    
+    {
+        section: 'Testing Module',
+        icon: ShieldCheck,
+        items: [
+            { to: '/tester-dashboard', label: 'Tester Dashboard', roles: ['Tester', 'super_admin', 'director'], icon: LayoutDashboard },
+            { to: '/testing-reports', label: 'Testing Reports', roles: ['Tester', 'super_admin', 'director'], icon: BarChart3 },
+            { to: '/testing-todos', label: 'Testing Todos', roles: ['Tester', 'super_admin', 'director'], icon: ShieldCheck },
+            { to: '/testing-tasks', label: 'Testing Tasks', roles: ['Tester', 'super_admin', 'director'], icon: ListTodo },
+        ]
+    },
+    {
         section: 'Reports',
         icon: PieChart,
         items: [
             { to: '/reports', label: 'Reports', roles: ['admin', 'super_admin', 'director', 'investor'], icon: BarChart3 }
-        ]
-    },
-    {
-        section: 'Finance',
-        icon: CircleDollarSign,
-        items: [
-            { to: '/finance/overview', label: 'Overview', roles: ['admin', 'super_admin', 'director', 'investor'], icon: LayoutDashboard },
-            { to: '/finance/transactions', label: 'Ledger', roles: ['admin', 'super_admin', 'director', 'investor'], icon: TrendingUp },
-            { to: '/finance/settlements', label: 'Settlements', roles: ['admin', 'super_admin', 'director', 'investor'], icon: Calculator },
-            { to: '/finance/assets', label: 'Assets', roles: ['admin', 'super_admin', 'director', 'investor'], icon: Briefcase },
-            { to: '/finance/categories', label: 'Categories', roles: ['admin', 'super_admin', 'director', 'investor'], icon: Layers },
-            { to: '/finance/balance-payment', label: 'Balance Payment', roles: ['admin', 'super_admin', 'director', 'investor'], icon: Wallet },
         ]
     },
     {
@@ -116,7 +118,7 @@ import { X } from 'lucide-react'
 
 export default function Sidebar({ mobileOpen, setMobileOpen }) {
     const [collapsed, setCollapsed] = useState(false)
-    const [expandedGroups, setExpandedGroups] = useState(['Overview'])
+    const [expandedGroups, setExpandedGroups] = useState([])
     const { logout, hasPermission, hasRole } = useAuth()
     const navigate = useNavigate()
     const isActuallyCollapsed = collapsed && !mobileOpen;
@@ -191,7 +193,12 @@ export default function Sidebar({ mobileOpen, setMobileOpen }) {
                     const SectionIcon = group.icon;
 
                     return (
-                        <div key={group.section} className="sidebar-group">
+                        <div 
+                            key={group.section} 
+                            className={`sidebar-group ${isExpanded ? 'expanded' : ''}`}
+                            onMouseEnter={() => setExpandedGroups([group.section])}
+                            onMouseLeave={() => setExpandedGroups([])}
+                        >
                             <button
                                 className={`sidebar-section-header ${isExpanded ? 'active' : ''}`}
                                 onClick={() => toggleGroup(group.section)}
@@ -206,40 +213,38 @@ export default function Sidebar({ mobileOpen, setMobileOpen }) {
                                 </div>
                             </button>
 
-                            {isExpanded && (
-                                <div className="sidebar-sub-menu">
-                                    {group.items.map(({ to, icon: Icon, label, action }) => {
-                                        let displayLabel = label;
-                                        if (label === 'BDM Performance' && hasRole('bdm')) displayLabel = 'My Performance';
-                                        if (label === 'Dev Performance' && !hasPermission('view_reports')) displayLabel = 'My Performance';
+                            <div className="sidebar-sub-menu">
+                                {group.items.map(({ to, icon: Icon, label, action }) => {
+                                    let displayLabel = label;
+                                    if (label === 'BDM Performance' && hasRole('bdm')) displayLabel = 'My Performance';
+                                    if (label === 'Dev Performance' && !hasPermission('view_reports')) displayLabel = 'My Performance';
 
-                                        if (action === 'logout') {
-                                            return (
-                                                <button
-                                                    key={`${group.section}-${label}`}
-                                                    className="nav-item sub-item"
-                                                    onClick={handleLogout}
-                                                    style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left', cursor: 'pointer' }}
-                                                >
-                                                    {Icon && <Icon size={16} />}
-                                                    <span>{displayLabel}</span>
-                                                </button>
-                                            );
-                                        }
-
+                                    if (action === 'logout') {
                                         return (
-                                            <NavLink
+                                            <button
                                                 key={`${group.section}-${label}`}
-                                                to={to}
-                                                className={({ isActive }) => `nav-item sub-item${isActive ? ' active' : ''}`}
+                                                className="nav-item sub-item"
+                                                onClick={handleLogout}
+                                                style={{ border: 'none', background: 'none', width: '100%', textAlign: 'left', cursor: 'pointer' }}
                                             >
                                                 {Icon && <Icon size={16} />}
                                                 <span>{displayLabel}</span>
-                                            </NavLink>
+                                            </button>
                                         );
-                                    })}
-                                </div>
-                            )}
+                                    }
+
+                                    return (
+                                        <NavLink
+                                            key={`${group.section}-${label}`}
+                                            to={to}
+                                            className={({ isActive }) => `nav-item sub-item${isActive ? ' active' : ''}`}
+                                        >
+                                            {Icon && <Icon size={16} />}
+                                            <span>{displayLabel}</span>
+                                        </NavLink>
+                                    );
+                                })}
+                            </div>
                         </div>
                     );
                 })}

@@ -8,6 +8,7 @@ import EditEntryModal from './EditEntryModal'
 import DataTable from '../../components/common/DataTable'
 import { formatDate } from '../../utils/formatters'
 import DateRangePicker from '../../components/DateRangePicker'
+import TimesheetEntryDetailModal from './components/TimesheetEntryDetailModal'
 
 const STATUS_OPTS = ['todo', 'in_progress', 'done']
 const STATUS_BADGE = {
@@ -43,6 +44,7 @@ export default function EmployeeTimesheet() {
     const [newStatus, setNewStatus] = useState('in_progress')
     const [adding, setAdding] = useState(false)
     const [editingEntry, setEditingEntry] = useState(null)
+    const [viewingEntry, setViewingEntry] = useState(null)
 
     const load = async () => {
         setLoading(true)
@@ -194,7 +196,11 @@ export default function EmployeeTimesheet() {
             wrap: true,
             copyable: true,
             render: (val, e) => (
-                <div style={{ minWidth: 250 }}>
+                <div 
+                    style={{ minWidth: 250, cursor: 'pointer' }}
+                    onClick={() => setViewingEntry(e)}
+                    className="activity-title-cell"
+                >
                     <div style={{ fontWeight: 600 }}>{val}</div>
                     {e.notes && <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 4, fontStyle: 'italic' }}>{e.notes}</div>}
                 </div>
@@ -256,10 +262,29 @@ export default function EmployeeTimesheet() {
             width: '80px',
             sticky: true,
             render: (_, e) => (
-                <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
-                    <button className="btn btn-icon btn-sm" onClick={(ev) => { ev.stopPropagation(); setEditingEntry(e); }}><Edit size={14} /></button>
+                <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
+                    <button 
+                        className="btn btn-icon btn-sm action-btn-view" 
+                        onClick={(ev) => { ev.stopPropagation(); setViewingEntry(e); }} 
+                        title="View Details"
+                    >
+                        <Clock size={15} />
+                    </button>
+                    <button 
+                        className="btn btn-icon btn-sm action-btn-edit" 
+                        onClick={(ev) => { ev.stopPropagation(); setEditingEntry(e); }} 
+                        title="Edit"
+                    >
+                        <Edit size={15} />
+                    </button>
                     {(hasRole('super_admin') || hasRole('director') || hasRole('Director')) && (
-                        <button className="btn btn-icon btn-sm btn-danger-ghost" onClick={(ev) => { ev.stopPropagation(); handleDelete(e.id); }}><Trash2 size={14} /></button>
+                        <button 
+                            className="btn btn-icon btn-sm btn-danger-ghost" 
+                            onClick={(ev) => { ev.stopPropagation(); handleDelete(e.id); }} 
+                            title="Delete"
+                        >
+                            <Trash2 size={15} />
+                        </button>
                     )}
                 </div>
             )
@@ -398,6 +423,17 @@ export default function EmployeeTimesheet() {
                 />
             )}
 
+            {viewingEntry && (
+                <TimesheetEntryDetailModal
+                    entry={viewingEntry}
+                    onClose={() => setViewingEntry(null)}
+                    onUpdateFeedback={async (id, updates) => {
+                        await handleUpdate(id, updates)
+                        setViewingEntry(null)
+                    }}
+                />
+            )}
+
             <style>{`
                 .employee-timesheet { padding: 8px; }
                 .stat-card { padding: 20px; display: flex; alignItems: center; gap: 16px; background: var(--bg-card); border: 1px solid var(--border); }
@@ -413,6 +449,10 @@ export default function EmployeeTimesheet() {
                     font-size: 10px; fontWeight: 800; cursor: pointer; text-align: center;
                 }
                 .btn-danger-ghost:hover { background: rgba(239, 68, 68, 0.1); color: var(--danger); }
+                .action-btn-view { background: rgba(124, 58, 237, 0.05); color: var(--accent); border: 1px solid rgba(124, 58, 237, 0.1); }
+                .action-btn-view:hover { background: var(--accent); color: white; border-color: var(--accent); box-shadow: 0 4px 12px rgba(124, 58, 237, 0.3); }
+                .action-btn-edit { background: rgba(255, 255, 255, 0.05); color: var(--text-dim); border: 1px solid var(--border); }
+                .action-btn-edit:hover { background: rgba(255, 255, 255, 0.1); color: var(--text); border-color: var(--text-muted); }
             `}</style>
         </div>
     )

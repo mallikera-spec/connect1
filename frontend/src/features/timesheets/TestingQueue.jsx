@@ -273,14 +273,32 @@ export default function TestingQueue() {
                             label: 'Actions',
                             key: 'id',
                             render: (_, entry) => (
-                                <div style={{ textAlign: 'right' }}>
+                                <div style={{ textAlign: 'right', display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
                                     {entry.status === 'done' ? (
-                                        <div className="quick-actions">
-                                            <button className="btn-icon-sm pass" onClick={(e) => { e.stopPropagation(); openQaModal(entry, 'verified'); }}><ShieldCheck size={16} /></button>
-                                            <button className="btn-icon-sm fail" onClick={(e) => { e.stopPropagation(); openQaModal(entry, 'failed'); }}><AlertCircle size={16} /></button>
-                                        </div>
+                                        <>
+                                            <button 
+                                                className="btn btn-icon btn-sm action-btn-success" 
+                                                onClick={(e) => { e.stopPropagation(); openQaModal(entry, 'verified'); }} 
+                                                title="Approve"
+                                            >
+                                                <ShieldCheck size={15} />
+                                            </button>
+                                            <button 
+                                                className="btn btn-icon btn-sm action-btn-danger" 
+                                                onClick={(e) => { e.stopPropagation(); openQaModal(entry, 'failed'); }} 
+                                                title="Reject"
+                                            >
+                                                <AlertCircle size={15} />
+                                            </button>
+                                        </>
                                     ) : (
-                                        <button className="btn-icon-sm" onClick={(e) => { e.stopPropagation(); openQaModal(entry, entry.status); }}><Search size={16} /></button>
+                                        <button 
+                                            className="btn btn-icon btn-sm action-btn-view" 
+                                            onClick={(e) => { e.stopPropagation(); openQaModal(entry, entry.status); }} 
+                                            title="View Details"
+                                        >
+                                            <Search size={15} />
+                                        </button>
                                     )}
                                 </div>
                             )
@@ -326,7 +344,10 @@ export default function TestingQueue() {
                                             </div>
                                         )}
                                     </div>
-                                    <QAFeedbackTrail type="todo" itemId={selectedEntry.id} />
+                                    <QAFeedbackTrail 
+                                        type={selectedEntry.task_id ? "task" : "todo"} 
+                                        itemId={selectedEntry.task_id || selectedEntry.id} 
+                                    />
                                 </div>
 
                                 <div className="action-panel">
@@ -396,11 +417,13 @@ export default function TestingQueue() {
                 .todo-cell { display: flex; flex-direction: column; gap: 2px; }
                 .qa-flag { font-size: 10px; color: #ef4444; font-weight: 800; background: rgba(239, 68, 68, 0.08); padding: 2px 6px; border-radius: 4px; width: fit-content; margin-top: 4px; }
                 
-                .quick-actions { display: flex; gap: 6px; justify-content: flex-end; }
-                .btn-icon-sm { width: 30px; height: 30px; border-radius: 6px; border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; background: transparent; color: var(--text-muted); cursor: pointer; transition: all 0.2s; }
-                .btn-icon-sm.pass:hover { background: #22c55e; color: white; border-color: #22c55e; }
-                .btn-icon-sm.fail:hover { background: #ef4444; color: white; border-color: #ef4444; }
-                .btn-icon-sm:hover:not(.pass):not(.fail) { background: var(--accent); color: white; border-color: var(--accent); }
+                .quick-actions { display: flex; gap: 8px; justify-content: flex-end; }
+                .action-btn-view { background: rgba(124, 58, 237, 0.05); color: var(--accent); border: 1px solid rgba(124, 58, 237, 0.1); }
+                .action-btn-view:hover { background: var(--accent); color: white; border-color: var(--accent); box-shadow: 0 4px 12px rgba(124, 58, 237, 0.3); }
+                .action-btn-success { background: rgba(34, 197, 94, 0.05); color: var(--success); border: 1px solid rgba(34, 197, 94, 0.1); }
+                .action-btn-success:hover, .action-btn-success.active { background: var(--success); color: white; border-color: var(--success); box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3); }
+                .action-btn-danger { background: rgba(239, 68, 68, 0.05); color: var(--danger); border: 1px solid rgba(239, 68, 68, 0.1); }
+                .action-btn-danger:hover, .action-btn-danger.active { background: var(--danger); color: white; border-color: var(--danger); box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3); }
 
                 .empty-state-card { padding: 64px; text-align: center; color: var(--text-dim); }
 

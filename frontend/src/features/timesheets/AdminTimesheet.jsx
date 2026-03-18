@@ -8,6 +8,7 @@ import QAFeedbackTrail from '../../components/common/QAFeedbackTrail'
 import DataTable from '../../components/common/DataTable'
 import { formatDate } from '../../utils/formatters'
 import DateRangePicker from '../../components/DateRangePicker'
+import TimesheetEntryDetailModal from './components/TimesheetEntryDetailModal'
 
 const STATUS_BADGE = {
     todo: 'badge-blue',
@@ -227,8 +228,12 @@ export default function AdminTimesheet() {
             wrap: true,
             copyable: true,
             render: (val, e) => (
-                <div style={{ minWidth: 250 }}>
-                    <div style={{ fontWeight: 600, fontSize: 13 }}>{val}</div>
+                <div 
+                    style={{ minWidth: 250, cursor: 'pointer' }} 
+                    onClick={() => { setSelectedEntry(e); setModal('detail'); }}
+                    className="hover-underline-container"
+                >
+                    <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--accent)', textDecoration: 'underline', textDecorationColor: 'var(--accent-transparent)' }}>{val}</div>
                     {e.notes && <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 4, fontStyle: 'italic' }}>{e.notes}</div>}
                     {e.developer_reply && <div style={{ fontSize: 10, color: 'var(--success)', marginTop: 6, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}><RotateCcw size={10} /> {e.developer_reply}</div>}
                 </div>
@@ -270,15 +275,40 @@ export default function AdminTimesheet() {
             width: '120px',
             sticky: true,
             render: (_, e) => (
-                <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
+                <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
+                    <button 
+                        className="btn btn-icon btn-sm action-btn-view" 
+                        onClick={() => { setSelectedEntry(e); setModal('detail'); }} 
+                        title="View Details"
+                    >
+                        <Clock size={15} />
+                    </button>
                     {(hasRole('Tester') || hasRole('super_admin') || hasRole('director') || hasRole('Director')) && (e.status === 'done' || e.status === 'verified' || e.status === 'failed') && (
                         <>
-                            <button className={`btn btn-icon btn-sm ${e.status === 'verified' ? 'btn-success' : 'btn-ghost'}`} onClick={() => openQaModal(e, 'verified')} title="Approve"><ShieldCheck size={14} /></button>
-                            <button className={`btn btn-icon btn-sm ${e.status === 'failed' ? 'btn-danger' : 'btn-ghost'}`} onClick={() => openQaModal(e, 'failed')} title="Reject"><AlertCircle size={14} /></button>
+                            <button 
+                                className={`btn btn-icon btn-sm ${e.status === 'verified' ? 'action-btn-success active' : 'action-btn-success'}`} 
+                                onClick={() => openQaModal(e, 'verified')} 
+                                title="Approve"
+                            >
+                                <ShieldCheck size={15} />
+                            </button>
+                            <button 
+                                className={`btn btn-icon btn-sm ${e.status === 'failed' ? 'action-btn-danger active' : 'action-btn-danger'}`} 
+                                onClick={() => openQaModal(e, 'failed')} 
+                                title="Reject"
+                            >
+                                <AlertCircle size={15} />
+                            </button>
                         </>
                     )}
                     {(hasRole('super_admin') || hasRole('director') || hasRole('Director')) && (
-                        <button className="btn btn-icon btn-sm btn-danger-ghost" onClick={() => handleDeleteEntry(e.id)} title="Delete Entry"><Trash2 size={14} /></button>
+                        <button 
+                            className="btn btn-icon btn-sm btn-danger-ghost" 
+                            onClick={() => handleDeleteEntry(e.id)} 
+                            title="Delete Entry"
+                        >
+                            <Trash2 size={15} />
+                        </button>
                     )}
                 </div>
             )
@@ -382,7 +412,10 @@ export default function AdminTimesheet() {
                                             <span><strong>Project:</strong> {selectedEntry.project?.name || 'In-House'}</span>
                                         </div>
                                     </div>
-                                    <QAFeedbackTrail type="todo" itemId={selectedEntry.id} />
+                                    <QAFeedbackTrail 
+                                        type={selectedEntry.task_id ? "task" : "todo"} 
+                                        itemId={selectedEntry.task_id || selectedEntry.id} 
+                                    />
                                 </div>
                                 <div style={{ padding: 32 }}>
                                     <h4 className="modal-subtitle">Assessment</h4>
@@ -414,6 +447,14 @@ export default function AdminTimesheet() {
                 </div>
             )}
 
+            <TimesheetEntryDetailModal 
+                isOpen={modal === 'detail'}
+                onClose={() => setModal(null)}
+                entry={selectedEntry}
+                onUpdateFeedback={handleUpdate}
+                saving={savingId !== null}
+            />
+
             <style>{`
                 .admin-timesheet { padding: 8px; }
                 .employee-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
@@ -427,6 +468,12 @@ export default function AdminTimesheet() {
                 .badge-purple { background: rgba(139, 92, 246, 0.1); color: #8b5cf6; }
                 .modal-subtitle { font-size: 10px; font-weight: 800; text-transform: uppercase; color: var(--accent); margin-bottom: 20px; letter-spacing: 0.1em; }
                 .btn-danger-ghost:hover { background: rgba(239, 68, 68, 0.1); color: var(--danger); }
+                .action-btn-view { background: rgba(124, 58, 237, 0.05); color: var(--accent); border: 1px solid rgba(124, 58, 237, 0.1); }
+                .action-btn-view:hover { background: var(--accent); color: white; border-color: var(--accent); box-shadow: 0 4px 12px rgba(124, 58, 237, 0.3); }
+                .action-btn-success { background: rgba(34, 197, 94, 0.05); color: var(--success); border: 1px solid rgba(34, 197, 94, 0.1); }
+                .action-btn-success:hover, .action-btn-success.active { background: var(--success); color: white; border-color: var(--success); box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3); }
+                .action-btn-danger { background: rgba(239, 68, 68, 0.05); color: var(--danger); border: 1px solid rgba(239, 68, 68, 0.1); }
+                .action-btn-danger:hover, .action-btn-danger.active { background: var(--danger); color: white; border-color: var(--danger); box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3); }
             `}</style>
         </div>
     )

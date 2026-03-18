@@ -264,11 +264,17 @@ body {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  overflow: hidden;
+  max-height: 0;
+  opacity: 0;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sidebar-group.expanded .sidebar-sub-menu {
+  max-height: 500px;
+  opacity: 1;
   margin-top: 4px;
-  padding-left: 0;
-  margin-left: 0;
-  margin-bottom: 4px;
-  transition: all var(--transition);
+  margin-bottom: 8px;
 }
 
 .nav-item {
@@ -426,6 +432,38 @@ body {
   color: var(--text-muted);
   margin-top: 2px;
 }
+
+/* ── Badges ── */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 99px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.badge-gray { background: rgba(255, 255, 255, 0.08); color: var(--text-dim); }
+.badge-blue { background: var(--info-bg); color: var(--info); }
+.badge-yellow { background: var(--warning-bg); color: var(--warning); }
+.badge-green { background: var(--success-bg); color: var(--success); }
+.badge-red { background: var(--danger-bg); color: var(--danger); }
+.badge-purple { background: rgba(139, 92, 246, 0.15); color: #a78bfa; }
+
+/* ── Utilities ── */
+.polished-card {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--border);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+}
+
+.animate-fade-in { animation: fadeIn 0.3s ease; }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
 /* ── Page header ── */
 .page-header {

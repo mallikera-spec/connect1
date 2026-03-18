@@ -23,6 +23,30 @@ export const createTask = async (taskData) => {
     return data;
 };
 
+export const bulkCreateTasks = async (tasksArray) => {
+    const { data, error } = await supabaseAdmin.from('tasks').insert(tasksArray).select();
+    if (error) throw error;
+
+    // Notify assignees in bulk (safely)
+    for (const task of data) {
+        if (task.assigned_to) {
+            try {
+                await createNotification({
+                    userId: task.assigned_to,
+                    type: 'TASK_ASSIGNED',
+                    title: 'New Task Assigned (Bulk Upload)',
+                    message: `You have been assigned to: ${task.title}`,
+                    data: { taskId: task.id }
+                });
+            } catch (err) {
+                console.error('Failed to create notification for bulk task:', err);
+            }
+        }
+    }
+
+    return data;
+};
+
 export const getAllTasks = async (filters = {}) => {
     let query = supabaseAdmin
         .from('tasks')
@@ -126,6 +150,45 @@ export const updateTask = async (id, updates, user) => {
     }
 
     return data;
+};
+
+export const bulkUpdateTasks = async (ids, updates, user) => {
+    const { data, error } = await supabaseAdmin
+        .from('tasks')
+        .update(updates)
+        .in('id', ids)
+        .select('*, project:projects(id, name), assignee:profiles!assigned_to(id, full_name, email)');
+
+    if (error) throw error;
+
+    // Optional: Send notifications for bulk updates (e.g., if assignee changed)
+    if (updates.assigned_to) {
+        for (const task of data) {
+            try {
+                await createNotification({
+                    userId: task.assigned_to,
+                    type: 'TASK_ASSIGNED',
+                    title: 'New Task Assigned (Bulk)',
+                    message: `You have been assigned to: ${task.title}`,
+                    data: { taskId: task.id }
+                });
+            } catch (err) {
+                console.error('Failed to create notification for bulk reassign:', err);
+            }
+        }
+    }
+
+    return data;
+};
+
+export const bulkDeleteTasks = async (ids) => {
+    const { error } = await supabaseAdmin
+        .from('tasks')
+        .delete()
+        .in('id', ids);
+
+    if (error) throw error;
+    return { ids };
 };
 
 export const deleteTask = async (id) => {

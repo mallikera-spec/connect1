@@ -225,37 +225,52 @@ const DataTable = ({
                     <div className="loading-bar-anim" style={{ height: '100%', background: 'white', width: '30%' }}></div>
                 </div>
             )}
-            {/* Rule 24: Table Toolbar */}
+            {/* Table Toolbar */}
             <div className="table-toolbar">
                 <div className="table-toolbar-left">
-                    {selectedRows.length > 0 ? (
-                        <div className="bulk-actions-bar" style={{ display: 'flex', alignItems: 'center', gap: '12px', background: 'var(--accent)', color: 'white', padding: '6px 16px', borderRadius: '8px' }}>
-                            <span>{selectedRows.length} selected</span>
-                            {bulkActions.map((action, idx) => (
-                                <button key={idx} className="btn btn-sm btn-ghost" style={{ color: 'white', borderColor: 'rgba(255,255,255,0.3)' }} onClick={() => action.handler(selectedRows.map(i => sortedData[i]))}>
-                                    {action.icon} {action.label}
+                    <div className={`toolbar-item-container ${selectedRows.length > 0 ? 'bulk-active' : ''}`}>
+                        {selectedRows.length > 0 ? (
+                            <div className="bulk-actions-bar animate-slide-in">
+                                <div className="bulk-count">
+                                    <span className="count-badge">{selectedRows.length}</span>
+                                    <span>Selected</span>
+                                </div>
+                                <div className="bulk-actions-list">
+                                    {bulkActions.map((action, idx) => (
+                                        <button 
+                                            key={idx} 
+                                            className="btn btn-sm btn-ghost bulk-action-btn" 
+                                            onClick={() => action.handler(selectedRows.map(i => sortedData[i]))}
+                                        >
+                                            {action.icon}
+                                            <span>{action.label}</span>
+                                        </button>
+                                    ))}
+                                </div>
+                                <button className="btn btn-icon btn-sm bulk-close" onClick={() => setSelectedRows([])}>
+                                    <X size={14} />
                                 </button>
-                            ))}
-                        </div>
-                    ) : (
-                        <div className="search-input-wrap">
-                            <Search size={16} />
-                            <input 
-                                type="text" 
-                                placeholder="Search records..." 
-                                className="form-input" 
-                                value={displaySearch || ''}
-                                onChange={(e) => handleSearch(e.target.value)}
-                            />
-                            {searchTerm && (
-                                <X 
-                                    size={14} 
-                                    className="search-clear" 
-                                    onClick={() => handleSearch('')}
+                            </div>
+                        ) : (
+                            <div className="search-input-wrap animate-fade-in">
+                                <Search size={16} className="search-icon" />
+                                <input 
+                                    type="text" 
+                                    placeholder="Search records..." 
+                                    className="form-input search-input" 
+                                    value={displaySearch || ''}
+                                    onChange={(e) => handleSearch(e.target.value)}
                                 />
-                            )}
-                        </div>
-                    )}
+                                {displaySearch && (
+                                    <X 
+                                        size={14} 
+                                        className="search-clear" 
+                                        onClick={() => handleSearch('')}
+                                    />
+                                )}
+                            </div>
+                        )}
+                    </div>
                 </div>
 
                 <div className="table-toolbar-right" style={{ display: 'flex', gap: '8px' }}>
@@ -413,38 +428,71 @@ const DataTable = ({
             </div>
 
             <style>{`
-                .data-table-container { background: var(--bg-card); border-radius: 12px; border: 1px solid var(--border); overflow: hidden; width: 100%; }
-                .table-toolbar { padding: 16px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.01); }
-                .search-input-wrap { position: relative; display: flex; align-items: center; }
-                .search-input-wrap input { padding-right: 32px; }
-                .search-clear { position: absolute; right: 8px; cursor: pointer; color: var(--text-dim); }
-                .search-clear:hover { color: var(--text); }
-                .standard-data-table { width: 100%; border-collapse: collapse; font-size: 14px; table-layout: auto; }
-                .standard-data-table th { background: rgba(255,255,255,0.03); color: var(--text-dim); font-weight: 600; text-transform: uppercase; font-size: 11px; letter-spacing: 0.05em; padding: 12px; border-bottom: 2px solid var(--border); position: relative; }
-                .standard-data-table td { padding: 12px; border-bottom: 1px solid var(--border); transition: background 0.2s; }
-                .standard-data-table tr:hover { background: #f9fafb !important; }
-                .standard-data-table tr.selected { background: rgba(124, 58, 237, 0.05) !important; }
+                .data-table-container { background: var(--bg-card); border-radius: 16px; border: 1px solid var(--border); overflow: hidden; width: 100%; box-shadow: var(--shadow); backdrop-filter: blur(10px); }
+                .table-toolbar { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.02); min-height: 72px; }
                 
-                .sticky-col { position: sticky; z-index: 10; background: var(--bg-card); }
-                .sticky-left { left: 0; box-shadow: 2px 0 5px rgba(0,0,0,0.05); border-right: 1px solid var(--border); }
-                .sticky-right { right: 0; box-shadow: -2px 0 5px rgba(0,0,0,0.05); border-left: 1px solid var(--border); }
-                th.sticky-col { background: var(--bg-app) !important; z-index: 12 !important; }
-                [data-theme='dark'] th.sticky-col { background: #1a1a2e !important; }
-                [data-theme='light'] th.sticky-col { background: #f8fafc !important; }
+                .toolbar-item-container { position: relative; width: auto; min-width: 240px; }
+                .toolbar-item-container.bulk-active { min-width: 400px; }
+
+                .bulk-actions-bar { 
+                    display: flex; 
+                    align-items: center; 
+                    gap: 16px; 
+                    background: var(--accent-gradient); 
+                    color: white; 
+                    padding: 6px 16px; 
+                    border-radius: 99px; 
+                    box-shadow: 0 4px 15px rgba(var(--accent-rgb), 0.3);
+                }
+                .bulk-count { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 13px; border-right: 1px solid rgba(255,255,255,0.2); padding-right: 16px; }
+                .count-badge { background: white; color: var(--accent); width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; border-radius: 50%; font-size: 11px; }
+                .bulk-actions-list { display: flex; gap: 8px; align-items: center; }
+                .bulk-action-btn { background: rgba(255,255,255,0.1) !important; color: white !important; border: 1px solid rgba(255,255,255,0.2) !important; padding: 4px 12px !important; }
+                .bulk-action-btn:hover { background: rgba(255,255,255,0.2) !important; }
+                .bulk-close { color: rgba(255,255,255,0.7) !important; }
+                .bulk-close:hover { color: white !important; background: rgba(255,255,255,0.1) !important; }
+
+                .search-input-wrap { position: relative; display: flex; align-items: center; width: 100%; }
+                .search-icon { position: absolute; left: 12px; color: var(--text-dim); }
+                .search-input { padding-left: 36px !important; border-radius: 99px !important; background: rgba(255,255,255,0.05) !important; width: 280px !important; transition: all 0.3s ease; }
+                .search-input:focus { width: 320px !important; background: rgba(255,255,255,0.08) !important; border-color: var(--accent) !important; }
+                .search-clear { position: absolute; right: 12px; cursor: pointer; color: var(--text-dim); }
+                .search-clear:hover { color: var(--text); }
+
+                .table-responsive-wrapper { background: transparent; }
+                .standard-data-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+                .standard-data-table th { background: rgba(255,255,255,0.03); color: var(--text-dim); font-weight: 700; text-transform: uppercase; font-size: 11px; letter-spacing: 0.1em; padding: 14px 16px; border-bottom: 2px solid var(--border); }
+                .standard-data-table td { padding: 14px 16px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+                .standard-data-table tr:hover { background: rgba(255,255,255,0.02) !important; }
+                .standard-data-table tr.selected { background: rgba(var(--accent-rgb), 0.05) !important; }
+                
+                .sticky-col { position: sticky; z-index: 10; background: inherit; }
+                .sticky-left { left: 0; }
+                .sticky-right { right: 0; }
+                .standard-data-table tr:hover .sticky-col { background: rgba(255,255,255,0.02); }
                 
                 .cell-content { max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-                .table-footer { padding: 16px; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border); }
-                .footer-info { display: flex; align-items: center; gap: 12px; font-size: 13px; color: var(--text-muted); }
-                .limit-select { width: auto !important; padding: 2px 8px !important; height: 32px !important; }
-                .pagination-controls { display: flex; gap: 8px; align-items: center; }
-                .page-indicator { display: flex; gap: 4px; align-items: center; }
-                .page-number { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 6px; border: 1px solid var(--border); background: transparent; color: var(--text-muted); cursor: pointer; }
-                .page-number.active { background: var(--accent); color: white; border-color: var(--accent); }
                 
-                .loading-bar-anim { animation: loading-bar 1.5s infinite linear; }
-                @keyframes loading-bar {
-                    0% { transform: translateX(-100%); }
-                    100% { transform: translateX(333%); }
+                .table-footer { padding: 16px 20px; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border); background: rgba(255,255,255,0.01); }
+                .footer-info { display: flex; align-items: center; gap: 12px; font-size: 13px; color: var(--text-dim); }
+                .limit-select { width: auto !important; padding: 2px 24px 2px 8px !important; height: 32px !important; border-radius: 6px !important; }
+                
+                .pagination-controls { display: flex; gap: 6px; align-items: center; }
+                .page-indicator { display: flex; gap: 4px; align-items: center; }
+                .page-number { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 8px; border: 1px solid var(--border); background: transparent; color: var(--text-dim); cursor: pointer; transition: all 0.2s; font-size: 13px; font-weight: 500; }
+                .page-number:hover:not(.active) { background: var(--bg-card); border-color: var(--text-dim); }
+                .page-number.active { background: var(--accent); color: white; border-color: var(--accent); box-shadow: 0 2px 8px rgba(var(--accent-rgb), 0.3); }
+                
+                .animate-slide-in { animation: slide-in 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+                .animate-fade-in { animation: fade-in 0.3s ease; }
+                
+                @keyframes slide-in {
+                    from { transform: translateX(-10px); opacity: 0; }
+                    to { transform: translateX(0); opacity: 1; }
+                }
+                @keyframes fade-in {
+                    from { opacity: 0; }
+                    to { opacity: 1; }
                 }
 
                 @media print {

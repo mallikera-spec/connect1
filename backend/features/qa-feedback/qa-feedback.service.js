@@ -1,9 +1,9 @@
 import { supabaseAdmin } from '../../config/supabase.js';
 
-export const createFeedback = async ({ item_type, item_id, author_id, content, new_status }) => {
+export const createFeedback = async ({ item_type, item_id, author_id, content, new_status, role_type }) => {
     const { data, error } = await supabaseAdmin
         .from('qa_feedback')
-        .insert({ item_type, item_id, author_id, content, new_status })
+        .insert({ item_type, item_id, author_id, content, new_status, role_type })
         .select(`
             *,
             author:profiles!author_id(id, full_name, email)

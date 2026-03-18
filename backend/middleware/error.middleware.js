@@ -7,10 +7,11 @@ export const errorMiddleware = (err, _req, res, _next) => {
 
     // Zod validation error
     if (err instanceof ZodError) {
+        const issues = err.issues || err.errors || [];
         return res.status(StatusCodes.UNPROCESSABLE_ENTITY).json({
             success: false,
             message: 'Validation error',
-            errors: err.errors.map((e) => ({
+            errors: issues.map((e) => ({
                 field: e.path.join('.'),
                 message: e.message,
             })),

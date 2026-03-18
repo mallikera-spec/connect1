@@ -30,6 +30,7 @@ import milestonesRoutes from './features/milestones/milestones.routes.js';
 import pollsRoutes from './features/polls/polls.routes.js';
 import leadFilesRoutes from './features/lead-files/lead-files.routes.js';
 import financeRoutes from './features/finance/finance.routes.js';
+import invoicesRoutes from './features/invoices/invoices.routes.js';
 
 import { authMiddleware } from './middleware/auth.middleware.js';
 import { errorMiddleware } from './middleware/error.middleware.js';
@@ -91,6 +92,7 @@ app.use('/api/v1/milestones', milestonesRoutes);
 app.use('/api/v1/polls', pollsRoutes);
 app.use('/api/v1/lead-files', leadFilesRoutes);
 app.use('/api/v1/finance', financeRoutes);
+app.use('/api/v1/invoices', invoicesRoutes);
 
 // 404 handler
 app.use((_req, res) => {

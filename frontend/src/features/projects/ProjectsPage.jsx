@@ -219,11 +219,14 @@ export default function ProjectsPage() {
             width: '120px',
             render: (val) => {
                 const s = PROJECT_STATUS[val] || PROJECT_STATUS.active;
-                return (
-                    <span className="badge" style={{ background: s.color + '15', color: s.color, fontWeight: 700, padding: '4px 10px', borderRadius: '12px', fontSize: '11px', textTransform: 'uppercase' }}>
-                        {s.label}
-                    </span>
-                );
+                let badgeClass = 'badge-gray';
+                if (val === 'active') badgeClass = 'badge-green';
+                if (val === 'on_hold') badgeClass = 'badge-yellow';
+                if (val === 'completed') badgeClass = 'badge-blue';
+                if (val === 'cancelled') badgeClass = 'badge-red';
+                if (val === 'planning') badgeClass = 'badge-purple';
+                
+                return <span className={`badge ${badgeClass}`}>{s.label}</span>;
             }
         },
         {
@@ -309,7 +312,7 @@ export default function ProjectsPage() {
                 </div>
             </div>
 
-            <div className="card table-card">
+            <div className="card polished-card table-card animate-fade-in">
                 <DataTable
                     data={projects}
                     columns={columns}
@@ -435,8 +438,7 @@ export default function ProjectsPage() {
                 .header-actions { display: flex; gap: 12px; align-items: center; }
                 .filter-select { height: 38px; min-width: 150px; }
                 .subtype-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; background: rgba(255,255,255,0.03); padding: 12px; border-radius: 8px; }
-                .checkbox-label { display: flex; alignItems: center; gap: 8px; font-size: 13px; cursor: pointer; }
-                .badge { display: inline-block; }
+                .checkbox-label { display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer; }
             `}</style>
         </div>
     )

@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { X, Save, Clock, Calendar, FileText, RotateCcw } from 'lucide-react'
+import { useState } from 'react'
+import { X, Save } from 'lucide-react'
 import api from '../../lib/api'
 import toast from 'react-hot-toast'
 import QAFeedbackTrail from '../../components/common/QAFeedbackTrail'
@@ -11,7 +11,7 @@ export default function EditEntryModal({ entry, myProjects, onClose, onSaved }) 
     const [projectId, setProjectId] = useState(entry.project_id || '')
     const [time, setTime] = useState(entry.hours_spent || '00:00')
     const [notes, setNotes] = useState(entry.notes || '')
-    const [developerReply, setDeveloperReply] = useState(entry.developer_reply || '')
+    const [status, setStatus] = useState(entry.status || 'in_progress')
     const [saving, setSaving] = useState(false)
 
     const handleSave = async (e) => {
@@ -22,19 +22,19 @@ export default function EditEntryModal({ entry, myProjects, onClose, onSaved }) 
 
         setSaving(true)
         try {
-            const isResubmitting = entry.status === 'failed' && developerReply.trim();
+            const isResubmitting = entry.status === 'failed' && status === 'done';
+            
             const res = await api.patch(`/timesheets/entries/${entry.id}`, {
                 title: title.trim(),
                 project_id: projectId,
                 hours_spent: time,
                 notes: notes.trim(),
-                developer_reply: developerReply.trim(),
-                status: isResubmitting ? 'done' : entry.status
+                status: status
             })
 
             if (isResubmitting) {
                 await api.post(`/timesheets/entries/${entry.id}/feedback`, {
-                    content: developerReply.trim(),
+                    content: 'Resubmitted for QA (from Detail View)',
                     new_status: 'done'
                 });
             }
@@ -58,9 +58,9 @@ export default function EditEntryModal({ entry, myProjects, onClose, onSaved }) 
                 </div>
                 <form id="edit-entry-form" onSubmit={handleSave} className="modal-body" style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', padding: 0, overflow: 'hidden', flex: 1 }}>
                     {(() => {
-                        const isLocked = !['admin', 'super_admin', 'director'].some(r => user?.roles?.some(ur => (typeof ur === 'string' ? ur : ur.name).toLowerCase().includes(r))) && ['done', 'verified', 'failed'].includes(entry.status);
+                        const isLocked = !['admin', 'super_admin', 'director'].some(r => user?.roles?.some(ur => (typeof ur === 'string' ? ur : ur.name).toLowerCase().includes(r))) && ['done', 'verified'].includes(entry.status);
                         const isFailed = entry.status === 'failed';
-                        const isEditable = !isLocked; // Stricter locking: once submitted, it's locked.
+                        const isEditable = !isLocked; 
 
                         return (
                             <>
@@ -69,7 +69,11 @@ export default function EditEntryModal({ entry, myProjects, onClose, onSaved }) 
                                     <h4 style={{ fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', color: 'var(--accent)', marginBottom: '16px', letterSpacing: '0.05em' }}>
                                         Communication Logs
                                     </h4>
-                                    <QAFeedbackTrail type="todo" itemId={entry.id} />
+                                    <QAFeedbackTrail 
+                                        type={entry.task_id ? "task" : "todo"} 
+                                        itemId={entry.task_id || entry.id} 
+                                        allowPost={true} 
+                                    />
                                 </div>
 
                                 {/* Right Side: Form */}
@@ -117,6 +121,21 @@ export default function EditEntryModal({ entry, myProjects, onClose, onSaved }) 
                                     </div>
 
                                     <div className="form-group">
+                                        <label className="form-label">Status</label>
+                                        <select
+                                            className="form-select"
+                                            value={status}
+                                            onChange={e => setStatus(e.target.value)}
+                                            disabled={!isEditable}
+                                        >
+                                            <option value="todo">TODO</option>
+                                            <option value="in_progress">IN PROGRESS</option>
+                                            <option value="done">DONE</option>
+                                            {isFailed && <option value="done">DONE (RESUBMIT)</option>}
+                                        </select>
+                                    </div>
+
+                                    <div className="form-group">
                                         <label className="form-label">Notes</label>
                                         <textarea
                                             className="form-textarea"
@@ -129,25 +148,6 @@ export default function EditEntryModal({ entry, myProjects, onClose, onSaved }) 
                                         />
                                     </div>
 
-                                    {isFailed && (
-                                        <div className="form-group" style={{ background: 'rgba(59, 130, 246, 0.05)', padding: '16px', borderRadius: 12, marginTop: 20, border: '1px solid rgba(59, 130, 246, 0.2)' }}>
-                                            <label className="form-label" style={{ color: 'var(--accent)', fontSize: 13, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
-                                                <RotateCcw size={14} /> Resubmit Note
-                                            </label>
-                                            <textarea
-                                                className="form-textarea"
-                                                value={developerReply}
-                                                onChange={e => setDeveloperReply(e.target.value)}
-                                                rows={4}
-                                                placeholder="Describe your fix..."
-                                                required
-                                                style={{ marginTop: 8 }}
-                                            />
-                                            <p style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 8 }}>
-                                                Saving will mark status as <strong>DONE</strong> for re-testing.
-                                            </p>
-                                        </div>
-                                    )}
 
                                     {isLocked && !isFailed && (
                                         <div style={{ padding: '12px', background: 'rgba(16, 185, 129, 0.05)', borderRadius: 8, border: '1px solid rgba(16, 185, 129, 0.2)', marginTop: 12 }}>
