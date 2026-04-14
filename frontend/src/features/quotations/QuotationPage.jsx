@@ -14,8 +14,8 @@ const STEPS = [
     { id: 4, icon: '🎯', title: "Problem Statement", field: 'problemStatement', type: 'textarea', question: "What problem is the client trying to solve?", hint: "Summarise the pain point from your discussion", placeholder: 'e.g. They manage inventory on Excel sheets, causing stock-out issues across 3 warehouses...' },
     { id: 5, icon: '✨', title: "Key Features", field: 'keyFeatures', type: 'tags', question: "What are the key features they discussed?", hint: "Press Enter after each feature to add it", placeholder: 'Type a feature and press Enter...' },
     { id: 6, icon: '👥', title: "Target Users", field: 'targetAudience', type: 'textarea', question: "Who are the primary users of this system?", hint: "Describe end-users and their roles", placeholder: 'e.g. ~50 warehouse staff, 5 managers, 3 super admins. Staff are non-technical...' },
-    { id: 7, icon: '💰', title: "Budget & Timeline", field: ['budget', 'timeline'], type: 'dual', question: "What is their budget & expected timeline?", hint: "Rough figures help the AI calibrate", placeholders: ['e.g. 8,00,000 INR', 'e.g. 4 months'] },
-    { id: 8, icon: '⚙️', title: "Settings", field: ['provider', 'style'], type: 'selection', question: "Choose document style", hint: "This controls the visual theme of your final quotation", options: [{ value: 'template1', label: 'Template 1', desc: 'Consulting / Enterprise Style' }, { value: 'template2', label: 'Template 2', desc: 'Standard Corporate Style' }, { value: 'template3', label: 'Template 3', desc: 'Features Explained Style' }] },
+    { id: 7, icon: '💰', title: "Budget & Timeline", field: ['budget', 'timeline'], type: 'dual-gst', question: "What is their budget & expected timeline?", hint: "Rough figures help the AI calibrate", placeholders: ['e.g. 8,00,000 INR', 'e.g. 4 months'] },
+    { id: 8, icon: '⚙️', title: "Settings", field: ['provider', 'style'], type: 'selection', question: "Choose document style", hint: "This controls the visual theme of your final quotation", options: [{ value: 'template1', label: 'Template 1', desc: 'Consulting / Enterprise Style' }, { value: 'template2', label: 'Template 2', desc: 'Standard Corporate Style' }, { value: 'template3', label: 'Template 3', desc: 'Features Explained Style' }, { value: 'template4', label: 'Template 4', desc: 'Detailed Cost Breakdown Style' }] },
 ];
 
 function TagInput({ value = [], onChange, placeholder }) {
@@ -178,11 +178,13 @@ function PreviewPanel({ formData, currentStep, previewData, setPreviewData, isGe
                     <div className="q-preview-section">
                         <div className="q-preview-section-label">⚙️ Feature Modules</div>
                         {(previewData.features || []).map((f, fi) => (
-                            <div key={fi} className="q-preview-feature">
+                            <div key={fi} className="q-preview-feature" style={{ position: 'relative' }}>
+                                <button className="q-preview-delete-btn-abs" onClick={() => { const fs = [...previewData.features]; fs.splice(fi, 1); updateField('features', fs); }}>×</button>
                                 <input className="q-feature-name-input" value={f.module || ''} onChange={e => updateFeature(fi, 'module', e.target.value)} placeholder="Module name" />
                                 <EditableBullets items={f.items || []} onChange={v => updateFeature(fi, 'items', v)} />
                             </div>
                         ))}
+                        <button className="q-preview-add-btn" onClick={() => updateField('features', [...(previewData.features || []), { module: '', items: [] }])}>+ Add Module</button>
                     </div>
                 )}
 
@@ -190,12 +192,14 @@ function PreviewPanel({ formData, currentStep, previewData, setPreviewData, isGe
                     <div className="q-preview-section">
                         <div className="q-preview-section-label">⚙️ Key Modules</div>
                         {(previewData.keyModules || []).map((mod, mi) => (
-                            <div key={mi} className="q-preview-feature" style={{ marginBottom: '15px', padding: '10px', border: '1px solid #e5e7eb', borderRadius: '6px' }}>
-                                <input className="q-feature-name-input" style={{ width: '100%', marginBottom: '5px', fontWeight: 'bold' }} value={mod.title || ''} onChange={e => { const arr = [...previewData.keyModules]; arr[mi] = { ...arr[mi], title: e.target.value }; updateField('keyModules', arr); }} placeholder="Module Title" />
+                            <div key={mi} className="q-preview-feature" style={{ position: 'relative', marginBottom: '15px', padding: '10px', border: '1px solid #e5e7eb', borderRadius: '6px' }}>
+                                <button className="q-preview-delete-btn-abs" onClick={() => { const km = [...previewData.keyModules]; km.splice(mi, 1); updateField('keyModules', km); }}>×</button>
+                                <input className="q-feature-name-input" style={{ width: 'calc(100% - 30px)', marginBottom: '5px', fontWeight: 'bold' }} value={mod.title || ''} onChange={e => { const arr = [...previewData.keyModules]; arr[mi] = { ...arr[mi], title: e.target.value }; updateField('keyModules', arr); }} placeholder="Module Title" />
                                 <input style={{ width: '100%', marginBottom: '10px', padding: '6px', border: '1px solid #eee' }} value={mod.description || ''} onChange={e => { const arr = [...previewData.keyModules]; arr[mi] = { ...arr[mi], description: e.target.value }; updateField('keyModules', arr); }} placeholder="Description" />
                                 <EditableBullets items={mod.features || []} onChange={v => { const arr = [...previewData.keyModules]; arr[mi] = { ...arr[mi], features: v }; updateField('keyModules', arr); }} />
                             </div>
                         ))}
+                        <button className="q-preview-add-btn" onClick={() => updateField('keyModules', [...(previewData.keyModules || []), { title: '', description: '', features: [] }])}>+ Add Module</button>
                     </div>
                 )}
 
@@ -220,26 +224,54 @@ function PreviewPanel({ formData, currentStep, previewData, setPreviewData, isGe
                             <div key={ti} style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
                                 <input style={{ flex: 1, padding: '6px', border: '1px solid #ddd', borderRadius: '4px' }} value={t.role || ''} onChange={e => { const pt = [...previewData.proposedTeam]; pt[ti] = { ...pt[ti], role: e.target.value }; updateField('proposedTeam', pt); }} placeholder="Role (e.g. Backend Dev)" />
                                 <input style={{ width: '80px', padding: '6px', border: '1px solid #ddd', borderRadius: '4px' }} value={t.count || ''} onChange={e => { const pt = [...previewData.proposedTeam]; pt[ti] = { ...pt[ti], count: e.target.value }; updateField('proposedTeam', pt); }} placeholder="Count" type="number" />
+                                <button className="q-edit-bullet-remove" onClick={() => { const pt = [...previewData.proposedTeam]; pt.splice(ti, 1); updateField('proposedTeam', pt); }}><X size={11} /></button>
                             </div>
                         ))}
+                        <button className="q-preview-add-btn" onClick={() => updateField('proposedTeam', [...(previewData.proposedTeam || []), { role: '', count: 1 }])}>+ Add Member</button>
                     </div>
                 )}
 
                 <div className="q-preview-section">
                     <div className="q-preview-section-label">📅 Timeline</div>
                     {(previewData.timeline || []).map((t, ti) => (
-                        <div key={ti} className="q-preview-timeline-item">
-                            <div className="q-timeline-phase-row">
+                        <div key={ti} className="q-preview-timeline-item" style={{ position: 'relative' }}>
+                            <button className="q-preview-delete-btn-abs" onClick={() => { const tl = [...previewData.timeline]; tl.splice(ti, 1); updateField('timeline', tl); }}>×</button>
+                            <div className="q-timeline-phase-row" style={{ width: 'calc(100% - 30px)' }}>
                                 <input className="q-timeline-phase-input" value={t.phase || ''} onChange={e => { const tl = [...(previewData.timeline || [])]; tl[ti] = { ...tl[ti], phase: e.target.value }; updateField('timeline', tl); }} placeholder="Phase name" />
                                 <input className="q-timeline-dur-input" value={t.duration || ''} onChange={e => { const tl = [...(previewData.timeline || [])]; tl[ti] = { ...tl[ti], duration: e.target.value }; updateField('timeline', tl); }} placeholder="Duration" />
                             </div>
                             {t.tasks !== undefined ? (
                                 <EditableBullets items={t.tasks || []} onChange={v => { const tl = [...(previewData.timeline || [])]; tl[ti] = { ...tl[ti], tasks: v }; updateField('timeline', tl); }} />
                             ) : (
-                                <input style={{ width: '100%', marginTop: '5px', padding: '6px', border: '1px solid #ddd', borderRadius: '4px' }} value={t.deliverables || ''} onChange={e => { const tl = [...(previewData.timeline || [])]; tl[ti] = { ...tl[ti], deliverables: e.target.value }; updateField('timeline', tl); }} placeholder="Key Deliverables" />
+                                <div className="q-timeline-deliverables-row">
+                                    <input style={{ width: '100%', marginTop: '5px', padding: '6px', border: '1px solid #ddd', borderRadius: '4px' }} value={t.deliverables || ''} onChange={e => { const tl = [...(previewData.timeline || [])]; tl[ti] = { ...tl[ti], deliverables: e.target.value }; updateField('timeline', tl); }} placeholder="Key Deliverables" />
+                                </div>
                             )}
                         </div>
                     ))}
+                    <div style={{ display: 'flex', gap: '10px' }}>
+                        <button className="q-preview-add-btn" onClick={() => { 
+                            const template = (previewData.timeline?.[0]?.tasks !== undefined) ? { phase: '', duration: '', tasks: [] } : { phase: '', duration: '', deliverables: '' };
+                            updateField('timeline', [...(previewData.timeline || []), template]);
+                        }}>+ Add Phase</button>
+                        <button className="q-preview-add-btn" onClick={() => {
+                            const timeline = [...(previewData.timeline || [])];
+                            const sprintPhases = timeline.filter(item => item.phase?.toLowerCase().includes('sprint'));
+                            let nextSprint = 1;
+                            if (sprintPhases.length > 0) {
+                                const numbers = sprintPhases.map(item => {
+                                    const match = item.phase.match(/Sprint\s+(\d+)/i);
+                                    return match ? parseInt(match[1]) : 0;
+                                });
+                                nextSprint = Math.max(...numbers) + 1;
+                            }
+                            const isTaskBased = timeline[0]?.tasks !== undefined;
+                            const newItem = isTaskBased 
+                                ? { phase: `Sprint ${nextSprint}`, duration: '2 weeks', tasks: [] }
+                                : { phase: `Sprint ${nextSprint}`, duration: '2 weeks', deliverables: '' };
+                            updateField('timeline', [...timeline, newItem]);
+                        }}>+ Add Sprint</button>
+                    </div>
                 </div>
 
                 {previewData.commercialEstimate && (
@@ -254,14 +286,59 @@ function PreviewPanel({ formData, currentStep, previewData, setPreviewData, isGe
                     <div className="q-preview-section">
                         <div className="q-preview-section-label">💰 Cost Estimation</div>
                         <input className="q-edit-commercial-input" value={previewData.costEstimation.totalCost || ''} onChange={e => updateField('costEstimation', { ...previewData.costEstimation, totalCost: e.target.value })} placeholder="e.g. ₹8,00,000" />
-                        <div style={{ marginTop: '15px', fontSize: '13px', fontWeight: '600' }}>Payment Milestones</div>
+                        <div style={{ marginTop: '15px', fontSize: '13px', fontWeight: '600', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span>Payment Milestones</span>
+                        </div>
                         {(previewData.costEstimation.paymentPlan || []).map((p, pi) => (
-                            <div key={pi} style={{ display: 'flex', gap: '6px', marginBottom: '8px', marginTop: '6px' }}>
+                            <div key={pi} style={{ display: 'flex', gap: '6px', marginBottom: '8px', marginTop: '6px', alignItems: 'center' }}>
                                 <input style={{ flex: 1, padding: '6px', border: '1px solid #ddd', borderRadius: '4px' }} value={p.milestone || ''} onChange={e => { const pp = [...previewData.costEstimation.paymentPlan]; pp[pi] = { ...pp[pi], milestone: e.target.value }; updateField('costEstimation', { ...previewData.costEstimation, paymentPlan: pp }); }} placeholder="Milestone Name" />
                                 <input style={{ width: '70px', padding: '6px', border: '1px solid #ddd', borderRadius: '4px' }} value={p.percentage || ''} onChange={e => { const pp = [...previewData.costEstimation.paymentPlan]; pp[pi] = { ...pp[pi], percentage: e.target.value }; updateField('costEstimation', { ...previewData.costEstimation, paymentPlan: pp }); }} placeholder="20%" />
                                 <input style={{ width: '100px', padding: '6px', border: '1px solid #ddd', borderRadius: '4px' }} value={p.amount || ''} onChange={e => { const pp = [...previewData.costEstimation.paymentPlan]; pp[pi] = { ...pp[pi], amount: e.target.value }; updateField('costEstimation', { ...previewData.costEstimation, paymentPlan: pp }); }} placeholder="Amount" />
+                                <button className="q-edit-bullet-remove" onClick={() => { const pp = [...previewData.costEstimation.paymentPlan]; pp.splice(pi, 1); updateField('costEstimation', { ...previewData.costEstimation, paymentPlan: pp }); }}><X size={11} /></button>
                             </div>
                         ))}
+                        <button className="q-preview-add-btn" onClick={() => {
+                            const pp = [...(previewData.costEstimation.paymentPlan || [])];
+                            pp.push({ milestone: '', percentage: '', amount: '' });
+                            updateField('costEstimation', { ...previewData.costEstimation, paymentPlan: pp });
+                        }}>+ Add Milestone</button>
+                    </div>
+                )}
+
+                {previewData.costBreakdown && (
+                    <div className="q-preview-section">
+                        <div className="q-preview-section-label">📋 Detailed Cost Breakdown</div>
+                        <div style={{ overflowX: 'auto' }}>
+                            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px', marginBottom: '10px' }}>
+                                <thead>
+                                    <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e5e7eb' }}>
+                                        <th style={{ padding: '8px', textAlign: 'left', fontWeight: 600, width: '22%' }}>Category</th>
+                                        <th style={{ padding: '8px', textAlign: 'left', fontWeight: 600, width: '30%' }}>Description</th>
+                                        <th style={{ padding: '8px', textAlign: 'right', fontWeight: 600, width: '12%' }}>Hours</th>
+                                        <th style={{ padding: '8px', textAlign: 'right', fontWeight: 600, width: '16%' }}>Rate/Hr</th>
+                                        <th style={{ padding: '8px', textAlign: 'right', fontWeight: 600, width: '16%' }}>Cost</th>
+                                        <th style={{ padding: '8px', textAlign: 'center', fontWeight: 600, width: '4%' }}></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {(previewData.costBreakdown || []).map((row, ri) => (
+                                        <tr key={ri} style={{ borderBottom: '1px solid #f0f0f0' }}>
+                                            <td style={{ padding: '6px 8px' }}><input style={{ width: '100%', padding: '4px', border: '1px solid #ddd', borderRadius: '3px', fontSize: '12px' }} value={row.category || ''} onChange={e => { const cb = [...previewData.costBreakdown]; cb[ri] = { ...cb[ri], category: e.target.value }; updateField('costBreakdown', cb); }} /></td>
+                                            <td style={{ padding: '6px 8px' }}><input style={{ width: '100%', padding: '4px', border: '1px solid #ddd', borderRadius: '3px', fontSize: '12px' }} value={row.description || ''} onChange={e => { const cb = [...previewData.costBreakdown]; cb[ri] = { ...cb[ri], description: e.target.value }; updateField('costBreakdown', cb); }} /></td>
+                                            <td style={{ padding: '6px 8px' }}><input style={{ width: '100%', padding: '4px', border: '1px solid #ddd', borderRadius: '3px', fontSize: '12px', textAlign: 'right' }} value={row.hoursEstimated || ''} onChange={e => { const cb = [...previewData.costBreakdown]; cb[ri] = { ...cb[ri], hoursEstimated: e.target.value }; updateField('costBreakdown', cb); }} /></td>
+                                            <td style={{ padding: '6px 8px' }}><input style={{ width: '100%', padding: '4px', border: '1px solid #ddd', borderRadius: '3px', fontSize: '12px', textAlign: 'right' }} value={row.ratePerHour || ''} onChange={e => { const cb = [...previewData.costBreakdown]; cb[ri] = { ...cb[ri], ratePerHour: e.target.value }; updateField('costBreakdown', cb); }} /></td>
+                                            <td style={{ padding: '6px 8px' }}><input style={{ width: '100%', padding: '4px', border: '1px solid #ddd', borderRadius: '3px', fontSize: '12px', textAlign: 'right', fontWeight: 600 }} value={row.cost || ''} onChange={e => { const cb = [...previewData.costBreakdown]; cb[ri] = { ...cb[ri], cost: e.target.value }; updateField('costBreakdown', cb); }} /></td>
+                                            <td style={{ padding: '6px 8px', textAlign: 'center' }}><button className="q-edit-bullet-remove" onClick={() => { const cb = [...previewData.costBreakdown]; cb.splice(ri, 1); updateField('costBreakdown', cb); }}><X size={11} /></button></td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                        <button className="q-preview-add-btn" onClick={() => {
+                            const cb = [...(previewData.costBreakdown || [])];
+                            cb.push({ category: '', description: '', hoursEstimated: '', ratePerHour: '', cost: '' });
+                            updateField('costBreakdown', cb);
+                        }}>+ Add Category</button>
                     </div>
                 )}
 
@@ -309,6 +386,7 @@ export default function QuotationPage() {
         clientName: '', industry: '', projectType: [],
         problemStatement: '', keyFeatures: [], targetAudience: '',
         budget: '', timeline: '', provider: 'openai', style: 'template1',
+        includeGST: false,
     });
 
     const [previewData, setPreviewData] = useState(null);
@@ -327,7 +405,7 @@ export default function QuotationPage() {
         const s = STEPS[currentStep];
         if (s.type === 'tags') return formData[s.field].length > 0;
         if (s.type === 'multi-cards') return (formData[s.field] || []).length > 0;
-        if (s.type === 'dual') return formData[s.field[0]]?.trim() && formData[s.field[1]]?.trim();
+        if (s.type === 'dual' || s.type === 'dual-gst') return formData[s.field[0]]?.trim() && formData[s.field[1]]?.trim();
         if (Array.isArray(s.field)) return true;
         return formData[s.field]?.toString().trim().length > 0;
     };
@@ -387,6 +465,7 @@ export default function QuotationPage() {
             const res = await api.post('/quotations/finalize', {
                 quotationData: previewData,
                 style: formData.style,
+                includeGST: formData.includeGST,
             });
             if (res.data.success) {
                 setFinalDocs(res.data.data);
@@ -407,7 +486,7 @@ export default function QuotationPage() {
     const handleReset = () => {
         setPreviewData(null); setFinalDocs(null); setError('');
         setPreviewError(''); setCurrentStep(0);
-        setFormData({ clientName: '', industry: '', projectType: [], problemStatement: '', keyFeatures: [], targetAudience: '', budget: '', timeline: '', provider: 'openai', style: 'template1' });
+        setFormData({ clientName: '', industry: '', projectType: [], problemStatement: '', keyFeatures: [], targetAudience: '', budget: '', timeline: '', provider: 'openai', style: 'template1', includeGST: false });
     };
 
     if (finalDocs) {
@@ -529,6 +608,21 @@ export default function QuotationPage() {
                             <div className="q-dual-row">
                                 <div className="q-form-group"><label>Budget (INR)</label><input className="q-wi" value={formData[step.field[0]]} onChange={e => updateField(step.field[0], e.target.value)} placeholder={step.placeholders[0]} /></div>
                                 <div className="q-form-group"><label>Timeline</label><input className="q-wi" value={formData[step.field[1]]} onChange={e => updateField(step.field[1], e.target.value)} placeholder={step.placeholders[1]} /></div>
+                            </div>
+                        )}
+                        {step.type === 'dual-gst' && (
+                            <div>
+                                <div className="q-dual-row">
+                                    <div className="q-form-group"><label>Budget (INR)</label><input className="q-wi" value={formData[step.field[0]]} onChange={e => updateField(step.field[0], e.target.value)} placeholder={step.placeholders[0]} /></div>
+                                    <div className="q-form-group"><label>Timeline</label><input className="q-wi" value={formData[step.field[1]]} onChange={e => updateField(step.field[1], e.target.value)} placeholder={step.placeholders[1]} /></div>
+                                </div>
+                                <label className="q-gst-toggle" style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 18, cursor: 'pointer', padding: '12px 16px', border: '1px solid #e5e7eb', borderRadius: 8, background: formData.includeGST ? '#f0fdf4' : '#fff', transition: 'all 0.2s' }}>
+                                    <input type="checkbox" checked={formData.includeGST} onChange={e => updateField('includeGST', e.target.checked)} style={{ width: 18, height: 18, accentColor: '#059669', cursor: 'pointer' }} />
+                                    <div>
+                                        <div style={{ fontWeight: 600, fontSize: 14, color: '#1a1a2e' }}>Include GST (18%)</div>
+                                        <div style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>Add 18% GST to the final quotation amount</div>
+                                    </div>
+                                </label>
                             </div>
                         )}
                         {step.type === 'selection' && (

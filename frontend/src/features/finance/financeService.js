@@ -145,5 +145,25 @@ export const financeService = {
     updateInvoiceStatus: async (id, status) => {
         const response = await api.patch(`/invoices/${id}/status`, { status });
         return response.data;
+    },
+
+    exportInvoice: async (id) => {
+        const response = await api.post(`/invoices/${id}/export`);
+        return response.data;
+    },
+
+    downloadInvoicePdf: async (id, invoiceNumber) => {
+        // Use axios to fetch the PDF blob directly
+        const response = await api.get(`/invoices/${id}/pdf`, {
+            responseType: 'blob',
+        });
+        const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', `Invoice_${(invoiceNumber || id).replace(/\s+/g, '_')}.pdf`);
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.URL.revokeObjectURL(url);
     }
 };

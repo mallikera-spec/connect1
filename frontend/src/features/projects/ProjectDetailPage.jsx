@@ -70,6 +70,8 @@ export default function ProjectDetailPage() {
     const [timesheets, setTimesheets] = useState([])
     const [tsUserFilter, setTsUserFilter] = useState('')
     const [members, setMembers] = useState([])
+    const isMember = members.some(m => m.user?.id === user.id)
+    const canAddNote = canManage || isMember
     const [allUsers, setAllUsers] = useState([])
     const [loading, setLoading] = useState(true)
     const [saving, setSaving] = useState(false)
@@ -932,7 +934,7 @@ export default function ProjectDetailPage() {
                     {/* ── MEETING NOTES ───────── */}
                     {tab === 'notes' && (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                            {canManage && (
+                            {canAddNote && (
                                 <div className="card" style={{ padding: 18 }}>
                                     <h3 style={{ margin: '0 0 12px', fontSize: 14, fontWeight: 700 }}>Add Meeting Note</h3>
                                     <textarea className="form-textarea" rows={4} placeholder="Write meeting minutes, decisions, action items…" value={newNote} onChange={e => setNewNote(e.target.value)} style={{ resize: 'vertical', marginBottom: 10 }} />
@@ -947,7 +949,9 @@ export default function ProjectDetailPage() {
                                             <div style={{ fontWeight: 700, fontSize: 14 }}>{note.title || 'Meeting Note'}</div>
                                             <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{new Date(note.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}</div>
                                         </div>
-                                        {canManage && <button className="btn btn-danger btn-sm btn-icon" onClick={() => deleteNote(note.id)}><Trash2 size={13} /></button>}
+                                        {canManage || note.created_by === user.id ? (
+                                            <button className="btn btn-danger btn-sm btn-icon" onClick={() => deleteNote(note.id)}><Trash2 size={13} /></button>
+                                        ) : null}
                                     </div>
                                     <div style={{ fontSize: 13, color: 'var(--text-muted)', whiteSpace: 'pre-wrap', lineHeight: 1.7, borderLeft: '3px solid var(--accent)', paddingLeft: 14 }}>{note.content}</div>
                                 </div>

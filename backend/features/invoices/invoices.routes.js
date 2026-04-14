@@ -11,5 +11,7 @@ router.post('/', validateRequest(invoiceSchema), invoiceController.createInvoice
 router.patch('/:id', validateRequest(invoiceSchema), invoiceController.updateInvoice);
 router.delete('/:id', invoiceController.deleteInvoice);
 router.patch('/:id/status', validateRequest(updateStatusSchema), invoiceController.updateStatus);
+router.post('/:id/export', invoiceController.exportInvoiceDocs);
+router.get('/:id/pdf', invoiceController.downloadInvoicePdf);
 
 export default router;

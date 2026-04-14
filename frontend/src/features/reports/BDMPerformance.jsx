@@ -13,6 +13,7 @@ export default function BDMPerformance() {
     const { user } = useAuth();
     const userRoles = user?.roles?.map(r => typeof r === 'string' ? r.toLowerCase() : r.name?.toLowerCase()).filter(Boolean) || [];
     const isBDM = userRoles.some(r => r === 'bdm' || r === 'sales manager');
+    const isDirectorOrAdmin = userRoles.some(r => r === 'director' || r === 'admin' || r === 'super admin');
     const navigate = useNavigate();
     const location = useLocation();
     const [dateRange, setDateRange] = useState({
@@ -29,7 +30,12 @@ export default function BDMPerformance() {
                 const bdms = [];
                 Object.values(allDepartments).forEach(deptUsers => {
                     deptUsers.forEach(u => {
-                        if (u.sales_stats) {
+                        const roles = u.roles?.map(r => typeof r === 'string' ? r.toLowerCase() : (r.name || r.role || '').toLowerCase()) || [];
+                        const isDirector = roles.includes('director');
+                        const isBDMOrSM = roles.includes('bdm') || roles.includes('sales manager');
+                        
+                        // User should be included if they have stats OR they are a Director/BDM/SM
+                        if (u.sales_stats || isDirector || isBDMOrSM) {
                             bdms.push(u);
                         }
                     });

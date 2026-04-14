@@ -9,7 +9,7 @@ export const invoiceSchema = z.object({
     client_state: z.string().optional().nullable(),
     client_zip: z.string().optional().nullable(),
     client_contact_name: z.string().optional().nullable(),
-    client_email: z.string().email().optional().nullable(),
+    client_email: z.string().email().optional().or(z.literal('')).nullable(),
     client_phone: z.string().optional().nullable(),
     client_gstin: z.string().optional().nullable(),
     client_pan: z.string().optional().nullable(),

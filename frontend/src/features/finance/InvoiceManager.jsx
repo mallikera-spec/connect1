@@ -3,7 +3,7 @@ import {
     Plus, FileText, Download, Eye, Edit2, Trash2, 
     Search, Filter, Calendar, Users, Briefcase, 
     MoreVertical, CheckCircle, XCircle, Send,
-    PlusCircle, Trash
+    PlusCircle, Trash, FileDown, Loader2
 } from 'lucide-react';
 import { financeService } from './financeService';
 import { ClientsService } from '../projects/ClientsService';
@@ -25,6 +25,7 @@ export default function InvoiceManager() {
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [selectedInvoice, setSelectedInvoice] = useState(null);
     const [showViewModal, setShowViewModal] = useState(false);
+    const [downloadingId, setDownloadingId] = useState(null);
 
     useEffect(() => {
         fetchInvoices();
@@ -86,68 +87,129 @@ export default function InvoiceManager() {
         }
     };
 
+    const handleDownloadPdf = async (row) => {
+        setDownloadingId(row.id);
+        try {
+            await financeService.downloadInvoicePdf(row.id, row.invoice_number);
+            toast.success(`PDF downloaded: ${row.invoice_number}`);
+        } catch (err) {
+            toast.error('Failed to generate PDF. Please try again.');
+            console.error(err);
+        } finally {
+            setDownloadingId(null);
+        }
+    };
+
     const columns = useMemo(() => [
         { 
             key: 'invoice_number', 
             label: 'Invoice #', 
-            width: '140px',
-            render: (val) => <span style={{ fontWeight: 700, color: 'var(--accent-light)' }}>{val}</span>
+            width: '130px',
+            render: (val) => (
+                <span style={{ fontWeight: 700, color: 'var(--accent-light)', whiteSpace: 'nowrap', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '120px' }}>
+                    {val || '--'}
+                </span>
+            )
         },
         { 
             key: 'client.company_name', 
             label: 'Client',
-            render: (val) => <span style={{ fontWeight: 600 }}>{val || '--'}</span>
-        },
-        { 
-            key: 'project.name', 
-            label: 'Project',
-            render: (val) => <span style={{ fontSize: '12px', color: 'var(--text-dim)' }}>{val || '--'}</span>
+            width: '150px',
+            render: (val) => (
+                <span style={{ fontWeight: 600, whiteSpace: 'nowrap', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '140px' }}>
+                    {val || '--'}
+                </span>
+            )
         },
         { 
             key: 'issue_date', 
             label: 'Issue Date', 
             type: 'date',
+            width: '110px',
             render: (val) => formatDate(val)
         },
         { 
             key: 'due_date', 
             label: 'Due Date', 
             type: 'date',
+            width: '110px',
             render: (val) => formatDate(val)
         },
         { 
             key: 'total_amount', 
-            label: 'Total Amount', 
+            label: 'Amount', 
             type: 'currency',
             align: 'right',
+            width: '130px',
             render: (val) => <span style={{ fontWeight: 700 }}>{formatCurrency(val)}</span>
         },
         { 
             key: 'status', 
             label: 'Status', 
             type: 'status',
-            render: (val) => <span className={`status-badge ${val.toLowerCase()}`}>{val}</span>
+            width: '110px',
+            render: (val) => {
+                const safe = (val || 'draft').toLowerCase();
+                return <span className={`status-badge ${safe}`}>{safe}</span>;
+            }
+        },
+        { 
+            key: 'project.name', 
+            label: 'Project',
+            width: '160px',
+            render: (val) => (
+                <span style={{ fontSize: '12px', color: 'var(--text-dim)', whiteSpace: 'nowrap', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '150px' }}>
+                    {val || '--'}
+                </span>
+            )
         },
         {
             key: 'actions',
             label: 'Actions',
-            width: '160px',
+            width: '148px',
+            sortable: false,
             align: 'center',
             render: (_, row) => (
-                <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
-                    <button className="btn-icon btn-sm" title="View" onClick={() => { setSelectedInvoice(row); setShowViewModal(true); }}>
+                <div style={{ display: 'flex', gap: '4px', justifyContent: 'center', alignItems: 'center', width: '100%' }}>
+                    <button
+                        className="inv-action-btn"
+                        title="View Invoice"
+                        onClick={(e) => { e.stopPropagation(); setSelectedInvoice(row); setShowViewModal(true); }}
+                    >
                         <Eye size={14} />
                     </button>
-                    <button className="btn-icon btn-sm" title="Edit" onClick={() => { setSelectedInvoice(row); setShowCreateModal(true); }}>
+                    <button
+                        className="inv-action-btn"
+                        title="Edit Invoice"
+                        onClick={(e) => { e.stopPropagation(); setSelectedInvoice(row); setShowCreateModal(true); }}
+                    >
                         <Edit2 size={14} />
                     </button>
-                    <button className="btn-icon btn-sm" title="Delete" onClick={() => handleDelete(row.id)}>
-                        <Trash2 size={14} style={{ color: 'var(--danger)' }} />
+                    <button
+                        className="inv-action-btn"
+                        title="Download PDF"
+                        onClick={(e) => { e.stopPropagation(); handleDownloadPdf(row); }}
+                        disabled={downloadingId === row.id}
+                        style={{ color: downloadingId === row.id ? 'var(--text-dim)' : 'var(--accent-light)' }}
+                    >
+                        {downloadingId === row.id
+                            ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} />
+                            : <FileDown size={14} />}
+                    </button>
+                    <button
+                        className="inv-action-btn"
+                        title="Delete Invoice"
+                        onClick={(e) => { e.stopPropagation(); handleDelete(row.id); }}
+                        style={{ color: 'var(--danger)' }}
+                    >
+                        <Trash2 size={14} />
                     </button>
                 </div>
             )
         }
-    ], [invoices]);
+    ], [invoices, downloadingId]);
+
+
 
     const filteredInvoices = useMemo(() => {
         return invoices.filter(inv => {
@@ -227,6 +289,26 @@ export default function InvoiceManager() {
                 .status-badge.paid { background: rgba(16, 185, 129, 0.1); color: #10b981; border-color: rgba(16, 185, 129, 0.2); }
                 .status-badge.void { background: rgba(239, 68, 68, 0.1); color: #ef4444; border-color: rgba(239, 68, 68, 0.2); }
                 .status-badge.partially_paid { background: rgba(245, 158, 11, 0.1); color: #f59e0b; border-color: rgba(245, 158, 11, 0.2); }
+                @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+                .inv-action-btn {
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    width: 28px;
+                    height: 28px;
+                    min-width: 28px;
+                    border-radius: 6px;
+                    border: 1px solid var(--border);
+                    background: transparent;
+                    color: var(--text-dim);
+                    cursor: pointer;
+                    transition: background 0.15s, color 0.15s, border-color 0.15s;
+                    padding: 0;
+                    overflow: hidden;
+                    flex-shrink: 0;
+                }
+                .inv-action-btn:hover { background: rgba(255,255,255,0.06); color: var(--text); border-color: var(--text-dim); }
+                .inv-action-btn:disabled { opacity: 0.4; cursor: not-allowed; }
             `}</style>
         </div>
     );
@@ -257,21 +339,106 @@ function InvoiceModal({ isOpen, onClose, onSave, invoice, clients, projects, rea
     });
 
     const [showCustomDetails, setShowCustomDetails] = useState(false);
+    const [fullLoading, setFullLoading] = useState(false);
+    const [isExporting, setIsExporting] = useState(false);
+
+    const handleExport = async (type) => {
+        setIsExporting(true);
+        try {
+            const res = await financeService.exportInvoice(invoice.id);
+            if (res.success) {
+                const { pdfBase64, docxBase64, fileName } = res.data;
+                const base64 = type === 'pdf' ? pdfBase64 : docxBase64;
+                const mimeType = type === 'pdf' ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+                const extension = type === 'pdf' ? 'pdf' : 'docx';
+                
+                triggerDownload(base64, mimeType, `${fileName}.${extension}`);
+                toast.success(`${type.toUpperCase()} downloaded`);
+            }
+        } catch (err) {
+            toast.error(`Export to ${type.toUpperCase()} failed`);
+            console.error(err);
+        } finally {
+            setIsExporting(false);
+        }
+    };
+
+    const triggerDownload = (base64, type, fileName) => {
+        const linkSource = `data:${type};base64,${base64}`;
+        const downloadLink = document.createElement("a");
+        downloadLink.href = linkSource;
+        downloadLink.download = fileName;
+        downloadLink.click();
+    };
 
     useEffect(() => {
-        if (invoice) {
-            setFormData({
-                ...invoice,
-                issue_date: (invoice.issue_date || '').split('T')[0],
-                due_date: (invoice.due_date || '').split('T')[0],
-                items: invoice.items || [{ description: '', quantity: 1, unit_price: 0, total: 0 }]
-            });
-            // Show custom details if any are populated
-            if (invoice.client_company_name || invoice.client_address || invoice.client_phone) {
-                setShowCustomDetails(true);
+        const loadFullInvoice = async () => {
+            if (invoice && invoice.id) {
+                // If items are missing (common when opening from list), fetch full details
+                if (!invoice.items || invoice.items.length === 0) {
+                    try {
+                        setFullLoading(true);
+                        const res = await financeService.getInvoiceById(invoice.id);
+                        if (res.success) {
+                            const fullInvoice = res.data;
+                            setFormData({
+                                ...fullInvoice,
+                                issue_date: (fullInvoice.issue_date || '').split('T')[0],
+                                due_date: (fullInvoice.due_date || '').split('T')[0],
+                                items: fullInvoice.items || fullInvoice.invoice_items || [{ description: '', quantity: 1, unit_price: 0, total: 0 }]
+                            });
+                            if (fullInvoice.client_company_name || fullInvoice.client_address || fullInvoice.client_phone) {
+                                setShowCustomDetails(true);
+                            }
+                            setFullLoading(false);
+                            return;
+                        }
+                    } catch (err) {
+                        console.error('Failed to fetch full invoice details', err);
+                    } finally {
+                        setFullLoading(false);
+                    }
+                } else {
+                    // Default behavior if items exist
+                    setFormData({
+                        ...invoice,
+                        issue_date: (invoice.issue_date || '').split('T')[0],
+                        due_date: (invoice.due_date || '').split('T')[0],
+                        items: invoice.items || invoice.invoice_items || [{ description: '', quantity: 1, unit_price: 0, total: 0 }]
+                    });
+                    if (invoice.client_company_name || invoice.client_address || invoice.client_phone) {
+                        setShowCustomDetails(true);
+                    }
+                }
+            } else {
+                // Reset form for create
+                setFormData({
+                    client_id: '',
+                    project_id: '',
+                    client_company_name: '',
+                    client_address: '',
+                    client_city: '',
+                    client_contact_name: '',
+                    client_email: '',
+                    client_phone: '',
+                    client_gstin: '',
+                    client_pan: '',
+                    company_gstin: '09AAACA9183G1Z0',
+                    company_pan: 'AAACA9183G',
+                    issue_date: toLocalISOString(new Date()).split('T')[0],
+                    due_date: toLocalISOString(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)).split('T')[0],
+                    status: 'draft',
+                    currency: 'INR',
+                    subtotal: 0,
+                    tax_amount: 0,
+                    total_amount: 0,
+                    items: [{ description: '', quantity: 1, unit_price: 0, total: 0 }]
+                });
+                setShowCustomDetails(false);
             }
-        }
-    }, [invoice]);
+        };
+        loadFullInvoice();
+    }, [invoice, isOpen]);
 
     const handleFillFromClient = () => {
         const selectedClient = clients.find(c => c.id === formData.client_id);
@@ -327,11 +494,21 @@ function InvoiceModal({ isOpen, onClose, onSave, invoice, clients, projects, rea
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-            // Clean up empty strings for UUID fields
+            // Clean up empty strings for UUID fields and custom details
             const submissionData = {
                 ...formData,
                 project_id: formData.project_id === '' ? null : formData.project_id,
-                client_id: formData.client_id === '' ? null : formData.client_id
+                client_id: formData.client_id === '' ? null : formData.client_id,
+                client_company_name: formData.client_company_name || null,
+                client_address: formData.client_address || null,
+                client_city: formData.client_city || null,
+                client_state: formData.client_state || null,
+                client_zip: formData.client_zip || null,
+                client_contact_name: formData.client_contact_name || null,
+                client_email: formData.client_email === '' ? null : formData.client_email,
+                client_phone: formData.client_phone || null,
+                client_gstin: formData.client_gstin || null,
+                client_pan: formData.client_pan || null
             };
 
             if (invoice) {
@@ -358,18 +535,40 @@ function InvoiceModal({ isOpen, onClose, onSave, invoice, clients, projects, rea
                     </div>
                     <div style={{ display: 'flex', gap: '8px' }}>
                         {readOnly && (
-                            <button type="button" className="btn btn-primary btn-sm" onClick={() => window.print()}>
-                                <Download size={16} /> Download PDF
-                            </button>
+                            <>
+                                <button 
+                                    type="button" 
+                                    className="btn btn-primary btn-sm" 
+                                    onClick={() => handleExport('pdf')}
+                                    disabled={fullLoading || isExporting}
+                                >
+                                    <Download size={16} /> {isExporting ? 'Generating...' : 'Download PDF'}
+                                </button>
+                                <button 
+                                    type="button" 
+                                    className="btn btn-outline btn-sm" 
+                                    onClick={() => handleExport('word')}
+                                    disabled={fullLoading || isExporting}
+                                >
+                                    <FileText size={16} /> {isExporting ? 'Generating...' : 'Download Word'}
+                                </button>
+                            </>
                         )}
                         <button className="btn-icon" onClick={onClose}><XCircle size={20} /></button>
                     </div>
                 </div>
 
                 {readOnly ? (
-                    <div className="modal-body" style={{ flex: 1, overflowY: 'auto', background: 'var(--bg-app)', padding: '40px' }}>
-                        <InvoiceTemplate invoice={invoice} />
-                    </div>
+                    <div className="modal-body" style={{ flex: 1, overflowY: 'auto', background: 'var(--bg-app)', padding: '40px', position: 'relative' }}>
+                    {fullLoading ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '300px', color: 'var(--text-dim)', gap: '15px' }}>
+                            <div className="spinner-border text-primary" role="status"></div>
+                            <p>Loading full invoice details...</p>
+                        </div>
+                    ) : (
+                        <InvoiceTemplate invoice={formData} />
+                    )}
+                </div>
                 ) : (
                     <form onSubmit={handleSubmit} style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
                         <div className="modal-body">

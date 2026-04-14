@@ -15,6 +15,7 @@ export default function EditLeadModal({ leadId, onClose, onSaved }) {
     const isBDM = !isAdmin;
 
     const [formData, setFormData] = useState(null);
+    const [initialComments, setInitialComments] = useState('');
     const [agents, setAgents] = useState([]);
     const [loading, setLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
@@ -32,7 +33,9 @@ export default function EditLeadModal({ leadId, onClose, onSaved }) {
                 SalesService.getLead(leadId),
                 api.get('/users', { params: { role: 'BDM,Admin,Super Admin,Director' } })
             ]);
-            setFormData(leadRes.data);
+            const commentsValue = leadRes.data.comments || '';
+            setFormData({ ...leadRes.data, interaction_note: commentsValue });
+            setInitialComments(commentsValue);
             setAgents(usersRes.data.data);
         } catch (err) {
             toast.error('Failed to load lead data');
@@ -52,7 +55,12 @@ export default function EditLeadModal({ leadId, onClose, onSaved }) {
 
         setIsSaving(true);
         try {
-            await SalesService.updateLead(leadId, formData);
+            const payload = { ...formData };
+            // Only send interaction_note if it has changed from initial comments
+            if (payload.interaction_note === initialComments) {
+                delete payload.interaction_note;
+            }
+            await SalesService.updateLead(leadId, payload);
             toast.success('Lead updated successfully');
             onSaved();
             onClose();
@@ -230,6 +238,17 @@ export default function EditLeadModal({ leadId, onClose, onSaved }) {
                                 </select>
                             </div>
                         )}
+                        <div className="form-group">
+                            <label className="form-label">Interaction Note (committed as interaction if changed)</label>
+                            <textarea
+                                className="form-control"
+                                rows={6}
+                                placeholder="Details of the current communication and lead notes..."
+                                value={formData.interaction_note || ''}
+                                onChange={e => setFormData({ ...formData, interaction_note: e.target.value })}
+                                style={{ resize: 'vertical' }}
+                            />
+                        </div>
                     </div>
 
                     <div className="modal-footer">

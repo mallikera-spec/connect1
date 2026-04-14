@@ -147,6 +147,12 @@ export default function AttendanceReport() {
                     </div>
                 );
             }
+        },
+        {
+            label: 'Admin Notes',
+            key: 'admin_comment',
+            width: '200px',
+            render: (val) => val || '—'
         }
     ], [isAdminOrHR]);
 

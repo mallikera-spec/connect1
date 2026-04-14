@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Scope of Work - <%= data.sow_data.project_overview.project_summary_table.find(r => r.key === 'Project Name')?.value %></title>
+  <link rel="stylesheet" href="assets/sow-styles.css">
+  <style>
+    /* Inline styles for quick rendering */
+    @import url('https://fonts.googleapis.com/css2?family=Source+Serif+4:wght@400;600;700&family=DM+Sans:wght@400;500;600&display=swap');
+    :root {
+      --primary: #1A3C5E;
+      --accent: #2E86C1;
+      --light: #D6EAF8;
+      --mid: #AED6F1;
+      --white: #FFFFFF;
+      --light-gray: #F2F4F4;
+      --mid-gray: #BDC3C7;
+      --dark-gray: #555555;
+      --black: #1C1C1C;
+    }
+    body { font-family: 'DM Sans', sans-serif; font-size: 10pt; color: var(--black); line-height: 1.6; margin: 0; padding: 0; }
+    .page-break { page-break-before: always; }
+    .cover-page { text-align: center; padding: 50mm 20mm; }
+    .cover-title { font-family: 'Source Serif 4', serif; font-size: 32pt; color: var(--primary); margin-bottom: 20px; }
+    .cover-subtitle { font-size: 16pt; color: var(--dark-gray); margin-bottom: 60px; }
+    .section { margin-bottom: 30px; }
+    h1 { font-family: 'Source Serif 4', serif; font-size: 20pt; background: var(--primary); color: white; padding: 10px 15px; margin-bottom: 20px; }
+    h2 { font-family: 'Source Serif 4', serif; font-size: 16pt; color: var(--primary); border-bottom: 2px solid var(--accent); padding-bottom: 5px; margin-top: 30px; }
+    h3 { font-size: 12pt; color: var(--accent); font-weight: 600; margin-top: 20px; }
+    table { width: 100%; border-collapse: collapse; margin: 15px 0; }
+    th { background: var(--primary); color: white; padding: 10px; font-size: 9pt; text-align: left; }
+    td { padding: 8px 10px; font-size: 9pt; border: 1px solid var(--mid-gray); vertical-align: top; }
+    tr:nth-child(even) td { background: var(--light-gray); }
+    .footer { position: fixed; bottom: 0; width: 100%; text-align: right; font-size: 8pt; color: #888; }
+  </style>
+</head>
+<body>
+
+  <!-- Cover Page -->
+  <div class="cover-page">
+    <div style="font-size: 24pt; font-weight: bold; color: var(--primary); margin-bottom: 40px;">ARGOSMOB</div>
+    <div class="cover-title"><%= data.sow_data.project_overview.project_summary_table.find(r => r.key === 'Project Name')?.value %></div>
+    <div class="cover-subtitle">Project Scope of Work (SoW)</div>
+    
+    <div style="margin-top: 100px; text-align: left; width: fit-content; margin-left: auto; margin-right: auto;">
+      <div style="margin-bottom: 10px;"><strong>Client:</strong> <%= data.client_name %></div>
+      <div style="margin-bottom: 10px;"><strong>Date:</strong> <%= new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) %></div>
+      <div style="margin-bottom: 10px;"><strong>Status:</strong> Draft</div>
+      <div style="margin-bottom: 10px;"><strong>Project ID:</strong> <%= data.id || 'N/A' %></div>
+    </div>
+  </div>
+
+  <div class="page-break"></div>
+
+  <!-- Table of Contents (Simplified) -->
+  <div class="section">
+    <h2>Table of Contents</h2>
+    <ol style="columns: 2; font-size: 10pt;">
+      <li>Project Overview</li>
+      <li>Scope of Work</li>
+      <li>Technology Stack</li>
+      <li>Feature Specifications</li>
+      <li>Backend Architecture</li>
+      <li>Third-Party Integrations</li>
+      <li>Milestones & Timeline</li>
+      <li>Deployment Plan</li>
+      <li>Security Measures</li>
+      <li>Testing & QA</li>
+      <li>Assumptions & Constraints</li>
+      <li>Post-Launch Maintenance</li>
+      <li>Commercial Terms</li>
+      <li>Client Sign-Off</li>
+    </ol>
+  </div>
+
+  <!-- Section 1: Project Overview -->
+  <div class="section">
+    <h1>1. Project Overview</h1>
+    <h3>1.1 Document Purpose</h3>
+    <p><%= data.sow_data.project_overview.document_purpose %></p>
+    
+    <h3>1.2 Project Summary</h3>
+    <table>
+      <% data.sow_data.project_overview.project_summary_table.forEach(row => { %>
+        <tr>
+          <th style="width: 30%; background: #eee; color: #333;"><%= row.key %></th>
+          <td><%= row.value %></td>
+        </tr>
+      <% }) %>
+    </table>
+
+    <h3>1.3 Project Objective</h3>
+    <p><%= data.sow_data.project_overview.project_objective %></p>
+  </div>
+
+  <!-- Section 2: Scope of Work -->
+  <div class="section">
+    <h1>2. Scope of Work</h1>
+    <h3>2.1 In-Scope Deliverables</h3>
+    <% data.sow_data.scope.in_scope.forEach(section => { %>
+      <div style="margin-bottom: 15px;">
+        <strong><%= section.section %></strong>
+        <ul>
+          <% section.items.forEach(item => { %>
+            <li><%= item %></li>
+          <% }) %>
+        </ul>
+      </div>
+    <% }) %>
+    
+    <h3>2.2 Out of Scope</h3>
+    <div style="background: #FADBD8; border-left: 4px solid #CB4335; padding: 10px;">
+      <ul>
+        <% data.sow_data.scope.out_of_scope.forEach(item => { %>
+          <li><%= item %></li>
+        <% }) %>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Section 3: Tech Stack -->
+  <div class="section">
+    <h1>3. Technology Stack</h1>
+    <table>
+      <thead>
+        <tr>
+          <th>Layer</th>
+          <th>Technology</th>
+          <th>Purpose</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% data.sow_data.tech_stack.table.forEach(row => { %>
+          <tr>
+            <td><%= row.layer %></td>
+            <td><%= row.technology %></td>
+            <td><%= row.purpose %></td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Section 4: Features -->
+  <div class="page-break"></div>
+  <div class="section">
+    <h1>4. Feature Specifications</h1>
+    
+    <h3>4.1 Customer Application</h3>
+    <% data.sow_data.features.customer_app.forEach(module => { %>
+      <div style="margin-bottom: 20px;">
+        <div style="background: var(--light-gray); padding: 5px 10px; font-weight: bold;">
+          <%= module.module_number %> - <%= module.module_name %>
+        </div>
+        <ul>
+          <% module.features.forEach(feature => { %>
+            <li><%= feature %></li>
+          <% }) %>
+        </ul>
+      </div>
+    <% }) %>
+
+    <h3>4.2 Admin Management Console</h3>
+    <% data.sow_data.features.admin_panel.forEach(module => { %>
+      <div style="margin-bottom: 20px;">
+        <div style="background: var(--light-gray); padding: 5px 10px; font-weight: bold;">
+          <%= module.module_number %> - <%= module.module_name %>
+        </div>
+        <ul>
+          <% module.features.forEach(feature => { %>
+            <li><%= feature %></li>
+          <% }) %>
+        </ul>
+      </div>
+    <% }) %>
+  </div>
+
+  <!-- Section 7: Milestones -->
+  <div class="page-break"></div>
+  <div class="section">
+    <h1>7. Milestones & Timeline</h1>
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Milestone Name</th>
+          <th>Deliverables</th>
+          <th>Due Date</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% data.sow_data.milestones.forEach(m => { %>
+          <tr>
+            <td><%= m.id %></td>
+            <td><%= m.name %></td>
+            <td><%= m.deliverables %></td>
+            <td><%= m.due_date %></td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Section 13: Commercial Terms -->
+  <div class="section">
+    <h1>13. Commercial Terms</h1>
+    <h3>13.1 Payment Schedule</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Installment</th>
+          <th>Milestone / Condition</th>
+          <th>Percentage</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% data.sow_data.commercial.payment_schedule.forEach(p => { %>
+          <tr>
+            <td><%= p.installment %></td>
+            <td><%= p.due_when %></td>
+            <td><%= p.percentage %></td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Section 14: Client Sign-Off -->
+  <div class="page-break"></div>
+  <div class="section">
+    <h1>14. Client Sign-Off</h1>
+    <p>By signing this document, both parties agree to the scope and terms defined above.</p>
+    
+    <div style="display: flex; gap: 50px; margin-top: 50px;">
+      <div style="flex: 1; border: 1px solid #ddd; padding: 20px;">
+        <div style="margin-bottom: 40px; font-weight: bold;">For Argosmob Tech and AI Pvt. Ltd.</div>
+        <div style="border-bottom: 1px solid #333; margin-bottom: 10px;"></div>
+        <div style="font-size: 9pt;">Signature & Date</div>
+      </div>
+      <div style="flex: 1; border: 1px solid #ddd; padding: 20px;">
+        <div style="margin-bottom: 40px; font-weight: bold;">For <%= data.client_name %></div>
+        <div style="border-bottom: 1px solid #333; margin-bottom: 10px;"></div>
+        <div style="font-size: 9pt;">Signature & Date</div>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>

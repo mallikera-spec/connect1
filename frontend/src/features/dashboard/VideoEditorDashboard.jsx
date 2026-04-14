@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Video, Repeat, Clock, AlertCircle, CheckCircle2, ListTodo, Timer } from 'lucide-react';
 import api from '../../lib/api';
-import { StatCard, AttendanceWidget, NotificationCard } from './DashboardComponents';
+import { StatCard, AttendanceWidget } from './DashboardComponents'; // NotificationCard DISABLED
 import DataTable from '../../components/common/DataTable';
 
 /**
@@ -86,7 +86,7 @@ export default function VideoEditorDashboard({ dateRange }) {
             </div>
 
             <div className="dashboard-grid" style={{ marginTop: 24 }}>
-                <NotificationCard />
+                {/* <NotificationCard /> DISABLED to save Supabase resources */}
                 
                 {total > 0 && (
                     <div className="card" style={{ padding: '16px 20px', height: '100%', display: 'flex', flexDirection: 'column' }}>

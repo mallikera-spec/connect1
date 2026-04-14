@@ -1,9 +1,11 @@
 import { generateQuotationJSON } from './services/openaiService.js';
 import { generateQuotationJSONTemplate2 } from './services/openaiServiceTemplate2.js';
 import { generateQuotationJSONTemplate3 } from './services/openaiServiceTemplate3.js';
+import { generateQuotationJSONTemplate4 } from './services/openaiServiceTemplate4.js';
 import { generateQuotationPDF } from './services/pdfService.js';
 import { generateQuotationPDFTemplate2 } from './services/pdfServiceTemplate2.js';
 import { generateQuotationPDFTemplate3 } from './services/pdfServiceTemplate3.js';
+import { generateQuotationPDFTemplate4 } from './services/pdfServiceTemplate4.js';
 import { generateQuotationWord } from './services/wordService.js';
 import { generateImages, generateConceptualIllustration } from './services/imageService.js';
 import { successResponse } from '../../utils/apiResponse.js';
@@ -13,7 +15,7 @@ export const previewQuotation = async (req, res) => {
     const {
         clientName, industry, projectType, problemStatement,
         keyFeatures, targetAudience, budget, timeline,
-        provider = 'openai', style = 'corporate'
+        provider = 'openai', style = 'corporate', includeGST = false
     } = req.body;
 
     if (!industry || !projectType) {
@@ -33,12 +35,15 @@ export const previewQuotation = async (req, res) => {
 
     try {
         let quotationContent;
+        const wizardDataWithGST = { ...wizardData, includeGST };
         if (style === 'template2') {
-            quotationContent = await generateQuotationJSONTemplate2(wizardData);
+            quotationContent = await generateQuotationJSONTemplate2(wizardDataWithGST);
         } else if (style === 'template3') {
-            quotationContent = await generateQuotationJSONTemplate3(wizardData);
+            quotationContent = await generateQuotationJSONTemplate3(wizardDataWithGST);
+        } else if (style === 'template4') {
+            quotationContent = await generateQuotationJSONTemplate4(wizardDataWithGST);
         } else {
-            quotationContent = await generateQuotationJSON(wizardData);
+            quotationContent = await generateQuotationJSON(wizardDataWithGST);
         }
         successResponse(res, quotationContent, 'Preview generated');
     } catch (err) {
@@ -54,7 +59,7 @@ export const finalizeQuotation = async (req, res) => {
     // Extend timeout to 2 minutes for AI generation
     req.setTimeout(120000);
 
-    const { quotationData, style = 'corporate', provider = 'openai' } = req.body;
+    const { quotationData, style = 'corporate', provider = 'openai', includeGST = false } = req.body;
 
     if (!quotationData) {
         return res.status(StatusCodes.BAD_REQUEST).json({ error: 'quotationData is required.' });
@@ -66,12 +71,17 @@ export const finalizeQuotation = async (req, res) => {
         if (style === 'template2') {
             [pdfBuffer, docxBuffer] = await Promise.all([
                 generateQuotationPDFTemplate2(quotationData),
-                generateQuotationWord(quotationData, style), // Fallback word for now
+                generateQuotationWord(quotationData, style),
             ]);
         } else if (style === 'template3') {
             [pdfBuffer, docxBuffer] = await Promise.all([
                 generateQuotationPDFTemplate3(quotationData, style, {}),
-                generateQuotationWord(quotationData, style), // Fallback word for now
+                generateQuotationWord(quotationData, style),
+            ]);
+        } else if (style === 'template4') {
+            [pdfBuffer, docxBuffer] = await Promise.all([
+                generateQuotationPDFTemplate4(quotationData, style, { includeGST }),
+                generateQuotationWord(quotationData, style),
             ]);
         } else {
             [pdfBuffer, docxBuffer] = await Promise.all([

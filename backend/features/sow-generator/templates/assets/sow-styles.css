@@ -1,0 +1,71 @@
+/* Critical print CSS for Puppeteer */
+@page {
+  size: A4;
+  margin: 20mm 15mm;
+}
+
+@media print {
+  .page-break { page-break-before: always; }
+  .no-break { page-break-inside: avoid; }
+  table { page-break-inside: avoid; }
+  h1, h2, h3 { page-break-after: avoid; }
+}
+
+/* Font — embed via @import or base64 for offline rendering */
+@import url('https://fonts.googleapis.com/css2?family=Source+Serif+4:wght@400;600;700&family=DM+Sans:wght@400;500;600&display=swap');
+
+:root {
+  --primary: #1A3C5E;
+  --accent: #2E86C1;
+  --light: #D6EAF8;
+  --mid: #AED6F1;
+  --white: #FFFFFF;
+  --light-gray: #F2F4F4;
+  --mid-gray: #BDC3C7;
+  --dark-gray: #555555;
+  --black: #1C1C1C;
+  --green: #1E8449;
+  --green-bg: #D5F5E3;
+  --orange: #D35400;
+  --orange-bg: #FDEBD0;
+}
+
+/* Typography */
+body { font-family: 'DM Sans', sans-serif; font-size: 10pt; color: var(--black); line-height: 1.6; }
+h1 { font-family: 'Source Serif 4', serif; font-size: 18pt; 
+     background: var(--primary); color: white; padding: 12px 18px; margin-top: 0; }
+h2 { font-family: 'Source Serif 4', serif; font-size: 14pt; 
+     color: var(--primary); border-bottom: 2px solid var(--accent); padding-bottom: 5px; margin-top: 25px; }
+h3 { font-size: 11pt; color: var(--accent); font-weight: 600; margin-top: 15px; }
+
+/* Tables */
+table { width: 100%; border-collapse: collapse; margin: 12px 0; }
+th { background: var(--primary); color: white; padding: 10px 12px; 
+     font-size: 9pt; text-align: left; }
+td { padding: 8px 12px; font-size: 9pt; border: 1px solid var(--mid-gray); vertical-align: top; }
+tr:nth-child(even) td { background: var(--light-gray); }
+
+/* Note boxes */
+.note-info { background: var(--green-bg); border-left: 4px solid var(--green); 
+             padding: 10px 15px; margin: 15px 0; font-size: 9pt; }
+.note-warn { background: var(--orange-bg); border-left: 4px solid var(--orange); 
+             padding: 10px 15px; margin: 15px 0; font-size: 9pt; }
+
+/* Code blocks */
+pre { background: var(--light-gray); padding: 12px; font-size: 8pt; 
+      font-family: 'Courier New', monospace; border-left: 3px solid var(--accent); overflow: hidden; white-space: pre-wrap; }
+
+/* Cover Page */
+.cover-page {
+  text-align: center;
+  padding: 50mm 20mm;
+}
+.cover-logo { height: 60px; margin-bottom: 40px; }
+.cover-title { font-family: 'Source Serif 4', serif; font-size: 28pt; color: var(--primary); margin-bottom: 20px; }
+.cover-subtitle { font-size: 14pt; color: var(--dark-gray); margin-bottom: 60px; }
+.cover-info { font-size: 11pt; text-align: left; margin-left: auto; margin-right: auto; width: fit-content; }
+.cover-info div { margin-bottom: 10px; }
+
+/* Sign-off */
+.signature-block { margin-top: 50px; }
+.signature-box { border: 1px solid var(--mid-gray); padding: 40px; min-height: 100px; margin-top: 10px; }

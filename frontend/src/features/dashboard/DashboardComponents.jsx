@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { Clock, CheckCircle, Bell, Inbox } from 'lucide-react';
 import { HRService } from '../hr/HRService';
-import { useNotifications } from '../../context/NotificationContext';
+// import { useNotifications } from '../../context/NotificationContext'; // DISABLED to save Supabase resources
 import { getISTTodayString } from '../../lib/dateUtils';
 import toast from 'react-hot-toast';
 
@@ -307,88 +307,9 @@ export function EmployeeCard({ employee, isAdminView, currentRange }) {
     );
 }
 
+// DISABLED: NotificationCard - notifications system disabled to save Supabase resources
 export function NotificationCard() {
-    const navigate = useNavigate();
-    const { notifications, unreadCount, markAsRead, setIsModalOpen } = useNotifications();
-
-    const latestNotifications = notifications.slice(0, 5);
-
-    return (
-        <div className="card polished-card" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-            <div className="polished-card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <Bell size={16} />
-                    <h3 style={{ fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0 }}>Recent Notifications</h3>
-                </div>
-                {unreadCount > 0 && (
-                    <span style={{
-                        background: 'var(--danger)',
-                        color: 'white',
-                        fontSize: '10px',
-                        fontWeight: 700,
-                        padding: '2px 8px',
-                        borderRadius: '10px'
-                    }}>
-                        {unreadCount} New
-                    </span>
-                )}
-            </div>
-            <div className="polished-card-body" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-                {latestNotifications.length === 0 ? (
-                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '24px', opacity: 0.5 }}>
-                        <Inbox size={32} style={{ marginBottom: 8 }} />
-                        <p style={{ fontSize: '13px', margin: 0 }}>No notifications</p>
-                    </div>
-                ) : (
-                    <div style={{ display: 'flex', flexDirection: 'column' }}>
-                        {latestNotifications.map((n) => (
-                            <div
-                                key={n.id}
-                                className="polished-row clickable-row"
-                                style={{
-                                    padding: '12px 20px',
-                                    borderBottom: '1px solid var(--border)',
-                                    background: !n.is_read ? 'rgba(124, 58, 237, 0.05)' : 'transparent'
-                                }}
-                                onClick={() => {
-                                    markAsRead(n.id);
-                                    if (n.type.startsWith('TASK_') || n.type === 'task_assigned' || n.type === 'task_status_change') {
-                                        navigate('/tasks', { state: { openTaskId: n.data?.taskId || n.data?.task_id } });
-                                    } else if (n.type === 'leave_request' || n.type === 'leave_status') {
-                                        navigate('/hr-admin', { state: { tab: 'leaves' } });
-                                    }
-                                }}
-                            >
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
-                                    <div style={{ flex: 1, minWidth: 0 }}>
-                                        <div style={{ fontWeight: 600, fontSize: '13px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                            {n.title}
-                                        </div>
-                                        <div style={{ fontSize: '12px', color: 'var(--text-dim)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                            {n.message}
-                                        </div>
-                                    </div>
-                                    {!n.is_read && <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--accent)', marginTop: 4, flexShrink: 0 }} />}
-                                </div>
-                                <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: 4 }}>
-                                    {new Date(n.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                )}
-            </div>
-            <div style={{ padding: '8px', borderTop: '1px solid var(--border)' }}>
-                <button
-                    className="btn btn-ghost btn-sm"
-                    style={{ width: '100%', justifyContent: 'center', border: 'none' }}
-                    onClick={() => setIsModalOpen(true)}
-                >
-                    View All Notifications
-                </button>
-            </div>
-        </div>
-    );
+    return null;
 }
 
 export function AttendanceWidget() {

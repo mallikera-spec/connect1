@@ -12,6 +12,17 @@ export const getProjectNotes = async (req, res) => {
 export const createNote = async (req, res) => {
     const { projectId } = req.params;
     const { content, type = 'meeting', title, meta } = req.body;
+ 
+    // Membership check if not admin
+    const isSuperAdmin = req.user.roles?.some(r => ['super_admin', 'super admin', 'director'].includes(r.toLowerCase()));
+    const hasManagePerm = req.user.permissions?.includes('manage_projects');
+ 
+    if (!isSuperAdmin && !hasManagePerm) {
+        const isMember = await projectService.isProjectMember(projectId, req.user.id);
+        if (!isMember) {
+            return res.status(StatusCodes.FORBIDDEN).json({ success: false, message: 'You are not a member of this project' });
+        }
+    }
 
     const note = await projectNotesService.addNote({
         project_id: projectId,
@@ -28,6 +39,17 @@ export const createNote = async (req, res) => {
 export const uploadFile = async (req, res) => {
     const { projectId } = req.params;
     if (!req.file) return res.status(StatusCodes.BAD_REQUEST).json({ success: false, message: 'No file uploaded' });
+ 
+    // Membership check if not admin
+    const isSuperAdmin = req.user.roles?.some(r => ['super_admin', 'super admin', 'director'].includes(r.toLowerCase()));
+    const hasManagePerm = req.user.permissions?.includes('manage_projects');
+ 
+    if (!isSuperAdmin && !hasManagePerm) {
+        const isMember = await projectService.isProjectMember(projectId, req.user.id);
+        if (!isMember) {
+            return res.status(StatusCodes.FORBIDDEN).json({ success: false, message: 'You are not a member of this project' });
+        }
+    }
 
     // Get project name for folder structure
     const project = await projectService.getProjectById(projectId);

@@ -417,7 +417,7 @@ export const getEmployeeOverview = async ({ startDate, endDate, userId, roles = 
 
     const filteredProfiles = profiles.filter(p => {
         const roles = p.user_roles?.map(ur => ur.role?.name.toLowerCase()) || [];
-        const isSuperAdmin = roles.includes('super admin') || roles.includes('super_admin') || roles.includes('director');
+        const isSuperAdmin = roles.includes('super admin') || roles.includes('super_admin');
         const isManagement = String(p.department || '').toLowerCase() === 'management';
         return !isSuperAdmin && !isManagement;
     });
@@ -589,7 +589,9 @@ export const getEmployeeOverview = async ({ startDate, endDate, userId, roles = 
     const bdmProfileIds = filteredProfiles
         .filter(p => {
             const roles = p.user_roles?.map(ur => ur.role?.name.toLowerCase()) || [];
-            return roles.includes('bdm') || String(p.department || '').toLowerCase() === 'marketing';
+            const isMarketing = String(p.department || '').toLowerCase() === 'marketing';
+            const isDirectors = String(p.department || '').toLowerCase() === 'directors';
+            return roles.includes('bdm') || roles.includes('director') || isMarketing || isDirectors;
         })
         .map(p => p.id);
 

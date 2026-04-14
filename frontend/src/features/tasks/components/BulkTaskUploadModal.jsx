@@ -230,7 +230,7 @@ export default function BulkTaskUploadModal({
 
                             <div style={{ flex: 1, overflowY: 'auto', border: '1px solid var(--border)', borderRadius: '8px' }}>
                                 <table className="data-table" style={{ width: '100%', fontSize: '12px' }}>
-                                    <thead style={{ position: 'sticky', top: 0, background: 'var(--bg-card)', zIndex: 1, borderBottom: '1px solid var(--border)' }}>
+                                    <thead style={{ position: 'sticky', top: 0, background: 'var(--bg-card-solid)', zIndex: 1, borderBottom: '1px solid var(--border)' }}>
                                         <tr>
                                             <th style={{ textAlign: 'left', padding: '12px' }}>Task</th>
                                             <th style={{ textAlign: 'left', padding: '12px' }}>Assignee</th>

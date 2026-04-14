@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Users, Building2, UserPlus } from 'lucide-react';
 import api from '../../lib/api';
-import { StatCard, NotificationCard } from './DashboardComponents';
+import { StatCard } from './DashboardComponents'; // NotificationCard DISABLED
 
 export default function HRDashboard({ dateRange }) {
     const [stats, setStats] = useState(null);
@@ -46,9 +46,9 @@ export default function HRDashboard({ dateRange }) {
                 />
             </div>
 
-            <div style={{ marginTop: '24px' }}>
+            {/* <div style={{ marginTop: '24px' }}>
                 <NotificationCard />
-            </div>
+            </div> DISABLED to save Supabase resources */}
 
             <div className="card polished-card" style={{ marginTop: '24px' }}>
                 <div className="polished-card-header">

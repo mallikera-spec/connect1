@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { FolderKanban, ListTodo, CheckCircle2, Clock, AlertCircle, Timer } from 'lucide-react';
 import api from '../../lib/api';
-import { StatCard, AttendanceWidget, NotificationCard } from './DashboardComponents';
+import { StatCard, AttendanceWidget } from './DashboardComponents'; // NotificationCard DISABLED
 import DataTable from '../../components/common/DataTable';
 
 export default function DeveloperDashboard({ dateRange }) {
@@ -174,7 +174,7 @@ export default function DeveloperDashboard({ dateRange }) {
             </div>
 
             <div className="dashboard-grid" style={{ marginTop: 24 }}>
-                <NotificationCard />
+                {/* <NotificationCard /> DISABLED to save Supabase resources */}
                 {total > 0 && (
                     <div className="card" style={{ padding: '16px 20px', height: '100%', display: 'flex', flexDirection: 'column' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12, fontSize: 13 }}>

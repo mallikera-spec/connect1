@@ -29,6 +29,23 @@ export default function NewLeadModal({ onClose, onSaved }) {
         assigned_agent_id: isBDM ? currentUser.id : '',
         interaction_note: ''
     });
+
+    useEffect(() => {
+        setFormData({
+            name: '',
+            company: '',
+            email: '',
+            phone: '',
+            alt_phone: '',
+            location: '',
+            source: 'LinkedIn',
+            status: 'New',
+            score: 5,
+            deal_value: 0,
+            assigned_agent_id: isBDM ? currentUser.id : '',
+            interaction_note: ''
+        });
+    }, []); // Runs once on mount
     const [agents, setAgents] = useState([]);
     const [isSaving, setIsSaving] = useState(false);
 

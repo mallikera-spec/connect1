@@ -234,7 +234,14 @@ export const getLeadJourney = async (leadId) => {
  * @returns {Promise<Object>} The updated lead.
  */
 export const updateLead = async (id, updates) => {
-    const sanitized = sanitizeLeadData(updates);
+    const { interaction_note, ...rest } = updates;
+    
+    // If interaction note is provided, sync it with the lead's main comments field
+    if (interaction_note && interaction_note.trim()) {
+        rest.comments = interaction_note.trim();
+    }
+    
+    const sanitized = sanitizeLeadData(rest);
 
     const { data, error } = await supabaseAdmin
         .from('leads')
@@ -243,6 +250,25 @@ export const updateLead = async (id, updates) => {
         .select()
         .single();
     if (error) throw error;
+
+    // Handle interaction note if provided (Same logic as createLead)
+    if (interaction_note && interaction_note.trim()) {
+        const { error: followUpError } = await supabaseAdmin
+            .from('follow_ups')
+            .insert({
+                lead_id: data.id,
+                agent_id: data.assigned_agent_id || data.owner_id,
+                type: 'Note',
+                status: 'Completed',
+                notes: interaction_note.trim(),
+                scheduled_at: new Date().toISOString()
+            });
+
+        if (followUpError) {
+            console.error('Failed to create interaction from lead update:', followUpError);
+            // We don't throw here to ensure lead update isn't rolled back for a note failure
+        }
+    }
 
     // Auto-convert to client if status is marked as 'Won'
     if (updates.status === 'Won') {
@@ -506,7 +532,7 @@ export const getAllFollowUps = async (filters = {}) => {
         .from('follow_ups')
         .select(`
             *,
-            lead:leads(id, name, company, status, phone, email),
+            lead:leads(id, name, company, status, phone, email, assigned_agent:profiles!assigned_agent_id(id, full_name)),
             agent:profiles(id, full_name, email)
         `);
 

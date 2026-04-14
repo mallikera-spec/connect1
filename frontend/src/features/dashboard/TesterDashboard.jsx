@@ -1,7 +1,15 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Component } from 'react';
 import { FolderKanban, ListTodo, CheckCircle2, Clock, AlertCircle, Timer, ShieldCheck } from 'lucide-react';
 import api from '../../lib/api';
-import { StatCard, AttendanceWidget, NotificationCard } from './DashboardComponents';
+import { StatCard, AttendanceWidget } from './DashboardComponents'; // NotificationCard DISABLED
+
+// Safe wrapper to prevent child crashes from blanking the whole page
+class SafeRender extends Component {
+    constructor(props) { super(props); this.state = { hasError: false }; }
+    static getDerivedStateFromError() { return { hasError: true }; }
+    componentDidCatch(err) { console.error('SafeRender caught:', err); }
+    render() { return this.state.hasError ? null : this.props.children; }
+}
 
 export default function TesterDashboard({ dateRange }) {
     const [stats, setStats] = useState(null);
@@ -12,13 +20,27 @@ export default function TesterDashboard({ dateRange }) {
         const params = { startDate: dateRange.startDate, endDate: dateRange.endDate };
 
         api.get('/reports/me', { params })
-            .then((res) => setStats(res.data.data))
-            .catch(() => { })
+            .then((res) => {
+                console.log('TesterDashboard /reports/me response:', res.data);
+                setStats(res.data.data || res.data);
+            })
+            .catch((err) => {
+                console.error('TesterDashboard /reports/me error:', err);
+            })
             .finally(() => setLoading(false));
     }, [dateRange]);
 
     if (loading) return <div className="page-loader"><div className="spinner" /></div>;
-    if (!stats) return null;
+    if (!stats) return (
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '60px 20px', color: 'var(--text-dim)' }}>
+            <AlertCircle size={40} style={{ marginBottom: 12, opacity: 0.5 }} />
+            <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 4 }}>Unable to load dashboard data</div>
+            <div style={{ fontSize: 13, marginBottom: 16 }}>Please check your connection and try again.</div>
+            <button className="btn btn-primary" onClick={() => { setStats(null); setLoading(true); api.get('/reports/me', { params: { startDate: dateRange.startDate, endDate: dateRange.endDate } }).then(r => setStats(r.data.data)).catch(() => {}).finally(() => setLoading(false)); }}>
+                Retry
+            </button>
+        </div>
+    );
 
     const total = stats.total_tasks ?? 0;
     const pending = stats.tasks_by_status?.pending ?? 0;
@@ -39,7 +61,7 @@ export default function TesterDashboard({ dateRange }) {
                 </h3>
             </div>
             <div className="stats-grid" style={{ marginBottom: 32 }}>
-                <AttendanceWidget />
+                <SafeRender><AttendanceWidget /></SafeRender>
                 <StatCard
                     icon={FolderKanban}
                     label="Test Projects"
@@ -58,9 +80,9 @@ export default function TesterDashboard({ dateRange }) {
                 />
             </div>
 
-            <div style={{ marginBottom: 32 }}>
-                <NotificationCard />
-            </div>
+            {/* <div style={{ marginBottom: 32 }}>
+                <SafeRender><NotificationCard /></SafeRender>
+            </div> DISABLED to save Supabase resources */}
 
             {/* Section 2: Project Tasks (Active Bugs) */}
             <div className="dashboard-section-header" style={{ marginBottom: 16 }}>

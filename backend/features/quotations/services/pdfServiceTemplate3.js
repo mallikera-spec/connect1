@@ -355,7 +355,7 @@ export const generateQuotationPDFTemplate3 = async (quotationData) => {
         <div style="background:${t.white}; padding:30px; border-radius:8px; border:1px solid ${t.border}; margin-bottom:30px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
             <div style="font-size:12px; color:${t.secondary}; text-transform:uppercase; letter-spacing:1px; margin-bottom:5px;">Total Investment</div>
             <h2 style="font-size:32px; color:${t.primary}; margin-bottom:5px;">${quotationData.costEstimation?.totalCost || quotationData.commercialEstimate || 'TBD'}</h2>
-            <div style="font-size:11px; color:${t.secondary};">*Exclusive of prevailing taxes and 3rd-party subscriptions.</div>
+            <div style="font-size:11px; color:${t.secondary};">*Exclusive of 3rd-party subscriptions.</div>
         </div>
 
         <h3 style="font-size:16px; margin-bottom:15px; margin-top:20px;">Payment Milestones</h3>

@@ -21,7 +21,7 @@ const APPLICATIONS = [
         id: 2,
         name: 'Local Site',
         port: 91,
-        url: 'http://SERVER_IP:91',
+        url: 'https://local.argosmob.online',
         description: 'Internal local project website.',
         icon: Building2,
         category: 'Internal'
@@ -30,7 +30,7 @@ const APPLICATIONS = [
         id: 3,
         name: 'NGK',
         port: 92,
-        url: 'http://SERVER_IP:92',
+        url: 'https://ngk.argosmob.online',
         description: 'NGK project website.',
         icon: Building2,
         category: 'Project'
@@ -39,7 +39,7 @@ const APPLICATIONS = [
         id: 4,
         name: 'School',
         port: 93,
-        url: 'http://SERVER_IP:93',
+        url: 'https://school.argosmob.online',
         description: 'School management website.',
         icon: School,
         category: 'Management'
@@ -48,43 +48,43 @@ const APPLICATIONS = [
         id: 5,
         name: 'EasyRasta',
         port: 94,
-        url: 'http://SERVER_IP:94',
+        url: 'https://easyrasta.argosmob.online',
         description: 'EasyRasta business website.',
         icon: Globe,
         category: 'Business'
     },
-    {
-        id: 6,
-        name: 'FoodApp Frontend',
-        port: 9095,
-        url: 'http://SERVER_IP:9095',
-        description: 'Customer facing food ordering application built with React.',
-        icon: Utensils,
-        category: 'Application'
-    },
-    {
-        id: 7,
-        name: 'FoodApp Admin',
-        port: 9096,
-        url: 'http://SERVER_IP:9096',
-        description: 'Admin dashboard for managing food app.',
-        icon: LayoutDashboard,
-        category: 'Admin'
-    },
-    {
-        id: 8,
-        name: 'Stenna Admin',
-        port: 9097,
-        url: 'http://SERVER_IP:9097',
-        description: 'Admin panel for Stenna platform.',
-        icon: LayoutDashboard,
-        category: 'Admin'
-    },
+    // {
+    //     id: 6,
+    //     name: 'FoodApp Frontend',
+    //     port: 9095,
+    //     url: 'http://SERVER_IP:9095',
+    //     description: 'Customer facing food ordering application built with React.',
+    //     icon: Utensils,
+    //     category: 'Application'
+    // },
+    // {
+    //     id: 7,
+    //     name: 'FoodApp Admin',
+    //     port: 9096,
+    //     url: 'http://SERVER_IP:9096',
+    //     description: 'Admin dashboard for managing food app.',
+    //     icon: LayoutDashboard,
+    //     category: 'Admin'
+    // },
+    // {
+    //     id: 8,
+    //     name: 'Stenna Admin',
+    //     port: 9097,
+    //     url: 'http://SERVER_IP:9097',
+    //     description: 'Admin panel for Stenna platform.',
+    //     icon: LayoutDashboard,
+    //     category: 'Admin'
+    // },
     {
         id: 9,
         name: 'Stenna Website',
         port: 9098,
-        url: 'http://SERVER_IP:9098',
+        url: 'https://stenna.in',
         description: 'Public website for Stenna platform.',
         icon: Globe,
         category: 'Website'
@@ -93,7 +93,7 @@ const APPLICATIONS = [
         id: 10,
         name: 'VitalScience',
         port: 9099,
-        url: 'http://SERVER_IP:9099',
+        url: 'https://vitalscience.argosmob.online',
         description: 'VitalScience healthcare platform.',
         icon: FlaskConical,
         category: 'Healthcare'
@@ -102,29 +102,29 @@ const APPLICATIONS = [
         id: 11,
         name: 'Fornix',
         port: 9100,
-        url: 'http://SERVER_IP:9100',
+        url: 'https://fornix.argosmob.online',
         description: 'Fornix platform.',
         icon: Cpu,
         category: 'Platform'
-    },
-    {
-        id: 12,
-        name: 'MED AI LMS',
-        port: 9101,
-        url: 'http://SERVER_IP:9101',
-        description: 'AI powered medical learning management system.',
-        icon: GraduationCap,
-        category: 'AI / LMS'
-    },
-    {
-        id: 13,
-        name: 'Connect App',
-        port: 9102,
-        url: 'http://SERVER_IP:9102',
-        description: 'Connect frontend React application.',
-        icon: Network,
-        category: 'Application'
     }
+    // {
+    //     id: 12,
+    //     name: 'MED AI LMS',
+    //     port: 9101,
+    //     url: 'http://SERVER_IP:9101',
+    //     description: 'AI powered medical learning management system.',
+    //     icon: GraduationCap,
+    //     category: 'AI / LMS'
+    // },
+    // {
+    //     id: 13,
+    //     name: 'Connect App',
+    //     port: 9102,
+    //     url: 'http://SERVER_IP:9102',
+    //     description: 'Connect frontend React application.',
+    //     icon: Network,
+    //     category: 'Application'
+    // }
 ];
 
 const OurProjects = () => {
@@ -171,7 +171,7 @@ const OurProjects = () => {
                             <div className="app-icon-wrapper">
                                 <app.icon size={24} color="var(--accent)" />
                             </div>
-                            <span className="port-badge">Port: {app.port}</span>
+                            {/* <span className="port-badge">Port: {app.port}</span> */}
                         </div>
 
                         <div className="app-card-body">

@@ -4,7 +4,7 @@ import { BrowserRouter } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
 import { AuthProvider } from './context/AuthContext'
 import { ThemeProvider } from './context/ThemeContext'
-import { NotificationProvider } from './context/NotificationContext'
+// import { NotificationProvider } from './context/NotificationContext' // DISABLED to save Supabase resources
 import App from './App'
 import './index.css'
 
@@ -13,9 +13,9 @@ createRoot(document.getElementById('root')).render(
     <BrowserRouter>
       <ThemeProvider>
         <AuthProvider>
-          <NotificationProvider>
+          {/* <NotificationProvider> DISABLED to save Supabase resources */}
             <App />
-          </NotificationProvider>
+          {/* </NotificationProvider> */}
           <Toaster
             position="top-right"
             toastOptions={{

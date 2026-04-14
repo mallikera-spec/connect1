@@ -1,0 +1,638 @@
+{
+  "template_meta": {
+    "name": "Argosmob SOW Template",
+    "version": "2.0",
+    "agency": "Argosmob Tech and AI Pvt. Ltd.",
+    "description": "Statement of Work template for web, mobile, and backend projects. Feed project_inputs into AI to generate real values for all placeholder fields.",
+    "usage": "POST /api/v1/utils/generate-sow — pass project_inputs, AI fills all [PLACEHOLDER] fields using this template structure"
+  },
+
+  "project_inputs": {
+    "_comment": "These are the fields your client/PM fills before calling the AI. AI uses these to generate all section content.",
+    "project_name": "",
+    "project_tagline": "",
+    "client_name": "",
+    "client_entity": "",
+    "agency_name": "Argosmob Tech and AI Pvt. Ltd.",
+    "document_version": "v1.0",
+    "month_year": "",
+    "engagement_model": "",
+    "project_type": "",
+    "platforms": [],
+    "tech_stack": {
+      "frontend": "",
+      "mobile": "",
+      "backend": "",
+      "database": "",
+      "auth": "",
+      "storage": "",
+      "payment_gateway": "",
+      "hosting": "",
+      "email_provider": "",
+      "sms_provider": ""
+    },
+    "team": {
+      "project_manager": "",
+      "designer": "",
+      "backend_dev": "",
+      "frontend_dev": "",
+      "mobile_dev": "",
+      "devops": "",
+      "qa": ""
+    },
+    "project_description": "",
+    "key_features": [],
+    "product_catalogue": {
+      "total_products": 0,
+      "total_categories": 0,
+      "description": ""
+    },
+    "hosting_specs": {
+      "type": "",
+      "cpu": "",
+      "ram": "",
+      "storage": "",
+      "os": ""
+    },
+    "domains": {
+      "main": "",
+      "api": "",
+      "admin": ""
+    },
+    "timeline_weeks": {
+      "design": 0,
+      "backend": 0,
+      "frontend": 0,
+      "mobile": 0,
+      "qa_launch": 0
+    },
+    "payment_schedule": {
+      "kickoff": "",
+      "design": "",
+      "backend": "",
+      "frontend": "",
+      "mobile": "",
+      "golive": ""
+    },
+    "out_of_scope": [],
+    "special_integrations": [],
+    "notes": ""
+  },
+
+  "document_structure": {
+    "cover": {
+      "fields": [
+        "project_name",
+        "project_tagline",
+        "platforms",
+        "agency_name",
+        "client_name",
+        "document_version",
+        "month_year"
+      ]
+    },
+
+    "table_of_contents": {
+      "sections": [
+        "1 — Project Overview & Business Context",
+        "2 — Stakeholder Matrix",
+        "3 — Technology Stack (Deep Dive)",
+        "4 — System Architecture",
+        "5 — Scope of Work — Module Breakdown",
+        "6 — Database Schema (All Tables)",
+        "7 — API Specification — Complete Reference",
+        "8 — Third-Party Integrations",
+        "9 — Auth & Storage Setup",
+        "10 — Admin Panel — Feature Specification",
+        "11 — Frontend — Feature Specification",
+        "12 — Mobile App — Feature Specification",
+        "13 — UI/UX Design Guidelines (Figma)",
+        "14 — Project Timeline & Milestones",
+        "15 — Hosting & DevOps",
+        "16 — Security, Performance & SEO",
+        "17 — Testing & QA Strategy",
+        "18 — Postman Collection Setup",
+        "19 — Environment Variables Reference",
+        "20 — Error Codes & Standards",
+        "21 — Assumptions, Risks & Change Control",
+        "22 — Terms, IP & Sign-off"
+      ]
+    },
+
+    "sections": {
+
+      "section_1": {
+        "title": "Project Overview & Business Context",
+        "subsections": {
+          "1_1_project_summary": {
+            "type": "paragraph",
+            "ai_prompt": "Write 3 sentences describing what [project_name] is, what problem it solves, who the target users are, and what platforms it consists of. Use project_description and platforms from project_inputs."
+          },
+          "1_2_project_details": {
+            "type": "kv_table",
+            "rows": [
+              { "key": "Project Name", "value_from": "project_name" },
+              { "key": "Client Entity", "value_from": "client_entity", "ai_prompt": "Use client_name if client_entity is empty" },
+              { "key": "Agency", "value_from": "agency_name" },
+              { "key": "Document Version", "value_from": "document_version" },
+              { "key": "Document Status", "value": "Draft — Pending Client Sign-off" },
+              { "key": "Project Type", "value_from": "project_type" },
+              { "key": "Engagement Model", "value_from": "engagement_model" },
+              { "key": "Target Platforms", "value_from": "platforms", "format": "join_comma" },
+              { "key": "Payment Gateway", "value_from": "tech_stack.payment_gateway" },
+              { "key": "Database", "value_from": "tech_stack.database" },
+              { "key": "Hosting", "value_from": "hosting_specs.type" }
+            ]
+          },
+          "1_3_business_objectives": {
+            "type": "bullet_list",
+            "count": "5-7",
+            "ai_prompt": "Generate 5-7 specific, measurable business objectives for [project_name] based on the project_description, key_features, and platforms. Each objective should be one clear sentence starting with an action verb. Make them relevant to a [engagement_model] project for [client_name]."
+          },
+          "1_4_success_criteria": {
+            "type": "kv_table",
+            "row_prefix": "SC",
+            "count": "8-12",
+            "ai_prompt": "Generate 8-12 specific, testable success criteria for [project_name]. Each should be a concrete, verifiable statement (e.g. 'Customer can complete end-to-end checkout on both web and mobile'). Number them SC-01, SC-02 etc. Base them on key_features, platforms, and tech_stack."
+          }
+        }
+      },
+
+      "section_2": {
+        "title": "Stakeholder Matrix",
+        "type": "data_table",
+        "columns": ["Role", "Name/Team", "Platform", "Key Responsibilities", "Deliverables"],
+        "ai_prompt": "Generate a stakeholder matrix for [project_name]. Use team from project_inputs for names. Generate specific responsibilities and deliverables for each role based on the tech_stack and platforms. Include: Client/Product Owner, Project Manager, UI/UX Designer, Backend Developer, Frontend Developer, Mobile Developer (only if mobile in platforms), DevOps Engineer, QA Engineer."
+      },
+
+      "section_3": {
+        "title": "Technology Stack (Deep Dive)",
+        "subsections": {
+          "3_1_frontend_web": {
+            "type": "kv_table",
+            "condition": "platforms includes web",
+            "ai_prompt": "Generate a detailed frontend web tech stack table for [project_name] using tech_stack.frontend as the base framework. Include: Framework (with version), Build Tool, Routing, State Management, HTTP Client, UI Library, Form Handling, Notifications/Toast, Charts (if admin panel), Payment integration method, SEO approach, Code standards. Give specific library names and versions where standard."
+          },
+          "3_2_mobile_app": {
+            "type": "kv_table",
+            "condition": "platforms includes mobile",
+            "ai_prompt": "Generate a detailed mobile app tech stack table for [project_name] using tech_stack.mobile as the base. Include: Framework (with version), Navigation library, State Management, HTTP Client, Payment integration, Push Notifications, Image handling, Storage/cache, Build system, OTA updates. Give specific library names."
+          },
+          "3_3_backend": {
+            "type": "kv_table",
+            "ai_prompt": "Generate a detailed backend tech stack table for [project_name] using tech_stack.backend. Include: Runtime (with version), Framework, Architecture pattern, Auth middleware approach, Input validation library, Error handling strategy, Rate limiting, File upload approach, Email provider, Logging libraries, Security libraries, Testing framework. Give specific package names."
+          },
+          "3_4_database": {
+            "type": "kv_table",
+            "ai_prompt": "Generate a detailed database tech stack table for [project_name] using tech_stack.database and tech_stack.auth. Include: DB Engine (with version), ORM/Client, Authentication system, File storage, Row Level Security approach, Migration strategy, Seed data approach, Backup strategy, Key database indexes needed."
+          },
+          "3_5_payment_gateway": {
+            "type": "kv_table",
+            "condition": "tech_stack.payment_gateway is not empty",
+            "ai_prompt": "Generate a payment gateway tech details table for [tech_stack.payment_gateway] used in [project_name]. Include: Product/API used, Supported payment methods (relevant to India), Integration mode, Webhook approach, Sandbox URL, Production URL, API version header, Authentication method."
+          }
+        }
+      },
+
+      "section_4": {
+        "title": "System Architecture",
+        "subsections": {
+          "4_1_high_level": {
+            "type": "paragraph",
+            "ai_prompt": "Write 2-3 paragraphs describing the high-level system architecture for [project_name]. Describe how [platforms] interact with the backend, data access rules, and the overall architectural pattern. Reference specific technologies from tech_stack."
+          },
+          "4_2_request_flow": {
+            "type": "numbered_list",
+            "count": "7-10",
+            "ai_prompt": "Generate a step-by-step request flow for [project_name] covering the complete lifecycle from user action to database response and back. Include auth token handling, payment flow hook (if applicable), and webhook handling. Reference specific tech from tech_stack."
+          },
+          "4_3_backend_directory": {
+            "type": "code_block",
+            "language": "plaintext",
+            "ai_prompt": "Generate a realistic, detailed backend directory structure for [project_name] using [tech_stack.backend] with MVC architecture. Include all relevant folders: config, middlewares, routes, controllers, services, schemas, utils. Add inline comments explaining each folder. Name files specifically based on the project's features."
+          },
+          "4_4_frontend_directory": {
+            "type": "code_block",
+            "language": "plaintext",
+            "ai_prompt": "Generate a realistic frontend directory structure for [project_name] using [tech_stack.frontend]. Include: api/, components/ (with sub-folders for feature areas), pages/, store/, hooks/, utils/, constants/. Add inline comments. Organise components based on key_features."
+          }
+        }
+      },
+
+      "section_5": {
+        "title": "Scope of Work — Module Breakdown",
+        "subsections": {
+          "5_1_backend_api": {
+            "type": "bullet_list",
+            "count": "15-20",
+            "ai_prompt": "Generate 15-20 specific backend API scope items for [project_name]. Cover: API versioning, auth middleware, RBAC, input validation, error handling, rate limiting, CORS, pagination standard, soft delete pattern, audit trail, file upload, email notifications, webhook handling, payment integration specifics, search/filter, analytics endpoints. Make items specific to [project_name] features."
+          },
+          "5_2_admin_panel": {
+            "type": "bullet_list",
+            "count": "12-18",
+            "condition": "platforms includes admin",
+            "ai_prompt": "Generate 12-18 specific admin panel scope items for [project_name]. Cover: protected login, dashboard KPIs, all CRUD management screens relevant to the project, analytics charts, settings screen. List each screen/feature separately with detail."
+          },
+          "5_3_frontend_website": {
+            "type": "bullet_list",
+            "count": "12-18",
+            "condition": "platforms includes web",
+            "ai_prompt": "Generate 12-18 specific frontend website scope items for [project_name]. Cover all key pages and features based on key_features. Include header/nav, home page sections, main listing/browsing, detail page, cart/checkout flow, auth, user profile, order history, static pages, responsiveness, loading states."
+          },
+          "5_4_mobile_app": {
+            "type": "bullet_list",
+            "count": "12-18",
+            "condition": "platforms includes mobile",
+            "ai_prompt": "Generate 12-18 specific mobile app scope items for [project_name] using [tech_stack.mobile]. Cover: splash/onboarding, home, listing, detail, cart/checkout, auth screens, profile, push notifications, navigation structure, offline handling. Be specific to the project's features."
+          },
+          "5_5_out_of_scope": {
+            "type": "bullet_list",
+            "ai_prompt": "Generate a comprehensive out-of-scope list for [project_name] based on out_of_scope from project_inputs plus standard exclusions like: multi-vendor functionality, GPS tracking, loyalty programs, subscription billing, WhatsApp API, third-party logistics, app store submission, content writing, product photography, social media integrations, multi-language/currency support. Include any special_integrations that are explicitly excluded."
+          }
+        }
+      },
+
+      "section_6": {
+        "title": "Database Schema (All Tables)",
+        "type": "schema_tables",
+        "note": "All tables include created_at TIMESTAMPTZ DEFAULT now() and updated_at TIMESTAMPTZ DEFAULT now(). All UUIDs default to gen_random_uuid(). RLS enabled on all tables.",
+        "ai_prompt": "Generate a complete, detailed database schema for [project_name] using [tech_stack.database]. Based on the key_features and platforms, design all necessary tables. For each table provide: table name, and for each column: column_name, data_type (PostgreSQL types), constraint (PK/FK/NOT NULL/UNIQUE/DEFAULT/NULLABLE), description. Include all standard tables for the project type plus any project-specific ones. Always include: users/profiles table, core entity tables based on features, junction/relationship tables, settings table, notifications table. Each table should have 8-20 columns as appropriate. Be thorough — missing tables create scope gaps.",
+        "schema_table_format": {
+          "headers": ["Column Name", "Data Type", "Constraint", "Description"],
+          "table_name_prefix": "Table: "
+        }
+      },
+
+      "section_7": {
+        "title": "API Specification — Complete Reference",
+        "type": "api_tables",
+        "header_note": {
+          "base_url_production": "https://api.[domains.main]/api/v1",
+          "base_url_staging": "https://staging-api.[domains.main]/api/v1",
+          "auth_header": "Authorization: Bearer <JWT_TOKEN>",
+          "content_type": "application/json (multipart/form-data for uploads)",
+          "success_format": "{ success: true, data: {...}, message: '...' }",
+          "error_format": "{ success: false, error: { code: 'ERR_CODE', message: '...', details: [...] } }",
+          "auth_legend": "Public = no token | Customer = user JWT | Admin = admin-role JWT | Public* = optional auth"
+        },
+        "api_table_columns": ["Method", "Auth", "Endpoint", "Description", "Request Body (keys)", "Response (keys)"],
+        "method_colors": {
+          "GET": "green",
+          "POST": "blue",
+          "PUT": "orange",
+          "DELETE": "red",
+          "PATCH": "purple"
+        },
+        "ai_prompt": "Generate a complete, production-ready API specification for [project_name]. Group endpoints by resource. For each group generate all CRUD and action endpoints needed. For each endpoint specify: HTTP method, auth level (Public/Customer/Admin), endpoint path (use /api/v1/ prefix, use :id/:slug params), description, request body keys (or query params for GET, or — for none), response keys. Cover ALL resources based on key_features and database schema. Minimum groups: Auth, Users/Profile, [core resource 1], [core resource 2], [more based on features], Orders (if applicable), Payments (if applicable), Reviews (if applicable), Admin Analytics, Notifications, Uploads, Settings. Generate 80-120+ endpoints total. Be thorough — every screen in the frontend needs backing APIs.",
+        "endpoint_groups_to_generate": [
+          "AUTH — /auth/*",
+          "USER & PROFILE — /users/*",
+          "CATEGORIES (if applicable) — /categories/*",
+          "[CORE RESOURCE 1] — /[resource]/*",
+          "[CORE RESOURCE 2] — /[resource]/*",
+          "[CORE RESOURCE 3] — /[resource]/*",
+          "CART (if ecommerce) — /cart/*",
+          "ORDERS (if applicable) — /orders/*",
+          "PAYMENTS — /payments/*",
+          "REVIEWS (if applicable) — /reviews/*",
+          "WISHLIST (if applicable) — /wishlist/*",
+          "COUPONS (if applicable) — /coupons/*",
+          "BANNERS/MEDIA — /banners/*",
+          "ADMIN ANALYTICS — /admin/analytics/*",
+          "NOTIFICATIONS — /notifications/*",
+          "UPLOADS — /uploads/*",
+          "SETTINGS — /admin/settings/*"
+        ]
+      },
+
+      "section_8": {
+        "title": "Third-Party Integrations",
+        "ai_prompt": "Generate detailed integration documentation for all third-party services in [project_name] based on tech_stack and special_integrations. For each integration include: step-by-step flow (8-15 steps), API reference table (sandbox URL, production URL, auth method, webhook approach, key endpoints used), and any important implementation notes. Always cover payment gateway if present, email provider, SMS provider if present, file storage if external, push notification service.",
+        "subsections_per_integration": {
+          "flow": {
+            "type": "numbered_list",
+            "ai_prompt": "Generate step-by-step integration flow for [integration_name] in [project_name]"
+          },
+          "api_reference": {
+            "type": "kv_table",
+            "ai_prompt": "Generate API reference details for [integration_name]"
+          },
+          "code_example": {
+            "type": "code_block",
+            "language": "javascript",
+            "ai_prompt": "Generate a realistic Node.js code example for the key operation of [integration_name] (e.g. create order for payment, send OTP for SMS). Include request setup, response handling, and error case."
+          }
+        }
+      },
+
+      "section_9": {
+        "title": "Auth & Storage Setup",
+        "subsections": {
+          "9_1_auth_config": {
+            "type": "kv_table",
+            "ai_prompt": "Generate detailed auth configuration table for [project_name] using [tech_stack.auth]. Cover: auth provider, supported methods, token types, access token expiry, refresh token expiry, role storage mechanism, admin vs customer role differentiation, self-hosted vs cloud considerations if applicable."
+          },
+          "9_2_storage_buckets": {
+            "type": "data_table",
+            "columns": ["Bucket Name", "Access", "Allowed Types", "Max Size", "Usage"],
+            "ai_prompt": "Generate storage bucket configuration for [project_name] using [tech_stack.storage]. Create appropriate buckets based on the features — e.g. product-images, category-images, avatars, banners, documents. Set realistic max sizes. Public for images, private for sensitive docs."
+          },
+          "9_3_rls_policies": {
+            "type": "data_table",
+            "columns": ["Table", "Policy Name", "Rule"],
+            "ai_prompt": "Generate Row Level Security policies for [project_name]'s database tables. For each major table define read, write, and admin policies. Use [tech_stack.auth] JWT claims for role checks. Standard pattern: customers see own data, admins see all, public can read active/published records."
+          }
+        }
+      },
+
+      "section_10": {
+        "title": "Admin Panel — Detailed Feature Specification",
+        "condition": "platforms includes admin",
+        "subsections_ai_prompt": "Generate detailed admin panel feature specifications for [project_name]. Create subsections for: Authentication (how admin login works, session management, lockout), Dashboard (exact KPI cards, charts, tables, quick actions), and one subsection per management screen relevant to the project (e.g. Product Management, Order Management, Customer Management, Content Management, etc.). For each screen describe: table/list features, search/filter options, form fields, bulk actions, quick actions. Also include Settings screen with all configurable parameters."
+      },
+
+      "section_11": {
+        "title": "Frontend — Detailed Feature Specification",
+        "condition": "platforms includes web",
+        "subsections_ai_prompt": "Generate detailed frontend website feature specifications for [project_name]. Create subsections for: Header & Navigation (layout, mobile behaviour, interactive elements), then one subsection per major page/feature area. For each page describe every section, component, and interactive element in detail. Include a subsection for SEO requirements (meta tags, structured data, sitemap, robots.txt, performance). Cover all pages based on key_features."
+      },
+
+      "section_12": {
+        "title": "Mobile App — Detailed Feature Specification",
+        "condition": "platforms includes mobile",
+        "subsections": {
+          "12_1_navigation_structure": {
+            "type": "code_block",
+            "language": "plaintext",
+            "ai_prompt": "Generate the complete React Native navigation tree for [project_name] using React Navigation. Show AuthStack (unauthenticated screens) and AppStack (authenticated, with BottomTabNavigator and nested stacks). Name all screens specifically. Use tree format with └── and ├── characters."
+          },
+          "12_2_push_notifications": {
+            "type": "data_table",
+            "columns": ["Event", "Trigger", "Title", "Body"],
+            "ai_prompt": "Generate all push notification events for [project_name]. Cover every meaningful user action that warrants a push notification based on key_features. Include emojis in titles for engagement."
+          },
+          "12_3_offline_error_handling": {
+            "type": "bullet_list",
+            "ai_prompt": "Generate offline state and error handling specifications for [project_name] mobile app. Cover: network detection, API error codes handling, token refresh flow, empty states, skeleton screens, retry mechanisms."
+          }
+        }
+      },
+
+      "section_13": {
+        "title": "UI/UX Design Guidelines (Figma)",
+        "subsections": {
+          "13_1_design_tokens": {
+            "type": "data_table",
+            "columns": ["Token", "Value", "Usage"],
+            "ai_prompt": "Generate a complete design token system for [project_name]. Based on the project's industry/type (infer from project_description and project_name), suggest an appropriate colour palette with hex values. Include: Primary Color, Secondary Color, Accent Color, Background (light), Surface/Card, Text Primary, Text Secondary, Border, Success, Warning, Error, Info, Font Display (with name), Font Body (with name), Border Radius (cards), Border Radius (buttons), Border Radius (inputs), Shadow (card), Spacing Scale."
+          },
+          "13_2_screen_inventory": {
+            "type": "bullet_lists_by_platform",
+            "ai_prompt": "Generate a complete Figma screen inventory for [project_name] with screen IDs (WEB-01, ADM-01, APP-01 etc.) and screen names. Cover all screens for each platform in platforms. Base screen list on key_features and scope of work. Be comprehensive — every user flow needs a screen.",
+            "platforms": {
+              "website": { "prefix": "WEB", "frame": "Desktop 1440px + Mobile 375px" },
+              "admin": { "prefix": "ADM", "frame": "1280px desktop only" },
+              "mobile": { "prefix": "APP", "frame": "375×812 — iPhone 14 frame" }
+            }
+          }
+        }
+      },
+
+      "section_14": {
+        "title": "Project Timeline & Milestones",
+        "subsections": {
+          "14_1_phase_table": {
+            "type": "data_table",
+            "columns": ["Phase", "Name", "Duration", "Milestone Deliverables", "Dependencies"],
+            "ai_prompt": "Generate a 5-phase project timeline for [project_name] using timeline_weeks from project_inputs. For each phase list specific deliverables and what must be ready before the phase can start. Phases: P1 Discovery & Design, P2 Backend Development, P3 Frontend/Admin Panel, P4 Mobile App (if applicable), P5 QA/UAT/Launch."
+          },
+          "14_2_payment_schedule": {
+            "type": "data_table",
+            "columns": ["Milestone", "Deliverable", "Payment %"],
+            "ai_prompt": "Generate a milestone payment schedule for [project_name] using payment_schedule from project_inputs. Cover 6 milestones: Kickoff, Design Approval, Backend Complete, Frontend Complete, App Complete, Go-Live. Percentages should sum to 100%."
+          }
+        }
+      },
+
+      "section_15": {
+        "title": "Hosting & DevOps",
+        "subsections": {
+          "15_1_server_requirements": {
+            "type": "kv_table",
+            "ai_prompt": "Generate server requirements table for [project_name] using hosting_specs from project_inputs. Include: hosting platform, recommended specs (CPU, RAM, storage), OS, runtime and version, process manager, web server, SSL approach, firewall rules."
+          },
+          "15_2_dns_config": {
+            "type": "data_table",
+            "columns": ["Subdomain", "Record Type", "Points To", "Purpose"],
+            "ai_prompt": "Generate DNS configuration table for [project_name] using domains from project_inputs. Include all subdomains needed for the platforms."
+          },
+          "15_3_nginx_config": {
+            "type": "code_block",
+            "language": "nginx",
+            "ai_prompt": "Generate a production-ready Nginx configuration for [project_name] covering all domains from project_inputs. Include: HTTP to HTTPS redirect, API reverse proxy to Node.js (with proper headers), static file serving for React builds, cache headers for static assets, client_max_body_size for uploads, SSL certificate paths."
+          },
+          "15_4_pm2_config": {
+            "type": "code_block",
+            "language": "javascript",
+            "ai_prompt": "Generate a PM2 ecosystem.config.js for [project_name]'s backend. Include cluster mode, memory limit, log paths, env settings. Add comments for common PM2 commands."
+          },
+          "15_5_deployment_checklist": {
+            "type": "numbered_list",
+            "count": "15-20",
+            "ai_prompt": "Generate a step-by-step deployment checklist for [project_name] on [hosting_specs.type]. Cover: SSH setup, Node.js install, PM2 install, Nginx install, Certbot install, firewall config, repo clone, dependency install, .env setup, DB migration, frontend build, Nginx vhost config, SSL cert, PM2 start, PM2 auto-start, verification steps, monitoring setup."
+          }
+        }
+      },
+
+      "section_16": {
+        "title": "Security, Performance & SEO",
+        "subsections": {
+          "16_1_security": {
+            "type": "data_table",
+            "columns": ["Category", "Measure", "Implementation"],
+            "ai_prompt": "Generate a comprehensive security measures table for [project_name]. Cover: API authentication, HTTPS, security headers, CORS, rate limiting, input validation, SQL/NoSQL injection prevention, file upload security, webhook signature verification, secrets management, dependency auditing. Reference specific packages from tech_stack."
+          },
+          "16_2_performance_targets": {
+            "type": "kv_table",
+            "ai_prompt": "Generate realistic performance targets for [project_name]. Cover: page load LCP, API response times (list vs single), mobile Lighthouse score, bundle size, image handling, caching strategy, DB index strategy. Set achievable but professional benchmarks."
+          }
+        }
+      },
+
+      "section_17": {
+        "title": "Testing & QA Strategy",
+        "subsections": {
+          "17_1_testing_levels": {
+            "type": "data_table",
+            "columns": ["Level", "Scope", "Tools", "Responsibility"],
+            "ai_prompt": "Generate a testing strategy table for [project_name]. Cover: Unit Tests, Integration Tests, API Tests, E2E Tests, Cross-Browser, Device Testing, Payment Sandbox Testing, Performance Testing, Security Testing, UAT. Reference appropriate tools for [tech_stack.backend] and [tech_stack.frontend]."
+          },
+          "17_2_critical_test_cases": {
+            "type": "bullet_list",
+            "prefix": "TC",
+            "count": "15-20",
+            "ai_prompt": "Generate 15-20 critical test cases for [project_name] numbered TC-001 onwards. Cover the most important user flows and edge cases based on key_features. Always include: successful happy path flows, failed payment / error cases, auth/role security tests, webhook signature test, rate limit test, stock/inventory edge cases (if applicable), admin vs customer role separation."
+          }
+        }
+      },
+
+      "section_18": {
+        "title": "Postman Collection Setup Guide",
+        "subsections": {
+          "18_1_folder_structure": {
+            "type": "bullet_list",
+            "ai_prompt": "Generate the Postman collection folder structure for [project_name]. Create numbered folders (00, 01, 02...) matching the API groups from Section 7. For each folder list the specific request names inside it. Include a 00 Health Check folder."
+          },
+          "18_2_environment_variables": {
+            "type": "data_table",
+            "columns": ["Variable", "Example Value", "Set By"],
+            "ai_prompt": "Generate Postman environment variables for [project_name]. Include: base_url (staging and prod), auth tokens (auto-set via test scripts), admin token, test user credentials, and dynamic IDs for main resources (auto-set from API responses). Add the test script snippet for auto-setting tokens after login."
+          }
+        }
+      },
+
+      "section_19": {
+        "title": "Environment Variables Reference",
+        "subsections": {
+          "19_1_backend_env": {
+            "type": "code_block",
+            "language": "bash",
+            "ai_prompt": "Generate a complete .env file template for [project_name]'s backend using all services in tech_stack. Include sections for: Server config, Database, Auth, Payment Gateway (with all required keys for [tech_stack.payment_gateway]), Email, File Storage, CORS, Rate Limiting, App URLs. Use realistic variable names and placeholder values. Add section comments."
+          },
+          "19_2_frontend_env": {
+            "type": "code_block",
+            "language": "bash",
+            "ai_prompt": "Generate the Vite .env file for [project_name]'s frontend (React.js). All vars must be VITE_ prefixed. Include: API URL, app name, app URL, auth service URL and key, payment gateway env flag."
+          },
+          "19_3_mobile_env": {
+            "type": "code_block",
+            "language": "bash",
+            "ai_prompt": "Generate the .env / app.config.js variables for [project_name]'s mobile app using [tech_stack.mobile]. Include: API URL, auth config, payment gateway env, Expo project ID, FCM sender ID, deep link scheme."
+          }
+        }
+      },
+
+      "section_20": {
+        "title": "Error Codes & API Standards",
+        "subsections": {
+          "20_1_http_codes": {
+            "type": "data_table",
+            "columns": ["Code", "Name", "When Used"],
+            "static_content": [
+              ["200", "OK", "Successful GET, PUT, PATCH, DELETE"],
+              ["201", "Created", "Successful POST that creates a resource"],
+              ["204", "No Content", "DELETE with no response body"],
+              ["400", "Bad Request", "Missing required fields, invalid data format"],
+              ["401", "Unauthorized", "Missing or invalid JWT token"],
+              ["403", "Forbidden", "Valid token but insufficient role"],
+              ["404", "Not Found", "Resource does not exist or is soft-deleted"],
+              ["409", "Conflict", "Duplicate resource — unique constraint violated"],
+              ["422", "Unprocessable Entity", "Zod/schema validation error — field-level errors returned"],
+              ["429", "Too Many Requests", "Rate limit exceeded"],
+              ["500", "Internal Server Error", "Unhandled exception — logged, generic message to client"]
+            ]
+          },
+          "20_2_app_error_codes": {
+            "type": "data_table",
+            "columns": ["Error Code", "HTTP Status", "Meaning"],
+            "ai_prompt": "Generate a complete application error code list for [project_name]. Always include: UNAUTHORIZED (401), FORBIDDEN (403), NOT_FOUND (404), VALIDATION_ERROR (422), DUPLICATE_ENTRY (409), RATE_LIMIT_EXCEEDED (429), WEBHOOK_SIGNATURE_INVALID (400), PAYMENT_VERIFICATION_FAILED (400), INTERNAL_ERROR (500). Then add project-specific error codes based on key_features (e.g. INSUFFICIENT_STOCK, COUPON_EXPIRED, ORDER_NOT_CANCELLABLE etc.)."
+          },
+          "20_3_standard_response_examples": {
+            "type": "code_block",
+            "language": "javascript",
+            "ai_prompt": "Generate standard API response format examples for [project_name]: success response (200), created response (201), validation error (422 with field-level details), auth error (401), not found (404), and one project-specific error relevant to the main feature."
+          }
+        }
+      },
+
+      "section_21": {
+        "title": "Assumptions, Risks & Change Control",
+        "subsections": {
+          "21_1_assumptions": {
+            "type": "bullet_list",
+            "count": "8-12",
+            "ai_prompt": "Generate 8-12 project assumptions for [project_name]. Cover: third-party account readiness, content/data delivery by client, brand asset availability, feedback turnaround SLA, payment gateway KYC timeline, app store account requirements, hosting access, any project-specific assumptions based on special_integrations and tech_stack."
+          },
+          "21_2_risk_register": {
+            "type": "data_table",
+            "columns": ["ID", "Risk Description", "Likelihood", "Impact", "Mitigation Strategy"],
+            "ai_prompt": "Generate 8-10 project risks for [project_name] numbered R-01 onwards. Always include: client feedback delays, scope creep, third-party service issues, server performance. Add project-specific risks based on tech_stack, special_integrations, and platforms. For each risk give concrete mitigation strategy."
+          },
+          "21_3_change_request_process": {
+            "type": "numbered_list",
+            "static_content": [
+              "Client or PM identifies new requirement or scope change — documented in writing (email or CR form).",
+              "PM records: change description, business reason, and priority level.",
+              "Technical lead assesses: impact on timeline, impact on budget, effort estimate in days.",
+              "Both parties sign off on the CR document before any development begins on the change.",
+              "CR added as numbered addendum to this SOW with revised milestone dates.",
+              "CR work billed separately at the agreed rate per the contract."
+            ]
+          }
+        }
+      },
+
+      "section_22": {
+        "title": "Terms, IP & Sign-off",
+        "subsections": {
+          "22_1_intellectual_property": {
+            "type": "paragraph",
+            "static_content": "Upon receipt of final payment for all milestones, all custom code, designs, and documentation created specifically for this project become the sole intellectual property of the client. Open-source libraries, frameworks, and third-party SDKs remain under their respective open-source licenses. [agency_name] retains the right to reference this project in agency portfolio and marketing materials using only publicly available information, unless the client requests confidentiality in writing."
+          },
+          "22_2_warranty": {
+            "type": "bullet_list",
+            "ai_prompt": "Generate warranty terms for [project_name]. Include: warranty period duration (30 days standard), what is covered (development bugs), what is NOT covered (third-party outages, client-made changes, hosting issues), response SLA for bugs (48 business hours), and mention of AMC option."
+          },
+          "22_3_confidentiality": {
+            "type": "paragraph",
+            "static_content": "Both parties agree to keep all business information, technical specifications, pricing, customer data, and any material shared during this engagement strictly confidential. Neither party will disclose confidential information to third parties without written consent from the other party."
+          },
+          "22_4_liability": {
+            "type": "paragraph",
+            "static_content": "[agency_name]'s total liability under this agreement shall not exceed the total project fee paid by the client. [agency_name] is not liable for indirect, incidental, or consequential damages including but not limited to lost revenue, lost data, or business interruption."
+          },
+          "22_5_signoff_block": {
+            "type": "signature_table",
+            "parties": [
+              { "label": "For [agency_name]", "lines": ["Authorised Signatory", "Date"] },
+              { "label": "For [client_name]", "lines": ["Authorised Signatory", "Date"] }
+            ]
+          }
+        }
+      }
+    }
+  },
+
+  "ai_system_prompt": {
+    "_comment": "Use this as the system prompt when calling the AI. Paste this into your Express utility.",
+    "prompt": "You are an expert technical project manager and solution architect at a software agency. Your job is to generate detailed, professional Statement of Work (SOW) documents for software projects. When given project_inputs, you fill in every section of the SOW template with accurate, specific, and detailed content. Rules: 1) Never use vague placeholders like 'Feature X' — always use the actual project name and features. 2) All API endpoints must be real, RESTful, and complete — never skip endpoints that a real project would need. 3) All database tables must be fully designed with real column names, types, and constraints. 4) Tech stack recommendations must reference real package names and versions. 5) Error codes must be specific to the project's domain. 6) Test cases must be specific and testable. 7) Timeline estimates must be realistic for a team of the specified size. 8) All content must be professional, client-ready, and match the quality of a senior technical consultant's work. Output as structured JSON matching the template schema so it can be rendered into a Word document."
+  },
+
+  "express_utility_example": {
+    "_comment": "Example Express.js route for your backend utility",
+    "route": "POST /api/v1/utils/generate-sow",
+    "code": {
+      "description": "Save this as src/utils/generateSOW.js in your Express backend",
+      "handler": "async (req, res) => { const { project_inputs } = req.body; const template = require('./sow_template.json'); const prompt = buildPrompt(template, project_inputs); const response = await anthropic.messages.create({ model: 'claude-opus-4-5', max_tokens: 8000, system: template.ai_system_prompt.prompt, messages: [{ role: 'user', content: prompt }] }); const sow_data = JSON.parse(response.content[0].text); const docxBuffer = await renderSOWtoDocx(sow_data, template); res.setHeader('Content-Disposition', 'attachment; filename=SOW_' + project_inputs.project_name + '.docx'); res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'); res.send(docxBuffer); }",
+      "build_prompt_function": "function buildPrompt(template, inputs) { return `Using the SOW template structure, generate a complete Statement of Work document for the following project. Fill every section with detailed, specific, professional content.\n\nPROJECT INPUTS:\n${JSON.stringify(inputs, null, 2)}\n\nTEMPLATE STRUCTURE:\n${JSON.stringify(template.document_structure, null, 2)}\n\nGenerate the complete SOW content as a JSON object where each section key contains its generated content. For bullet lists return arrays of strings. For tables return arrays of row arrays. For paragraphs return strings. For code blocks return the code as a string.`; }"
+    }
+  },
+
+  "rendering_hints": {
+    "_comment": "Instructions for the docx renderer that converts AI output back into Word format",
+    "type_renderers": {
+      "paragraph": "Use P() helper with run() text",
+      "bullet_list": "Use B() helper for each item",
+      "numbered_list": "Use N() helper for each item",
+      "kv_table": "Use kv() helper with rows array",
+      "data_table": "Use mkTable() helper with headers, widths, rows",
+      "api_tables": "Use apiSection() helper per group — colour-code methods",
+      "schema_tables": "Use schemaTable() helper per table",
+      "code_block": "Use codeBlock() helper with Courier New font",
+      "signature_table": "Use signature table pattern from SOW v2 generator"
+    },
+    "section_divider": "Use divider() helper at start of each section",
+    "page_break": "Use pb() between major sections",
+    "note_box": "Use note() for important callouts and warnings"
+  }
+}

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../lib/api';
-import { EmployeeCard, StatCard, NotificationCard } from './DashboardComponents';
+import { EmployeeCard, StatCard /*, NotificationCard */ } from './DashboardComponents'; // NotificationCard DISABLED
 import { HRService } from '../hr/HRService';
 import { Clock, Calendar, ArrowRight, TrendingUp, FileText, CheckCircle, IndianRupee } from 'lucide-react';
 
@@ -246,7 +246,7 @@ export default function AdminDashboard({ dateRange }) {
                 </div>
             </div>
 
-            <NotificationCard />
+            {/* <NotificationCard /> DISABLED to save Supabase resources */}
 
             {/* HR Approvals */}
             <div style={{ marginTop: 24, background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: '16px 20px' }}>

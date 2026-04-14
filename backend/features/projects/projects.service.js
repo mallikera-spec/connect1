@@ -114,3 +114,12 @@ export const deleteProject = async (id) => {
     if (error) throw error;
     return { id };
 };
+export const isProjectMember = async (projectId, userId) => {
+    const { data, error } = await supabaseAdmin
+        .from('project_members')
+        .select('id')
+        .match({ project_id: projectId, user_id: userId })
+        .maybeSingle();
+    if (error) throw error;
+    return !!data;
+};

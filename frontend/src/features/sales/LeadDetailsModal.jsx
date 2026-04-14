@@ -264,22 +264,26 @@ export default function LeadDetailsModal({ leadId, onClose, onSaved }) {
                 </div>
             </div>
 
-            <LogFollowUpModal
-                isOpen={isLogModalOpen}
-                onClose={() => setIsLogModalOpen(false)}
-                leadId={leadId}
-                onSuccess={loadLeadDetails}
-            />
+            {isLogModalOpen && (
+                <LogFollowUpModal
+                    isOpen={isLogModalOpen}
+                    onClose={() => setIsLogModalOpen(false)}
+                    leadId={leadId}
+                    onSuccess={loadLeadDetails}
+                />
+            )}
 
-            <OnboardModal
-                isOpen={isOnboardModalOpen}
-                onClose={() => setIsOnboardModalOpen(false)}
-                lead={{ ...lead, deal_value: dealValue }}
-                onSuccess={() => {
-                    loadLeadDetails();
-                    if (onClose) onClose(); // Close details modal too? Or keep it? Usually onboarding is a terminal step for lead
-                }}
-            />
+            {isOnboardModalOpen && (
+                <OnboardModal
+                    isOpen={isOnboardModalOpen}
+                    onClose={() => setIsOnboardModalOpen(false)}
+                    lead={{ ...lead, deal_value: dealValue }}
+                    onSuccess={() => {
+                        loadLeadDetails();
+                        if (onClose) onClose();
+                    }}
+                />
+            )}
         </div>
     );
 }

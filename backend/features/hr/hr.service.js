@@ -375,6 +375,22 @@ export const calculateAvailableLeaves = async (userId) => {
 };
 
 export const getAllLeaveBalances = async () => {
+    // 1. Optional Trigger: Check if we need a global sync (once per month)
+    const now = new Date();
+    const todayStr = now.toISOString().split('T')[0].substring(0, 7); // "YYYY-MM"
+    
+    const { data: latest } = await supabaseAdmin
+        .from('user_leave_balances')
+        .select('last_accrual_date')
+        .order('last_accrual_date', { ascending: false })
+        .limit(1)
+        .single();
+
+    if (latest && latest.last_accrual_date && !latest.last_accrual_date.startsWith(todayStr)) {
+        console.log('🔄 Stale data detected in getAllLeaveBalances, syncing all users...');
+        await syncAllBalances();
+    }
+
     const { data: balances, error } = await supabaseAdmin
         .from('user_leave_balances')
         .select(`

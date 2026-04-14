@@ -44,6 +44,7 @@ import SalarySlips from './features/hr/SalarySlips'
 import HRAdminPayroll from './features/hr/HRAdminPayroll'
 import OurProjects from './features/marketing/OurProjects'
 import DeviceGuard from './components/DeviceGuard'
+import SoWGenerator from './features/sow-generator/SoWGenerator'
 
 import SettingsPage from './features/settings/SettingsPage'
 import FinanceDashboard from './features/finance/FinanceDashboard'
@@ -91,7 +92,7 @@ export default function App() {
       <Route path="/polls" element={<AdminLayout><PollsPage /></AdminLayout>} />
       <Route path="/developer-scoring-criteria" element={<AdminLayout><DeveloperScoringCriteria /></AdminLayout>} />
       <Route path="/attendance-report" element={<AdminLayout><AttendanceReport /></AdminLayout>} />
-      <Route path="/tester-dashboard" element={<AdminLayout><PermissionGate perm="view_tasks" allowedRoles={['Tester', 'super_admin']}><TesterPage /></PermissionGate></AdminLayout>} />
+      <Route path="/tester-dashboard" element={<AdminLayout><PermissionGate perm="view_tasks" allowedRoles={['Tester', 'super_admin', 'director']}><TesterPage /></PermissionGate></AdminLayout>} />
       <Route path="/testing-todos" element={<AdminLayout><PermissionGate perm="view_timesheet" allowedRoles={['Tester', 'super_admin']}><TestingQueue /></PermissionGate></AdminLayout>} />
       <Route path="/testing-tasks" element={<AdminLayout><PermissionGate perm="view_tasks" allowedRoles={['Tester', 'super_admin']}><TestingTasks /></PermissionGate></AdminLayout>} />
       <Route path="/testing-reports" element={<AdminLayout><PermissionGate perm="view_timesheet" allowedRoles={['Tester', 'super_admin']}><TestingReports /></PermissionGate></AdminLayout>} />
@@ -158,6 +159,11 @@ export default function App() {
       } />
       <Route path="/permissions" element={
         <AdminLayout><PermissionGate perm="manage_permissions"><PermissionsPage /></PermissionGate></AdminLayout>
+      } />
+
+      {/* AI & Automation */}
+      <Route path="/sow-generator" element={
+        <AdminLayout><SoWGenerator /></AdminLayout>
       } />
 
       {/* Sales & Proposals */}

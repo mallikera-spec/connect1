@@ -322,27 +322,32 @@ const DataTable = ({
                             )}
                             {/* Rule 1 & 2: S.No Column */}
                             <th className="sticky-col sticky-left" style={{ width: '70px', textAlign: 'left' }}>S.No</th>
-                            {filteredColumns.map((col, idx) => (
-                                <th
-                                    key={idx}
-                                    className={col.key === 'actions' ? 'sticky-col sticky-right' : ''}
-                                    style={{
-                                        textAlign: getAlignment(col),
-                                        width: col.width || 'auto',
-                                        cursor: col.sortable !== false ? 'pointer' : 'default',
-                                    }}
-                                    onClick={() => col.sortable !== false && handleSort(col.sortKey || col.key)}
-                                >
-                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: getAlignment(col) === 'right' ? 'flex-end' : getAlignment(col) === 'center' ? 'center' : 'flex-start', gap: '4px' }}>
-                                        {col.label}
-                                        {col.sortable !== false && (
-                                            <span style={{ opacity: sortConfig.key === (col.sortKey || col.key) ? 1 : 0.2 }}>
-                                                {sortConfig.key === (col.sortKey || col.key) && sortConfig.direction === 'desc' ? <ChevronDown size={12} /> : <ChevronUp size={12} />}
-                                            </span>
-                                        )}
-                                    </div>
-                                </th>
-                            ))}
+                             {filteredColumns.map((col, idx) => {
+                                const isSticky = col.sticky === true || col.sticky === 'left' || col.sticky === 'right';
+                                const stickyClass = col.sticky === 'right' || col.key === 'actions' ? 'sticky-right' : 'sticky-left';
+                                
+                                return (
+                                    <th
+                                        key={idx}
+                                        className={isSticky || col.key === 'actions' ? `sticky-col ${stickyClass}` : ''}
+                                        style={{
+                                            textAlign: getAlignment(col),
+                                            width: col.width || 'auto',
+                                            cursor: col.sortable !== false ? 'pointer' : 'default',
+                                        }}
+                                        onClick={() => col.sortable !== false && handleSort(col.sortKey || col.key)}
+                                    >
+                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: getAlignment(col) === 'right' ? 'flex-end' : getAlignment(col) === 'center' ? 'center' : 'flex-start', gap: '4px' }}>
+                                            {col.label}
+                                            {col.sortable !== false && (
+                                                <span style={{ opacity: sortConfig.key === (col.sortKey || col.key) ? 1 : 0.2 }}>
+                                                    {sortConfig.key === (col.sortKey || col.key) && sortConfig.direction === 'desc' ? <ChevronDown size={12} /> : <ChevronUp size={12} />}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </th>
+                                );
+                            })}
                         </tr>
                     </thead>
                     <tbody>
@@ -358,12 +363,15 @@ const DataTable = ({
                                             </td>
                                         )}
                                         <td className="sticky-col sticky-left" style={{ color: 'var(--text-dim)' }}>{realIndex + 1}</td>
-                                        {filteredColumns.map((col, idx) => {
+                                         {filteredColumns.map((col, idx) => {
                                             const getVal = (obj, path) => path ? path.split('.').reduce((o, i) => (o ? o[i] : ''), obj) : '';
                                             const val = getVal(item, col.key);
+                                            const isSticky = col.sticky === true || col.sticky === 'left' || col.sticky === 'right';
+                                            const stickyClass = col.sticky === 'right' || col.key === 'actions' ? 'sticky-right' : 'sticky-left';
+                                            
                                             return (
                                                 <td key={idx}
-                                                    className={col.key === 'actions' ? 'sticky-col sticky-right' : ''}
+                                                    className={isSticky || col.key === 'actions' ? `sticky-col ${stickyClass}` : ''}
                                                     style={{ textAlign: getAlignment(col), width: col.width || 'auto' }}>
                                                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: getAlignment(col) === 'right' ? 'flex-end' : getAlignment(col) === 'center' ? 'center' : 'flex-start', gap: '8px' }}>
                                                         <div className="cell-content" title={val != null && val !== false ? String(val) : undefined}>
@@ -461,15 +469,32 @@ const DataTable = ({
 
                 .table-responsive-wrapper { background: transparent; }
                 .standard-data-table { width: 100%; border-collapse: collapse; font-size: 14px; }
-                .standard-data-table th { background: rgba(255,255,255,0.03); color: var(--text-dim); font-weight: 700; text-transform: uppercase; font-size: 11px; letter-spacing: 0.1em; padding: 14px 16px; border-bottom: 2px solid var(--border); }
+                .standard-data-table th { 
+                    position: sticky; 
+                    top: 0; 
+                    z-index: 20; 
+                    background: var(--bg-card-solid); 
+                    color: var(--text-dim); 
+                    font-weight: 700; 
+                    text-transform: uppercase; 
+                    font-size: 11px; 
+                    letter-spacing: 0.1em; 
+                    padding: 14px 16px; 
+                    border-bottom: 2px solid var(--border); 
+                }
                 .standard-data-table td { padding: 14px 16px; border-bottom: 1px solid var(--border); vertical-align: middle; }
                 .standard-data-table tr:hover { background: rgba(255,255,255,0.02) !important; }
                 .standard-data-table tr.selected { background: rgba(var(--accent-rgb), 0.05) !important; }
                 
-                .sticky-col { position: sticky; z-index: 10; background: inherit; }
-                .sticky-left { left: 0; }
-                .sticky-right { right: 0; }
-                .standard-data-table tr:hover .sticky-col { background: rgba(255,255,255,0.02); }
+                .sticky-col { position: sticky; z-index: 30; background: var(--bg-card-solid); }
+                .sticky-left { left: 0; box-shadow: 4px 0 8px rgba(0,0,0,0.15); }
+                .sticky-right { right: 0; box-shadow: -4px 0 8px rgba(0,0,0,0.15); }
+                
+                /* Corner case: Sticky header AND sticky column intersection needs highest z-index */
+                th.sticky-col { z-index: 40; }
+                
+                .standard-data-table tr:hover .sticky-col { background: var(--bg-card-hover); }
+                .standard-data-table tr.selected .sticky-col { background: rgba(var(--accent-rgb), 0.1); }
                 
                 .cell-content { max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
                 

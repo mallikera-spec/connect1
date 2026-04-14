@@ -21,7 +21,7 @@ import timeTrackingRoutes from './features/time-tracking/time-tracking.routes.js
 import hrRoutes from './features/hr/hr.routes.js';
 import projectFilesRoutes from './features/project-files/project-files.routes.js';
 import projectNotesRoutes from './features/project-notes/project-notes.routes.js';
-import notificationRoutes from './features/notifications/notifications.routes.js';
+// import notificationRoutes from './features/notifications/notifications.routes.js'; // DISABLED to save Supabase resources
 import quotationRoutes from './features/quotations/quotation.routes.js';
 import payrollRoutes from './features/payroll/payroll.routes.js';
 import salesRoutes from './features/sales/sales.routes.js';
@@ -31,6 +31,7 @@ import pollsRoutes from './features/polls/polls.routes.js';
 import leadFilesRoutes from './features/lead-files/lead-files.routes.js';
 import financeRoutes from './features/finance/finance.routes.js';
 import invoicesRoutes from './features/invoices/invoices.routes.js';
+import sowRoutes from './features/sow-generator/sow.routes.js';
 
 import { authMiddleware } from './middleware/auth.middleware.js';
 import { errorMiddleware } from './middleware/error.middleware.js';
@@ -38,10 +39,25 @@ import { errorMiddleware } from './middleware/error.middleware.js';
 const app = express();
 
 // Core middleware
+// app.use(cors({
+//     origin: '*',
+//     credentials: true,
+// }));
+
+
 app.use(cors({
-    origin: '*',
+    origin: [
+        "https://connect.argosmob.com",
+        "https://connect.argosmob.online",
+        "http://localhost:3000",
+        "http://localhost:5173",
+        "http://localhost:5000",
+    ],
     credentials: true,
 }));
+
+
+
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(morgan('dev'));
@@ -55,11 +71,11 @@ app.use('/api/v1', (req, res, next) => {
     const publicPaths = [
         '/auth/daily-quote'
     ];
-    
+
     if (publicPaths.some(path => req.path.startsWith(path))) {
         return next();
     }
-    
+
     return authMiddleware(req, res, next);
 });
 
@@ -83,7 +99,7 @@ app.use('/api/tasks/time-tracking', timeTrackingRoutes);
 app.use('/api/hr', hrRoutes);
 app.use('/api/v1/project-files', projectFilesRoutes);
 app.use('/api/v1/project-notes', projectNotesRoutes);
-app.use('/api/v1/notifications', notificationRoutes);
+// app.use('/api/v1/notifications', notificationRoutes); // DISABLED to save Supabase resources
 app.use('/api/v1/quotations', quotationRoutes);
 app.use('/api/v1/payroll', payrollRoutes);
 app.use('/api/v1/sales', salesRoutes);
@@ -93,6 +109,7 @@ app.use('/api/v1/polls', pollsRoutes);
 app.use('/api/v1/lead-files', leadFilesRoutes);
 app.use('/api/v1/finance', financeRoutes);
 app.use('/api/v1/invoices', invoicesRoutes);
+app.use('/api/v1/sow', sowRoutes);
 
 // 404 handler
 app.use((_req, res) => {

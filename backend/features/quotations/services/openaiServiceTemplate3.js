@@ -55,8 +55,15 @@ STRICT SCHEMA (Return ONLY this JSON):
     "Deployment and Cloud setup"
   ],
   "timeline": [
-    { "phase": "Discovery & Architecture", "duration": "2 Weeks", "deliverables": "Architecture Document, Wireframes" },
-    { "phase": "Sprint 1: Core Development", "duration": "4 Weeks", "deliverables": "Backend APIs, Database, Core UI" }
+    { "phase": "Discovery & Strategy", "duration": "2 Weeks", "deliverables": "Stakeholder workshops, Technical architecture document, Wireframes" },
+    { "phase": "UI/UX Design Phase", "duration": "3 Weeks", "deliverables": "High-fidelity wireframes, Interactive prototype, Design system" },
+    { "phase": "Core Infrastructure Setup", "duration": "2 Weeks", "deliverables": "Cloud provisioning, Database schema, CI/CD pipeline, Auth setup" },
+    { "phase": "Sprint 1: Foundation Development", "duration": "3 Weeks", "deliverables": "Core backend APIs, Primary database models, Base UI components" },
+    { "phase": "Sprint 2: Feature Development", "duration": "3 Weeks", "deliverables": "Module 1-3 implementation, Admin panel core, API integrations" },
+    { "phase": "Sprint 3: Advanced Features", "duration": "3 Weeks", "deliverables": "Module 4-6 implementation, 3rd party integrations, Notifications" },
+    { "phase": "Integration & API Flow", "duration": "2 Weeks", "deliverables": "End-to-end integration, Payment gateway, External API sync" },
+    { "phase": "QA & UAT Testing", "duration": "2 Weeks", "deliverables": "Bug resolution, Performance testing, Client verification, UAT sign-off" },
+    { "phase": "Deployment & Go-Live", "duration": "1 Week", "deliverables": "Production deployment, DNS setup, SSL, Post-launch monitoring" }
   ],
   "costEstimation": {
     "totalCost": "₹X,XX,XXX",
@@ -114,6 +121,7 @@ RULES:
 9. EXACT FEATURE FORMAT: Every item in the "items" array of a module MUST strictly be in the format "Feature Name: First line of explanation.\\nSecond line of explanation." Use a literal \\n newline character to separate the two lines.
 10. NO EXTRA TEXT: Return pure JSON.
 11. FEATURE ENFORCEMENT: Every single feature listed in the "Key features discussed" section above MUST be present in the JSON 'features' array. Map them to appropriate modules and provide professional descriptions for each. Ensure they strictly follow the "EXACT FEATURE FORMAT" specified in rule 9.
+12. TIMELINE: The "timeline" array MUST have EXACTLY 6-9 distinct phases including discovery, design, infrastructure setup, multiple development sprints, integration, QA/UAT, and deployment. Do NOT compress everything into 2 phases.
 `;
 
   try {

@@ -2,8 +2,8 @@ import { useState, useEffect } from 'react'
 import { useLocation } from 'react-router-dom'
 import Sidebar from './Sidebar'
 import Header from './Header'
-import NotificationModal from '../notifications/NotificationModal'
-import NotificationToast from '../notifications/NotificationToast'
+// import NotificationModal from '../notifications/NotificationModal' // DISABLED to save Supabase resources
+// import NotificationToast from '../notifications/NotificationToast' // DISABLED to save Supabase resources
 
 export default function DashboardLayout({ children }) {
     const [mobileOpen, setMobileOpen] = useState(false)
@@ -33,8 +33,8 @@ export default function DashboardLayout({ children }) {
             </div>
 
             {/* Global Components */}
-            <NotificationModal />
-            <NotificationToast />
+            {/* <NotificationModal /> DISABLED to save Supabase resources */}
+            {/* <NotificationToast /> DISABLED to save Supabase resources */}
         </div>
     )
 }

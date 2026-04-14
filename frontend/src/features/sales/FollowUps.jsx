@@ -213,7 +213,7 @@ export default function FollowUps() {
     const fetchAgents = async () => {
         if (!isAdmin) return;
         try {
-            const res = await api.get('/users', { params: { role: 'BDM,Admin,Super Admin' } });
+            const res = await api.get('/users', { params: { role: 'BDM,Admin,Super Admin,Director' } });
             setAllAgents(res.data.data);
         } catch (err) { console.error(err); }
     };
@@ -492,8 +492,12 @@ export default function FollowUps() {
                         },
                         ...(isAdmin ? [{
                             label: 'Assigned To',
-                            key: 'agent.full_name',
-                            render: (val) => <div style={{ fontSize: '12px', fontWeight: 600 }}>{val}</div>
+                            key: 'lead.assigned_agent.full_name',
+                            render: (val, group) => (
+                                <div style={{ fontSize: '12px', fontWeight: 600 }}>
+                                    {group.lead?.assigned_agent?.full_name || 'Unassigned'}
+                                </div>
+                            )
                         }] : []),
                         {
                             label: 'Actions',
@@ -566,7 +570,14 @@ export default function FollowUps() {
                                     <td style={{ padding: '12px 16px', maxWidth: '300px' }}>
                                         <p style={{ fontSize: '13px', margin: 0, whiteSpace: 'pre-wrap', color: 'var(--text-muted)' }}>{fu.notes || 'No notes provided.'}</p>
                                     </td>
-                                    {isAdmin && <td style={{ padding: '12px 16px' }}><div style={{ fontSize: '12px', fontWeight: 600 }}>{group.agent?.full_name}</div></td>}
+                                                                        {isAdmin && (
+                                        <td style={{ padding: '12px 16px' }}>
+                                            <div style={{ fontSize: '12px', fontWeight: 600 }}>
+                                                {lead.assigned_agent?.full_name || 'Unassigned'}
+                                            </div>
+                                        </td>
+                                    )}
+
                                     <td style={{ padding: '12px 16px', textAlign: 'right' }}>
                                         <div style={{ display: 'flex', gap: '4px', justifyContent: 'flex-end' }}>
                                             <button className="btn btn-sm btn-ghost" onClick={() => setEditingFollowUp(fu)} title="Edit"><Edit2 size={13} /></button>

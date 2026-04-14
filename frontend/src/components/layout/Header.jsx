@@ -1,7 +1,7 @@
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { useTheme } from '../../context/ThemeContext'
-import { useNotifications } from '../../context/NotificationContext'
+// import { useNotifications } from '../../context/NotificationContext' // DISABLED
 import { Sun, Moon, Monitor, Bell, CheckCheck, Inbox, Menu } from 'lucide-react'
 import { useState, useRef, useEffect } from 'react'
 
@@ -27,7 +27,7 @@ export default function Header({ onMenuClick }) {
     const navigate = useNavigate()
     const { user } = useAuth()
     const { theme, setTheme } = useTheme()
-    const { unreadCount, setIsModalOpen } = useNotifications()
+    // const { unreadCount, setIsModalOpen } = useNotifications() // DISABLED
 
     const title = TITLES[pathname] || 'Panel'
     const initials = user?.email?.slice(0, 2).toUpperCase() || 'AD'
@@ -59,7 +59,7 @@ export default function Header({ onMenuClick }) {
                     ))}
                 </div>
 
-                {/* Notifications */}
+                {/* Notifications - DISABLED to save Supabase resources
                 <div className="notifications-wrapper">
                     <button
                         className={`notification-bell${unreadCount > 0 ? ' has-unread' : ''}`}
@@ -70,6 +70,7 @@ export default function Header({ onMenuClick }) {
                         {unreadCount > 0 && <span className="unread-badge">{unreadCount}</span>}
                     </button>
                 </div>
+                */}
 
                 <div className="user-chip">
                     <div className="user-avatar" style={{ overflow: 'hidden', padding: 0 }}>

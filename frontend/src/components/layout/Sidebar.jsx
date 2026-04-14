@@ -28,6 +28,7 @@ const NAV = [
         items: [
             { to: '/projects', label: 'All Projects', perm: 'manage_projects', icon: FolderKanban },
             { to: '/my-projects', label: 'My Projects', icon: FolderKanban },
+            { to: '/sow-generator', label: 'AI SoW & Tasks', icon: Sparkles },
             { to: '/tasks', label: 'Tasks by PM', perm: 'view_tasks', roles: ['Tester', 'Developer'], icon: ListTodo },
             { to: '/timesheet', label: 'Timesheet', perm: 'view_timesheet', icon: Clock },
             { to: '/developer-performance', label: 'Dev Performance', icon: TrendingUp, hideIfRole: ['Video Editor'] },

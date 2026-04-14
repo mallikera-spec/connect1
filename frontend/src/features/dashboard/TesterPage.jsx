@@ -1,7 +1,35 @@
-import { useState } from 'react';
+import { useState, Component } from 'react';
 import DateRangePicker from '../../components/DateRangePicker';
 import { getISTMonthStartString, getISTTodayString } from '../../lib/dateUtils';
 import TesterDashboard from './TesterDashboard';
+
+// Error boundary to catch any rendering crashes
+class TesterErrorBoundary extends Component {
+    constructor(props) {
+        super(props);
+        this.state = { hasError: false, error: null };
+    }
+    static getDerivedStateFromError(error) {
+        return { hasError: true, error };
+    }
+    componentDidCatch(error, info) {
+        console.error('TesterDashboard crashed:', error, info);
+    }
+    render() {
+        if (this.state.hasError) {
+            return (
+                <div style={{ padding: '60px 20px', textAlign: 'center', color: 'var(--text-dim)' }}>
+                    <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>Something went wrong</div>
+                    <div style={{ fontSize: 13, marginBottom: 16, color: '#ef4444' }}>{this.state.error?.message}</div>
+                    <button className="btn btn-primary" onClick={() => this.setState({ hasError: false, error: null })}>
+                        Try Again
+                    </button>
+                </div>
+            );
+        }
+        return this.props.children;
+    }
+}
 
 export default function TesterPage() {
     const [dateRange, setDateRange] = useState({
@@ -22,7 +50,9 @@ export default function TesterPage() {
                     onRangeChange={setDateRange}
                 />
             </div>
-            <TesterDashboard dateRange={dateRange} />
+            <TesterErrorBoundary>
+                <TesterDashboard dateRange={dateRange} />
+            </TesterErrorBoundary>
         </div>
     );
 }

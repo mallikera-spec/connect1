@@ -3,6 +3,7 @@ import { formatCurrency, formatDate } from '../../utils/formatters';
 
 // Helper to convert number to words (Indian numbering system)
 const numberToWords = (num) => {
+    if (num === null || num === undefined || isNaN(num)) return '';
     if (num === 0) return 'Zero';
     const a = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
     const b = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
@@ -124,7 +125,7 @@ const InvoiceTemplate = ({ invoice }) => {
                                     <h4 style={{ color: t.primary, textTransform: 'uppercase', fontSize: '11px', letterSpacing: '1px', marginBottom: '8px', borderBottom: `1px solid ${t.border}`, paddingBottom: '3px' }}>Project Information</h4>
                                     <p style={{ margin: '0', fontSize: '12px', fontWeight: 600 }}>{invoice.project?.name || 'N/A'}</p>
                                     <p style={{ margin: '3px 0', color: t.secondary }}><strong>Currency:</strong> {invoice.currency || 'INR'}</p>
-                                    <p style={{ margin: 0, color: t.secondary }}><strong>Place of Supply:</strong> Uttar Pradesh (09)</p>
+                                    <p style={{ margin: 0, color: t.secondary }}><strong>Place of Supply:</strong> {invoice.client_state || invoice.client?.state || 'Uttar Pradesh (09)'}</p>
                                 </div>
                             </div>
 
@@ -141,12 +142,12 @@ const InvoiceTemplate = ({ invoice }) => {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {invoice.items?.map((item, idx) => (
+                                    {(invoice.items || invoice.invoice_items || []).map((item, idx) => (
                                         <tr key={idx}>
                                             <td style={{ padding: '10px', border: `1px solid ${t.border}`, textAlign: 'center' }}>{idx + 1}</td>
-                                            <td style={{ padding: '10px', border: `1px solid ${t.border}`, fontWeight: 500, wordBreak: 'break-word' }}>
-                                                {item.description}
-                                            </td>
+                                             <td style={{ padding: '10px', border: `1px solid ${t.border}`, fontWeight: 500, wordBreak: 'break-word', color: t.text }}>
+                                                 {item.description || "N/A"}
+                                             </td>
                                             <td style={{ padding: '10px', border: `1px solid ${t.border}`, textAlign: 'center', color: t.secondary }}>9983</td>
                                             <td style={{ padding: '10px', border: `1px solid ${t.border}`, textAlign: 'center' }}>{item.quantity}</td>
                                             <td style={{ padding: '10px', border: `1px solid ${t.border}`, textAlign: 'right' }}>{formatCurrency(item.unit_price)}</td>
@@ -223,14 +224,55 @@ const InvoiceTemplate = ({ invoice }) => {
 
             <style>{`
                 @media print {
-                    .invoice-print-wrapper { width: 210mm; min-height: 297mm; }
-                    body { margin: 0; padding: 0; background: none; }
+                    @page {
+                        margin: 10mm;
+                        size: A4;
+                    }
+                    
+                    /* Hide EVERYTHING on the page by default */
+                    body * {
+                        visibility: hidden !important;
+                    }
+
+                    /* Specifically SHOW ONLY the invoice content and its hierarchy */
+                    .invoice-print-wrapper, .invoice-print-wrapper * {
+                        visibility: visible !important;
+                        opacity: 1 !important;
+                    }
+
+                    /* Absolute positioning for printing to ignore the modal's current screen position */
+                    .invoice-print-wrapper {
+                        position: absolute !important;
+                        left: 0 !important;
+                        top: 0 !important;
+                        width: 100% !important;
+                        margin: 0 !important;
+                        padding: 0 !important;
+                        background: #fff !important;
+                        box-shadow: none !important;
+                    }
+
+                    /* Ensure any parent containers aren't cutting off the content */
+                    html, body, #root, .modal-overlay, .modal, .modal-body {
+                        height: auto !important;
+                        max-height: none !important;
+                        overflow: visible !important;
+                        position: static !important;
+                        display: block !important;
+                        background: transparent !important;
+                    }
+
+                    /* Force clear table structure for print engines */
+                    .invoice-print-wrapper table { display: table !important; width: 100% !important; border-collapse: collapse !important; }
+                    thead { display: table-header-group !important; }
+                    tfoot { display: table-footer-group !important; }
+                    tr { page-break-inside: avoid !important; }
+                    
                     * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-                    thead { display: table-header-group; }
-                    tfoot { display: table-footer-group; }
                 }
-                .invoice-print-wrapper table { page-break-inside: auto; }
-                .invoice-print-wrapper tr { page-break-inside: avoid; page-break-after: auto; }
+                
+                .invoice-print-wrapper table { border-collapse: collapse; width: 100%; }
+                .invoice-print-wrapper tr { page-break-inside: avoid; }
             `}</style>
         </div>
     );

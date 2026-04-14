@@ -13,6 +13,18 @@ export default function LogFollowUpModal({ isOpen, onClose, leadId, onSuccess })
         scheduled_time: ''
     });
 
+    React.useEffect(() => {
+        if (isOpen) {
+            setFormData({
+                type: 'Call',
+                status: 'Completed',
+                notes: '',
+                scheduled_date: '',
+                scheduled_time: ''
+            });
+        }
+    }, [isOpen]);
+
     if (!isOpen) return null;
 
     const handleSubmit = async (e) => {

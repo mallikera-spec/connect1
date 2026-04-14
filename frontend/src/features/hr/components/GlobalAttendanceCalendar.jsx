@@ -177,8 +177,9 @@ export default function GlobalAttendanceCalendar() {
                     background: 'var(--card-bg)' // Solid background container
                 }}>
                     <table className="calendar-table" style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0 }}>
-                        <thead style={{ position: 'sticky', top: 0, zIndex: 30, background: 'var(--card-bg-light)', borderBottom: '1px solid var(--border)' }}>
+                        <thead style={{ position: 'sticky', top: 0, zIndex: 20 }}>
                             <tr>
+                                {/* Corner cell: sticky both vertically AND horizontally — needs highest z-index */}
                                 <th style={{
                                     padding: '12px 16px',
                                     textAlign: 'left',
@@ -188,16 +189,18 @@ export default function GlobalAttendanceCalendar() {
                                     position: 'sticky',
                                     left: 0,
                                     top: 0,
-                                    background: 'var(--card-bg-light)',
-                                    zIndex: 31,
+                                    background: 'var(--bg-card-solid)',
+                                    zIndex: 40,
                                     fontSize: 12,
                                     textTransform: 'uppercase',
                                     letterSpacing: '0.5px',
-                                    color: 'var(--text-dim)'
+                                    color: 'var(--text-dim)',
+                                    boxShadow: '4px 0 8px rgba(0,0,0,0.25)'
                                 }}>Employee Name</th>
                                 {days.map(d => {
                                     const date = new Date(year, month - 1, d);
                                     const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+                                    const isToday = d === new Date().getDate() && month === new Date().getMonth() + 1 && year === new Date().getFullYear();
                                     return (
                                         <th key={d} style={{
                                             padding: '8px 4px',
@@ -205,8 +208,17 @@ export default function GlobalAttendanceCalendar() {
                                             borderBottom: '2px solid var(--border)',
                                             fontSize: 10,
                                             minWidth: 42,
-                                            background: isWeekend ? 'rgba(255,255,255,0.02)' : 'transparent',
-                                            color: isWeekend ? 'var(--text-muted)' : 'var(--text)'
+                                            /* CRITICAL: must be opaque — transparent lets body rows bleed through the sticky header */
+                                            background: isToday
+                                                ? 'rgba(99,102,241,0.2)'
+                                                : isWeekend
+                                                    ? 'rgba(255,255,255,0.05)'
+                                                    : 'var(--bg-card-solid)',
+                                            color: isToday ? 'var(--accent)' : isWeekend ? 'var(--text-muted)' : 'var(--text)',
+                                            position: 'sticky',
+                                            top: 0,
+                                            zIndex: 20,
+                                            outline: isToday ? '2px solid rgba(99,102,241,0.4)' : 'none'
                                         }}>
                                             <div style={{ fontWeight: 800 }}>{d}</div>
                                             <div style={{ fontSize: 9, opacity: 0.6, textTransform: 'uppercase' }}>
@@ -221,7 +233,16 @@ export default function GlobalAttendanceCalendar() {
                             {loading ? (
                                 Array.from({ length: 10 }).map((_, i) => (
                                     <tr key={i}>
-                                        <td style={{ padding: '16px', borderBottom: '1px solid var(--border)', borderRight: '2px solid var(--border)', position: 'sticky', left: 0, background: 'var(--card-bg)' }}>
+                                        <td style={{
+                                            padding: '16px',
+                                            borderBottom: '1px solid var(--border)',
+                                            borderRight: '2px solid var(--border)',
+                                            position: 'sticky',
+                                            left: 0,
+                                            background: 'var(--card-bg-light)',
+                                            zIndex: 5,
+                                            boxShadow: '3px 0 8px rgba(0,0,0,0.2)'
+                                        }}>
                                             <div className="skeleton" style={{ height: 20, width: '80%' }}></div>
                                         </td>
                                         {days.map(d => (
@@ -249,8 +270,10 @@ export default function GlobalAttendanceCalendar() {
                                             borderRight: '2px solid var(--border)',
                                             position: 'sticky',
                                             left: 0,
-                                            background: 'var(--card-bg-light)',
+                                            /* Must match the header corner cell background for visual continuity */
+                                            background: 'var(--bg-card-solid)',
                                             zIndex: 5,
+                                            boxShadow: '4px 0 8px rgba(0,0,0,0.2)',
                                             transition: 'background 0.2s'
                                         }}>
                                             <div style={{ display: 'flex', flexDirection: 'column' }}>
@@ -274,7 +297,8 @@ export default function GlobalAttendanceCalendar() {
                                                         textAlign: 'center',
                                                         background: isWeekend ? 'rgba(255,255,255,0.02)' : 'transparent',
                                                         cursor: dayData ? 'pointer' : 'default',
-                                                        height: 48
+                                                        height: 48,
+                                                        overflow: 'hidden'
                                                     }}>
                                                     {dayData && (
                                                         <div
@@ -433,7 +457,7 @@ export default function GlobalAttendanceCalendar() {
                     background-color: rgba(255,255,255,0.01) !important;
                 }
                 .calendar-row:hover td:first-child {
-                    background-color: var(--card-bg-light) !important;
+                    background-color: var(--bg-card, var(--card-bg, #111827)) !important;
                 }
                 .calendar-cell:hover {
                     filter: brightness(1.1);

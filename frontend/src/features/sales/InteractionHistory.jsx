@@ -70,7 +70,7 @@ export default function InteractionHistory() {
     const fetchAgents = async () => {
         if (!isAdmin) return;
         try {
-            const res = await api.get('/users', { params: { role: 'BDM,Admin,Super Admin' } });
+            const res = await api.get('/users', { params: { role: 'BDM,Admin,Super Admin,Director' } });
             setAllAgents(res.data.data);
         } catch (err) { console.error(err); }
     };
